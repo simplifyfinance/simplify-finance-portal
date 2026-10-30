@@ -1207,7 +1207,7 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'oo_purchase') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(fmtNum(totalLending(d.splits)), '[amount]')}</strong>.`) +
       p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>.`) +
       p13('Here is a breakdown of the structure:') +
       card('The Purchase',
@@ -1271,7 +1271,7 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'investment_purchase') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(fmtNum(totalLending(d.splits)), '[amount]')}</strong>.`) +
       p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>.`) +
       card('The Purchase',
         purchaseBlock({
@@ -1321,7 +1321,7 @@ export async function POST(req: NextRequest) {
         // some of it; the card below says which, and this sentence does not
         // guess ahead of it.
         ? `Your sale proceeds are going into a build, and the lending required is <strong>${amt(buildLending > 0 ? fmtNum(buildLending) : '', '[amount]')}</strong>.`
-        : `When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
+        : `When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(fmtNum(totalLending(d.splits)), '[amount]')}</strong>.`) +
       card('Sale Proceeds Summary',
         row('Expected sale price', money(d.salePrice)) +
         row('Agent fees / selling costs', money(d.agentFees)) +
@@ -1742,7 +1742,7 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'custom') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(fmtNum(totalLending(d.splits)), '[amount]')}</strong>.`) +
       card('The Purchase',
         purchaseBlock({
           price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),

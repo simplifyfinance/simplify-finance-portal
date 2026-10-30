@@ -915,11 +915,22 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     const price = parseFloat(val.replace(/,/g, '')) || 0
     const dep = parseFloat(deposit.replace(/,/g, '')) || 0
     const sd = parseFloat(stampDuty.replace(/,/g, '')) || 0
+    // ONLY WHERE THERE IS ONE LOAN TO FILL IN.
+    //
+    // 30 Oct 2026. This wrote price-minus-deposit into splits[0] whatever else
+    // was on the deal, so a purchase split into two loans had its first one
+    // rewritten and its second left alone - and the two stopped adding up to
+    // the purchase. Where a broker has built a structure, the portal does not
+    // get to overwrite half of it; the convenience is for the deal with one
+    // loan on it, which is what these templates seed.
+    const realCount = splits.filter(sp => String(sp?.amount || '').trim() || String(sp?.label || '').trim()).length
     if (dep > 0) {
       // Stamp duty is paid out of the deposit, so only the remainder reduces the loan.
-      setSplits(prev => prev.map((sp, idx) => idx === 0 ? { ...sp, amount: formatNumber(Math.max(0, Math.round(price - (dep - sd))).toString()) } : sp))
+      if (realCount <= 1) {
+        setSplits(prev => prev.map((sp, idx) => idx === 0 ? { ...sp, amount: formatNumber(Math.max(0, Math.round(price - (dep - sd))).toString()) } : sp))
+      }
     } else {
-      const loanAmt = parseFloat((splits[0]?.amount || '0').replace(/,/g, '')) || 0
+      const loanAmt = splits.reduce((t, sp) => t + (parseFloat((sp?.amount || '0').replace(/,/g, '')) || 0), 0)
       if (loanAmt > 0) setDeposit(formatNumber(Math.max(0, Math.round(price - loanAmt + sd)).toString()))
     }
   }
@@ -970,15 +981,33 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const showCalculatedLvr = (isPurchaseLinked || isRefinanceLinked || isBridgingLinked || isConstructionLinked)
     && !manySecurities
 
+  // EVERY SPLIT, NOT THE FIRST ONE. 30 Oct 2026.
+  //
+  // This read splits[0] over the purchase price, so a purchase split into two
+  // loans had its LVR worked out on one of them. Understated - and this is the
+  // figure that decides whether the LMI questions are asked at all, so the
+  // answer was "no LMI to think about" on a deal that needs it. The identical
+  // line was fixed in the construction branch on 9 Oct and left here.
+  const splitsTotal = (list: Split[]) =>
+    list.reduce((sum, sp) => sum + (parseFloat((sp?.amount || '0').replace(/,/g, '')) || 0), 0)
+
   let lvrPercent = 0
   if (isPurchaseLinked) {
     const price = parseFloat(purchasePrice.replace(/,/g, '')) || 0
-    const loanAmt = parseFloat((splits[0]?.amount || '0').replace(/,/g, '')) || 0
+    const loanAmt = splitsTotal(splits)
     lvrPercent = price > 0 ? Math.ceil((loanAmt / price) * 1000) / 10 : 0
   } else if (isRefinanceLinked) {
     const value = parseFloat(propertyValue.replace(/,/g, '')) || 0
-    const relevantSplits = template === 'investment_equity' ? splits.slice(0, 2) : splits
-    const totalLoan = relevantSplits.reduce((sum, sp) => sum + (parseFloat((sp.amount || '0').replace(/,/g, '')) || 0), 0)
+    // THE REFINANCE PART IS EVERY SPLIT THAT IS NOT BUYING THE HOUSE.
+    //
+    // 30 Oct 2026. This took the first two and called them the refinance. On
+    // the Ollie Murphy deal the refinance part is splits 1, 2 and 4 - the third
+    // is the purchase and the fourth is more equity out of the same house. The
+    // one that buys it is named by findPurchaseSplit, the same answer the New
+    // purchase panel and the tagger read.
+    const buyIdx = template === 'investment_equity' ? findPurchaseSplit(splits) : -1
+    const relevantSplits = buyIdx >= 0 ? splits.filter((_, i) => i !== buyIdx) : splits
+    const totalLoan = splitsTotal(relevantSplits)
     lvrPercent = value > 0 ? Math.ceil((totalLoan / value) * 1000) / 10 : 0
   } else if (isBridgingLinked) {
     const price = parseFloat(purchasePrice.replace(/,/g, '')) || 0

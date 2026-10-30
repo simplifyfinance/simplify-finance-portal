@@ -66,6 +66,19 @@ if ! ./scripts/check-lmi-carries.sh; then
   exit 1
 fi
 
+# A SPLIT'S JOB IS NOT ITS POSITION IN THE LIST.
+#
+# 30 Oct 2026. Four deals in two days came out wrong the same way: the panel
+# edited splits[2] while the tagger looked for a label, the headline on four
+# purchase emails quoted splits[0] over two loans, the purchase LVR divided
+# splits[0] by the price. Fabio: "these issues need to stop."
+echo "Checking how splits are found..."
+if ! ./scripts/check-split-position.sh; then
+  echo
+  echo "NOT SHIPPED - fix the above first."
+  exit 1
+fi
+
 echo "Checking email HTML..."
 if ! ./scripts/check-email-html.sh; then
   echo
