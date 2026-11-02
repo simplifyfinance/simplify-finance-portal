@@ -760,11 +760,17 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
       <DealTabCards deal={dealData} stage={stage} onPick={changeStage} />
 
       {/* THE FORM, AND THE RAIL BESIDE IT - one-inside-the-deal-v4.html.
+          2 Nov 2026 - THE RAIL IS AS WIDE AS THE SCREEN ALLOWS. It was pinned
+          at 330 while the tab took the other 1370, and the widest thing on the
+          BC tab is a 720px email preview - so 650px of the tab sat empty while
+          the rail broke every sentence at five words. Fabio: "see how it is a
+          waste of space cramming the right hand column". It now runs 330 to
+          440 with the window. Nothing in the tab is narrower than its content.
           Everything in the rail used to be stacked full width above the form,
           or - for Important and File notes - inside the settlement grid, which
           a Fact Find deal never draws. See components/DealRail.tsx. */}
       <div className={stage === 'Statements' ? '' :
-        'grid grid-cols-[minmax(0,1.9fr)_minmax(0,330px)] gap-3 items-start max-[1100px]:grid-cols-1'}>
+        'grid grid-cols-[minmax(0,1.9fr)_minmax(0,clamp(330px,26vw,440px))] gap-3 items-start max-[1100px]:grid-cols-1'}>
         <div className="min-w-0">
       <TabLock locked={isLocked(dealData) && !dealUnlocked} tab={stage} dealId={dealData.id}
         role={userRole} me={me}

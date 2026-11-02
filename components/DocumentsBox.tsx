@@ -364,7 +364,7 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
                 {group.label}
               </div>
               {group.items.map(r => (
-                <div key={r.key} className="flex gap-3 items-start px-4 py-[7px] border-t border-[var(--color-page)] hover:bg-[var(--color-page)]">
+                <div key={r.key} className="flex flex-wrap gap-3 items-start px-4 py-[7px] border-t border-[var(--color-page)] hover:bg-[var(--color-page)]">
                   {r.requestedAt ? (
                     // Asked for. Not a tick any more - a thing being waited on,
                     // and unticking it would only lie about what went out.
@@ -388,7 +388,7 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
                       {TICK}
                     </button>
                   )}
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-[170px]">
                     <div className={`text-[13px] ${covered.has(r.key) && !r.requestedAt ? 'text-[var(--color-muted)]'
                       : r.ticked ? 'text-ink font-medium' : 'text-[var(--color-muted)]'}`}>
                       {r.label}
@@ -432,6 +432,7 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
                       </div>
                     )}
                   </div>
+                  <div className="flex gap-2 items-start flex-none ml-7">
                   <span className={`text-[9px] font-bold tracking-[.05em] uppercase rounded px-1.5 py-[2px] border mt-[2px] flex-none ${
                     r.forWhat === 'lodge'
                       ? 'text-info bg-info-bg border-info-edge'
@@ -459,6 +460,7 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
                     <button onClick={() => save(cur => withoutAdded(cur, r.key), r.key)}
                       className="text-[11px] text-faint hover:text-chase flex-none mt-[3px]">Remove</button>
                   )}
+                  </div>
                 </div>
               ))}
             </div>
