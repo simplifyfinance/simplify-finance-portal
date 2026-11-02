@@ -225,6 +225,10 @@ function buildLenderTable(lenders: any[], isBridging: boolean, lo?: any, globals
       (l: any) => l.docProcessingFee ? tick(`Document Processing Fee of ${money(l.docProcessingFee)}`) : '',
     ]
     featureCells = `<tr>${lenders.map(l => `<td style="padding:14px;border:1px solid #e0e0e0;vertical-align:top">${rows.map(fn => fn(l)).join('')}</td>`).join('')}</tr>`
+    // AND EVERY OTHER FEE THE BROKER FILLED IN. 30 Oct 2026: eight boxes on
+    // screen, none of them on the email. The monthly one is skipped because the
+    // row above has already said it in the bridge's own words.
+    featureCells += `<tr>${feeCells(lenders, true)}</tr>`
     // NOTHING INVENTED, NOTHING SPELLED "XXX".
     //
     // This printed a literal "$XXX" for a bridging amount nobody had entered,
@@ -268,7 +272,19 @@ function buildLenderTable(lenders: any[], isBridging: boolean, lo?: any, globals
       }).join('')
       featureCells += `<tr>${contentCells}</tr>`
     })
-    const feeRows = lenders.map(l => {
+    const feeRows = feeCells(lenders)
+    featureCells += `<tr>${feeRows}</tr>`
+  }
+
+  // THE FEES, FOR WHICHEVER SHAPE OF EMAIL THIS IS.
+  //
+  // 30 Oct 2026 - see the note on this patch. These lines lived inside the "not
+  // bridging" half, so a bridge printed none of them and nothing said so.
+  //
+  // `skipMonthly` is for the bridge, which prints that same box in its own
+  // words further up: "Monthly Loan Account Fee of $15". One box, one line.
+  function feeCells(list: any[], skipMonthly = false) {
+    return list.map(l => {
       let fees = ''
       if (l.applicationFee) fees += tick("Application fee: " + feeText(l.applicationFee))
       if (l.annualFee) fees += tick("Annual fee: " + feeText(l.annualFee))
@@ -276,7 +292,7 @@ function buildLenderTable(lenders: any[], isBridging: boolean, lo?: any, globals
       // bridging was built. Every other scenario had no way to record one, so
       // this line had nothing to print and was never written. The product
       // library has the box now, so the email needs the line.
-      if (l.monthlyFee) fees += tick("Monthly fee: " + feeText(l.monthlyFee))
+      if (l.monthlyFee && !skipMonthly) fees += tick("Monthly fee: " + feeText(l.monthlyFee))
       if (l.valuationFee) fees += tick("Valuation fee: " + feeText(l.valuationFee))
       if (l.legalFee) fees += tick(rowLegalFeeLabel(l) + ": " + feeText(l.legalFee))
       if (l.rateLockFee) fees += tick("Rate lock fee: " + feeText(l.rateLockFee))
@@ -287,7 +303,6 @@ function buildLenderTable(lenders: any[], isBridging: boolean, lo?: any, globals
       if (l.offsetAccount) fees += tick("Offset account: " + l.offsetAccount)
       return `<td style="padding:14px;border:1px solid #e0e0e0;vertical-align:top">${fees}</td>`
     }).join('')
-    featureCells += `<tr>${feeRows}</tr>`
   }
 
   // Splits go directly under the lender names, before the rates: the client's
