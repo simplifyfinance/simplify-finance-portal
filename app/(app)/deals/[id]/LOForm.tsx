@@ -1024,6 +1024,23 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     })
   }
 
+  // AND THE LIST ITSELF COMES BACK WHEN THE TAB DOES.
+  //
+  // Read once on mount, so a product ADDED while this page was open could not
+  // be chosen at all - it was not in the dropdown. Coming back to this tab is
+  // exactly the moment somebody has finished editing the library in the other
+  // one. 30 Oct 2026.
+  const [libraryRead, setLibraryRead] = useState(0)
+  useEffect(() => {
+    const again = () => { if (document.visibilityState === 'visible') setLibraryRead(n => n + 1) }
+    document.addEventListener('visibilitychange', again)
+    window.addEventListener('focus', again)
+    return () => {
+      document.removeEventListener('visibilitychange', again)
+      window.removeEventListener('focus', again)
+    }
+  }, [])
+
   useEffect(() => {
     Promise.all([
       supabase.from('lender_products').select('*'),
@@ -1097,7 +1114,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         putOnScreen(data.lo_data)
       }
     })
-  }, [])
+  }, [libraryRead])
 
   // WHOSE COPY IS ON SCREEN.
   //
@@ -1421,9 +1438,34 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     setD({ ...d, lenders: updated })
   }
 
-  function selectProduct(i: number, productId: string) {
-    const product = allProducts.find(p => p.id === productId)
-    if (!product) return
+  async function selectProduct(i: number, productId: string) {
+    const cached = allProducts.find(p => p.id === productId)
+    if (!cached) return
+    // THE LIBRARY AS IT IS NOW, NOT AS IT WAS WHEN THIS SCREEN OPENED.
+    //
+    // 30 Oct 2026. Fabio: "I am updating the lender library and it is not
+    // coming across when we select the product in the LO email."
+    //
+    // The list below is read once, on mount. Edit a product after that - add
+    // Bankwest's $350 legal fee - and picking it copied the row as it was
+    // before the edit. The fee was in the library, saved and correct, and the
+    // deal got the old blank. Nothing said so, because nothing knew: the screen
+    // was not holding a wrong answer, it was holding one that was right when it
+    // asked.
+    //
+    // The cached row is the fall-back, never the first answer: a product picked
+    // with yesterday's fees beats one picked with none.
+    let product: any = cached
+    try {
+      const { data: fresh } = await supabase.from('lender_products')
+        .select('*').eq('id', productId).maybeSingle()
+      if (fresh) {
+        product = { ...fresh, lender_name: cached.lender_name, lender_active: cached.lender_active }
+        setAllProducts(prev => prev.map(x => x.id === productId ? { ...x, ...fresh } : x))
+      }
+    } catch {
+      // The cached row carries on. Nothing is lost that was not already there.
+    }
     const updated = [...d.lenders]
     updated[i] = { ...updated[i], lenderProductId: productId, productName: product.product_name, applicationFee: product.application_fee || '', feeInLoan: false, annualFee: product.annual_fee || '', monthlyFee: product.monthly_fee || '', valuationFee: product.valuation_fee || '', legalFee: product.legal_fee || '', rateLockFee: product.rate_lock_fee || '', earlyRepaymentFee: product.early_repayment_fee || '', dischargeFee: product.discharge_fee || '', offsetAccount: product.offset_account ? (product.multiple_offsets ? 'Yes — multiple offsets' : 'Yes') : 'No', libraryNotes: product.notes || '' }
     setD({ ...d, lenders: updated })
