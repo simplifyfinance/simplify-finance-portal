@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { money } from '@/lib/money'
 import PortfolioReview from '@/components/PortfolioReview'
+import LenderFees from '@/components/LenderFees'
 import {
   exposure, totalsFor, sourceLine,
   type Holding as ExposureHolding, type Named, type Row as ExposureRow,
@@ -15,7 +16,9 @@ export default function ReportsPage() {
   // THE THIRD TAB. 15 Oct 2026 - existing clients who may be sitting on equity.
   // See components/PortfolioReview.tsx; unlike the two beside it, that one reads
   // a view rather than unpacking the whole book in the browser.
-  const [tab, setTab] = useState<'rate' | 'lvr' | 'portfolio'>('rate')
+  // THE FOURTH TAB. 2 Nov 2026 - which products will quietly leave a fee off a
+  // client's comparison, read live off the library. See components/LenderFees.tsx.
+  const [tab, setTab] = useState<'rate' | 'lvr' | 'portfolio' | 'fees'>('rate')
   const [clients, setClients] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [rateThreshold, setRateThreshold] = useState('6.50')
@@ -123,9 +126,9 @@ export default function ReportsPage() {
           2026. It replaces bg-gray-100 / text-gray-500, which were raw Tailwind
           greys rather than the portal's own tokens and did not follow dark
           mode. */}
-      <div className="inline-flex gap-0.5 bg-track rounded-[10px] p-[3px] w-fit mb-5">
+      <div className="inline-flex gap-0.5 bg-line-soft rounded-[10px] p-[3px] w-fit mb-5">
         {([['rate', 'Rate exposure'], ['lvr', 'LVR exposure'],
-           ['portfolio', 'Portfolio review']] as const).map(([k, label]) => (
+           ['portfolio', 'Portfolio review'], ['fees', 'Lender library']] as const).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`text-[12px] font-semibold px-3.5 py-1.5 rounded-[7px] transition ${tab === k
               ? 'bg-card text-brand-ink shadow-sm' : 'text-muted hover:text-body'}`}>
@@ -136,6 +139,8 @@ export default function ReportsPage() {
 
       {tab === 'portfolio' ? (
         <PortfolioReview />
+      ) : tab === 'fees' ? (
+        <LenderFees />
       ) : loading ? (
         <div className="text-sm text-gray-400">Loading...</div>
       ) : tab === 'rate' ? (
