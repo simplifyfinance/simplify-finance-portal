@@ -1,3 +1,4 @@
+import { REAL_DEALS_OR } from '@/lib/test-deal'
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { answer, HOLA, lenderAsked } from '@/lib/paco'
@@ -55,7 +56,12 @@ export async function GET(req: NextRequest) {
   const question = String(req.nextUrl.searchParams.get('q') || '').trim()
 
   const { data, error } = await supabase.from('deals')
-    .select(COLUMNS).order('created_at', { ascending: false }).limit(1000)
+    // A SHORT LIST ON PURPOSE: a thousand deals is as much as can be put in
+    // front of the model, and it is the newest thousand deliberately. Real
+    // ones - 924 of the 1165 in this database are test deals, which would have
+    // filled this with work nobody did.
+    .select(COLUMNS).or(REAL_DEALS_OR)
+    .order('created_at', { ascending: false }).limit(1000)
 
   if (error) {
     // A FAILED LOOK AND AN EMPTY ANSWER MUST NEVER READ THE SAME. One is a

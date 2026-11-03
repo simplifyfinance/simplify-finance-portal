@@ -1,10 +1,11 @@
 'use client'
+import { everyRow } from '@/lib/the-whole-book'
 import { brokerLabel, sameBroker } from '@/lib/broker-key'
 import { PAGE_WIDE } from '@/lib/page-width'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { realDealsOnly } from '@/lib/test-deal'
+import { realDealsOnly, REAL_DEALS_OR } from '@/lib/test-deal'
 import { todayYmd } from '@/lib/periods'
 import LoanIds, { LoanIdChip } from '@/components/LoanIds'
 import { loanIdStatus } from '@/lib/loan-id'
@@ -132,13 +133,21 @@ export default function SettlementsPage() {
     setAllowed(true)
 
     const [d, b, t] = await Promise.all([
-      supabase.from('deals').select('*').not('lodged_at', 'is', null),
+      // EVERY LODGED DEAL, A PAGE AT A TIME. 2 Nov 2026 - one ask returned the
+      // newest thousand of 1165 and said nothing, so settlement figures were
+      // quietly short. See lib/the-whole-book.ts.
+      everyRow<any>((from, to) => supabase.from('deals').select('*')
+        .not('lodged_at', 'is', null).or(REAL_DEALS_OR)
+        .order('lodged_at', { ascending: false }).order('id').range(from, to)),
       supabase.from('brokers').select('broker_key, name, active').order('name'),
       supabase.from('pipeline_targets').select('metric, month, amount, broker_key').eq('metric', 'settled'),
     ])
     if (d.error) { setLoadError(d.error.message); setLoading(false); return }
+    // A SHORT READ IS NOT A SMALL MONTH. A settlement figure that is missing
+    // deals is worse than no figure, because nothing about it looks wrong.
+    if (d.truncated) { setLoadError('Not every lodged deal could be read, so these figures would be short. Reload the page.'); setLoading(false); return }
     // A settlement is money. A test deal is not money.
-    setDeals(realDealsOnly(d.data || []))
+    setDeals(realDealsOnly(d.rows || []))
     setBrokers((b.data || []).filter((r: any) => r.active !== false)
       .map((r: any) => ({ key: String(r.broker_key), name: r.name })))
     setTargets(t.error ? [] : (t.data || []))

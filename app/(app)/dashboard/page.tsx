@@ -1,5 +1,6 @@
+import { everyRow } from '@/lib/the-whole-book'
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { realDealsOnly } from '@/lib/test-deal'
+import { realDealsOnly, REAL_DEALS_OR } from '@/lib/test-deal'
 import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
 import TodayPlan from '@/components/TodayPlan'
@@ -41,12 +42,15 @@ export default async function Dashboard() {
   const keys: string[] = (visibleKeys as string[]) || []
   const hasTeamAccess = !!seesAll || keys.length > 1
 
-  let dealsQuery = supabase
+  // EVERY DEAL, A PAGE AT A TIME, AND THE TEST DEALS LEFT WHERE THEY ARE.
+  // 2 Nov 2026 - this asked once and got the newest thousand of 1165 without
+  // being told. See lib/the-whole-book.ts.
+  const { rows: rawDeals } = await everyRow<any>((from, to) => supabase
     .from('deals')
     .select('*, clients(first_name, last_name)')
-    .order('created_at', { ascending: false })
-
-  const { data: rawDeals } = await dealsQuery
+    .or(REAL_DEALS_OR)
+    .order('created_at', { ascending: false }).order('id')
+    .range(from, to))
   // TEST DEALS ARE NOT THE BUSINESS. One rule, in lib/test-deal.ts, asked by
   // every screen that counts - so the dashboard, the workload page and the
   // settlements list can never disagree about what is in the book.

@@ -1,4 +1,6 @@
 'use client'
+import { everyRow } from '@/lib/the-whole-book'
+import { REAL_DEALS_OR } from '@/lib/test-deal'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { countPacks, daysOfMonth, type PackRow, type PersonCount, type DayRow } from '@/lib/compliance-workload'
@@ -56,9 +58,11 @@ export default function CompliancePackWorkload() {
 
       // THE WHOLE FINANCIAL YEAR, because the year figure needs it. One query.
       const yearFrom = `${Number(today.slice(0, 4)) - (Number(today.slice(5, 7)) >= 7 ? 0 : 1)}-07-01`
-      const { data: rows } = await supabase.from('deals')
-        .select('compliance_pack_user_id, compliance_pack_user_name, compliance_pack_at')
-        .gte('compliance_pack_at', `${yearFrom}T00:00:00`)
+      // A YEAR OF PACKS, A PAGE AT A TIME. See lib/the-whole-book.ts.
+      const { rows } = await everyRow<any>((from, to) => supabase.from('deals')
+        .select('id, compliance_pack_user_id, compliance_pack_user_name, compliance_pack_at')
+        .gte('compliance_pack_at', `${yearFrom}T00:00:00`).or(REAL_DEALS_OR)
+        .order('compliance_pack_at').order('id').range(from, to))
 
       const packs: PackRow[] = (rows || []).map((r: any) => ({
         userId: r.compliance_pack_user_id, name: r.compliance_pack_user_name, at: r.compliance_pack_at,

@@ -1,9 +1,10 @@
 'use client'
+import { everyRow } from '@/lib/the-whole-book'
 import { brokerLabel, sameBroker } from '@/lib/broker-key'
 import { PAGE_WIDE } from '@/lib/page-width'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { realDealsOnly } from '@/lib/test-deal'
+import { realDealsOnly, REAL_DEALS_OR } from '@/lib/test-deal'
 import CompliancePackWorkload from '@/components/CompliancePackWorkload'
 
 type DealRow = {
@@ -53,10 +54,17 @@ export default function WorkloadClient() {
       .order('name')
     if (officersError) { setError(officersError.message); setLoading(false); return }
 
-    const { data: deals, error: dealsError } = await supabase
+    // EVERY DEAL, A PAGE AT A TIME. 2 Nov 2026 - one ask returned the newest
+    // thousand of 1165 without saying so, so a credit officer's workload was
+    // whatever happened to fit. See lib/the-whole-book.ts.
+    const { rows: deals, error: dealsError, truncated } = await everyRow<any>((from, to) => supabase
       .from('deals')
-      .select('is_test, assigned_broker, assigned_credit_officer, status, bc_completed_at, lo_completed_at, compliance_completed_at, credit_assigned_at')
+      .select('id, is_test, assigned_broker, assigned_credit_officer, status, bc_completed_at, lo_completed_at, compliance_completed_at, credit_assigned_at')
+      .or(REAL_DEALS_OR)
+      .order('id').range(from, to))
     if (dealsError) { setError(dealsError.message); setLoading(false); return }
+    // A workload that is missing deals is a workload nobody can act on.
+    if (truncated) { setError('Not every deal could be read, so these numbers would be short. Reload the page.'); setLoading(false); return }
 
     // Nobody's workload includes a deal somebody made to try something out.
     const dealRows = realDealsOnly(deals || []) as DealRow[]

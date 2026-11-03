@@ -19,6 +19,7 @@
 // the signed-in user's; the proceed page passes the admin one, because a client
 // pressing a button on their own page is not signed in to anything.
 
+import { everyRow } from './the-whole-book'
 import { needsAllocating, handOver, type Stage } from './who-did-this-stage'
 import { phaseOf, PHASE_LABEL } from '@/lib/deal-phase'
 import { siteUrl } from './site-url'
@@ -88,10 +89,15 @@ export async function allocateCreditOfficer(
   // so it reflects genuine team-wide load rather than a small local group's own average.
   const { data: allActiveOfficers } = await supabase.from('credit_officers').select('id').eq('active', true)
   const allOfficerIds = (allActiveOfficers || []).map((o: any) => o.id)
-  const { data: allTeamDeals } = await supabase
+  // A PAGE AT A TIME. 2 Nov 2026 - the database caps one ask at a thousand
+  // rows and says nothing, and an officer whose deals fell off the end reads
+  // as the quiet one, so the next file goes to the busiest person on the team.
+  // See lib/the-whole-book.ts.
+  const { rows: allTeamDeals } = await everyRow<any>((from, to) => supabase
     .from('deals')
-    .select('assigned_credit_officer, compliance_completed_at')
+    .select('id, assigned_credit_officer, compliance_completed_at')
     .in('assigned_credit_officer', allOfficerIds.length > 0 ? allOfficerIds : [''])
+    .order('id').range(from, to))
 
   const companyActiveCounts: Record<string, number> = {}
   allOfficerIds.forEach((id: string) => { companyActiveCounts[id] = 0 })
@@ -107,12 +113,15 @@ export async function allocateCreditOfficer(
 
   // Active workload + last-assigned time, scoped to the eligible candidates for this broker
   const candidateIds = candidates.map((c: any) => c.id)
-  const { data: theirDeals, error: workloadError } = await supabase
+  const { rows: theirDeals, error: workloadError, truncated } = await everyRow<any>((from, to) => supabase
     .from('deals')
-    .select('assigned_credit_officer, compliance_completed_at, credit_assigned_at')
+    .select('id, assigned_credit_officer, compliance_completed_at, credit_assigned_at')
     .in('assigned_credit_officer', candidateIds)
+    .order('id').range(from, to))
 
   if (workloadError) return { ok: false, error: workloadError.message, status: 500 }
+  // Rather than hand the file to whoever happens to look quiet on half a read.
+  if (truncated) return { ok: false, error: 'Not every deal could be read, so the workload figures would be wrong. Try again.', status: 503 }
 
   const stats: Record<string, { active: number; lastAssigned: string | null }> = {}
   candidateIds.forEach((id: string) => { stats[id] = { active: 0, lastAssigned: null } })

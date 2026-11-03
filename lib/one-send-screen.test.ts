@@ -88,11 +88,20 @@ describe('the deal picker loads deals, and says so when it cannot', () => {
     expect(door).not.toContain("'updated_at'")
   })
 
-  // THE REAL GUARD. Not "created_at is spelled right" but "this query sorts the
-  // way every other deals query in the portal sorts" - the next column somebody
-  // invents fails here too. Only the deals queries: a file is free to sort
-  // lenders by name.
-  it('and no deals query anywhere sorts by anything else', () => {
+  // THE REAL GUARD. Not "created_at is spelled right" but "this query sorts by
+  // a column deals actually have" - the next one somebody invents fails here
+  // too. Only the deals queries: a file is free to sort lenders by name.
+  //
+  // 2 Nov 2026: this used to insist on created_at and nothing else, which was
+  // the right rule while every deals query was "the newest ones". Paging broke
+  // that honestly. A read narrowed to lodged deals pages in lodged order, and
+  // every paged read needs a tiebreak or two rows the database considers equal
+  // swap between pages - which skips one and repeats the other. So the rule is
+  // now the thing it was always standing in for: a real column off this list,
+  // which is short on purpose. See lib/the-whole-book.ts.
+  const ORDERABLE = ['created_at', 'id', 'lodged_at', 'settled_at', 'compliance_pack_at']
+
+  it('and no deals query anywhere sorts by a column deals do not have', () => {
     const files = execSync(
       `grep -rl "from('deals')" --include=*.ts --include=*.tsx app lib components`,
       { encoding: 'utf8' },
@@ -105,10 +114,13 @@ describe('the deal picker loads deals, and says so when it cannot', () => {
       // as that query's chain can reach.
       for (const chunk of src.split(`from('deals')`).slice(1)) {
         const chain = chunk.split(`from('`)[0]
-        const sorted = chain.match(/\.order\('([a-z_]+)'/)
-        if (!sorted) continue
-        checked++
-        expect(sorted[1], `${f} sorts deals by ${sorted[1]}`).toBe('created_at')
+        // EVERY order in the chain, not just the first: the tiebreak is a sort
+        // on deals too, and a tiebreak on a column that does not exist fails
+        // exactly the same way the original updated_at did.
+        for (const sorted of chain.matchAll(/\.order\('([a-z_]+)'/g)) {
+          checked++
+          expect(ORDERABLE, `${f} sorts deals by ${sorted[1]}`).toContain(sorted[1])
+        }
       }
     }
     expect(checked).toBeGreaterThan(2)

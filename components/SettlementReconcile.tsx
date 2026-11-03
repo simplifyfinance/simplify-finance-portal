@@ -1,4 +1,6 @@
 'use client'
+import { everyRow } from '@/lib/the-whole-book'
+import { REAL_DEALS_OR } from '@/lib/test-deal'
 import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { TONE, money } from '@/lib/tone'
@@ -39,12 +41,22 @@ export default function SettlementReconcile({ brokers }: {
   // Settled deals whose upfront statement has not been loaded, so nothing can
   // be said about them either way.
   const [unchecked, setUnchecked] = useState(0)
+  // Empty while the whole book of settled deals is in hand. See
+  // lib/the-whole-book.ts: a reconciliation run on part of the book does not
+  // come out smaller, it comes out WRONG - every deal that did not arrive
+  // looks exactly like a deal nobody was paid for.
+  const [short, setShort] = useState('')
 
   useEffect(() => {
     (async () => {
       const today = todayYmd()
       const [d, r, l, c, st] = await Promise.all([
-        supabase.from('deals').select('*').not('settled_at', 'is', null),
+        // EVERY SETTLED DEAL, A PAGE AT A TIME. Settlements only accumulate,
+        // so this is the read most certain to pass a thousand. See
+        // lib/the-whole-book.ts.
+        everyRow<any>((from, to) => supabase.from('deals').select('*')
+          .not('settled_at', 'is', null).or(REAL_DEALS_OR)
+          .order('settled_at', { ascending: false }).order('id').range(from, to)),
         supabase.from('commission_rates').select('*'),
         supabase.from('lenders').select('id, name'),
         supabase.from('commission_lines').select('*').eq('kind', 'upfront').limit(5000),
@@ -61,9 +73,10 @@ export default function SettlementReconcile({ brokers }: {
       const nameBy = new Map<string, string>()
       for (const x of (l.data || []) as any[]) nameBy.set(String(x.id), x.name)
 
+      if (d.truncated) { setShort(d.error?.message || 'the read stopped early'); setReady(true); return }
       const pd: PortalDeal[] = []
       let blind = 0
-      for (const deal of (d.data || []) as any[]) {
+      for (const deal of (d.rows || []) as any[]) {
         const settledOn = String(deal.settled_at || '').slice(0, 10)
         const month = settledOn.slice(0, 7)
         if (!month || month < COMMISSION_START) continue        // before the records start
@@ -168,6 +181,13 @@ export default function SettlementReconcile({ brokers }: {
     }
   }
 
+  if (short) return (
+    <div className="border border-chase-edge bg-chase-bg rounded-xl px-4 py-3 text-[12.5px] text-chase">
+      <b>This cannot be reconciled right now.</b> Not every settled deal could be read,
+      and a reconciliation run on part of the book would report commission as missing
+      when it was paid. Reload the page. ({short})
+    </div>
+  )
   if (!ready || (deals.length === 0 && lines.length === 0)) return null
 
   const card = 'bg-card border rounded-xl'

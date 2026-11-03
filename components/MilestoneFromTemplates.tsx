@@ -1,4 +1,5 @@
 'use client'
+import { REAL_DEALS_OR } from '@/lib/test-deal'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { SendScreen } from '@/components/MilestoneEmails'
@@ -53,6 +54,10 @@ export default function MilestoneFromTemplates({ templateId, onClose }: {
       // error was thrown away, every search said "No deal matches that" as if
       // the typing were at fault. Every other deals query in the portal orders
       // by created_at; this one is no different.
+      // A SHORT LIST ON PURPOSE: the newest 300 to pick from, not the book.
+      // But REAL deals - 924 of the 1165 in this database are test deals the
+      // browser checks made, so without this the picker was nearly all junk.
+      .or(REAL_DEALS_OR)
       .order('created_at', { ascending: false }).limit(300)
       .then(({ data, error }: any) => {
         if (!alive) return
@@ -102,6 +107,8 @@ export default function MilestoneFromTemplates({ templateId, onClose }: {
         // both of the things somebody types. The client columns are searched
         // too, for the deals named something else entirely.
         .or(`deal_name.ilike.%${t.replace(/[%,()]/g, '')}%`)
+        // A SHORT LIST ON PURPOSE: forty matches is a search result.
+        .or(REAL_DEALS_OR)
         .order('created_at', { ascending: false }).limit(40)
         .then(({ data, error }: any) => {
           if (!alive) return

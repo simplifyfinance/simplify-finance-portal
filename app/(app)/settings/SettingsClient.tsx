@@ -1,4 +1,5 @@
 'use client'
+import { everyRow } from '@/lib/the-whole-book'
 import { SETTINGS_PANES } from '@/lib/settings-panes'
 import { todaySoFar } from '@/lib/compliance-allocation'
 import ReviewEmailCopy from '@/components/ReviewEmailCopy'
@@ -216,9 +217,12 @@ export default function SettingsPage() {
       // this line cannot disagree with the deal card or the workload tab.
       try {
         const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
-        const { data: rows } = await supabase.from('deals')
-          .select('compliance_pack_user_id, compliance_pack_at')
+        // See lib/the-whole-book.ts. A day of packs is small, but "small
+        // today" is exactly what the deals table was before it was 1165.
+        const { rows } = await everyRow<any>((from, to) => supabase.from('deals')
+          .select('id, compliance_pack_user_id, compliance_pack_at')
           .gte('compliance_pack_at', `${today}T00:00:00`)
+          .order('id').range(from, to))
         setPacksToday((rows || []).map((r: any) =>
           ({ userId: r.compliance_pack_user_id, at: r.compliance_pack_at })))
       } catch {

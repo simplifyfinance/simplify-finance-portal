@@ -2,6 +2,8 @@
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { everyRow } from '@/lib/the-whole-book'
+import { REAL_DEALS_OR } from '@/lib/test-deal'
 import {
   feeRows, counts, shown, FEE_COLUMNS, FEES_THAT_REACH_A_CLIENT,
   type FeeKey, type Filter, type FeeRow, type LibProduct, type LibLender,
@@ -50,16 +52,22 @@ export default function LenderFees() {
       const [p, l, d] = await Promise.all([
         supabase.from('lender_products').select('id, lender_id, product_name, active, application_fee, annual_fee, monthly_fee, valuation_fee, rate_lock_fee, early_repayment_fee, discharge_fee, legal_fee'),
         supabase.from('lenders').select('id, name, active, legal_fee_label'),
-        supabase.from('deals').select('lender_id').not('lender_id', 'is', null).limit(20000),
+        // EVERY DEAL WITH A RECOMMENDED LENDER, A PAGE AT A TIME. A limit of
+        // twenty thousand is not a limit the database honours - it caps the
+        // answer at a thousand and says nothing. See lib/the-whole-book.ts.
+        everyRow<any>((from, to) => supabase.from('deals').select('lender_id')
+          .not('lender_id', 'is', null).or(REAL_DEALS_OR)
+          .order('id').range(from, to)),
       ])
       if (gone) return
       // A READ THAT FAILED IS NOT AN EMPTY LIBRARY. "Nothing is missing" and
       // "nothing came back" look identical on screen, and one of them is a lie.
       if (p.error) { setWhy(p.error.message); setProducts([]); return }
+      if (d.truncated) { setWhy('not every deal could be read, so "lenders we use" would be counted off part of the book'); setProducts([]); return }
       setProducts((p.data || []) as LibProduct[])
       setLenders((l.data || []) as LibLender[])
       const n: Record<string, number> = {}
-      ;(d.data || []).forEach((x: any) => {
+      ;(d.rows || []).forEach((x: any) => {
         const id = String(x.lender_id ?? '').trim()
         if (id) n[id] = (n[id] || 0) + 1
       })

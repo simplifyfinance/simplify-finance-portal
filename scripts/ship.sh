@@ -66,6 +66,20 @@ if ! ./scripts/check-lmi-carries.sh; then
   exit 1
 fi
 
+# A SCREEN ASKS FOR THE WHOLE BOOK, OR IT IS LYING ABOUT WHAT IS IN IT.
+#
+# 2 Nov 2026. The deals screen asked for every deal in one go. The database
+# returned the newest thousand of 1165 and said nothing, so 149 real deals were
+# on no screen at all - and Fabio went looking for two of them by name and
+# could not find them. The dashboard, the settlements list and the credit
+# team's workload had the same line.
+echo "Checking the whole book is asked for..."
+if ! ./scripts/check-whole-book.sh; then
+  echo
+  echo "NOT SHIPPED - fix the above first."
+  exit 1
+fi
+
 # A SPLIT'S JOB IS NOT ITS POSITION IN THE LIST.
 #
 # 30 Oct 2026. Four deals in two days came out wrong the same way: the panel

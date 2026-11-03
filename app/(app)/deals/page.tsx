@@ -1,5 +1,5 @@
 'use client'
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { PAGE_WIDE } from '@/lib/page-width'
 import { seedFromClients, seedSummary } from '@/lib/seed-from-client'
 import { makeUid, makeApplicant } from '@/lib/the-review-becomes-a-deal'
@@ -26,7 +26,8 @@ import {
 } from '@/lib/board-tiles'
 import { useBoardSettings } from '@/lib/use-board-settings'
 import type { Alert } from '@/lib/deal-notes'
-import { realDealsOnly, testDealsOnly } from '@/lib/test-deal'
+import { realDealsOnly, testDealsOnly, REAL_DEALS_OR } from '@/lib/test-deal'
+import { everyRow } from '@/lib/the-whole-book'
 import DealName from '@/components/DealName'
 import { otherDealsForSameClients, splitByLife} from '@/lib/same-clients'
 import Loading from '@/components/Loading'
@@ -88,6 +89,9 @@ export default function DealsPage() {
   // board reads shape, not labels. Off, the book is the real book. On, it is
   // the test deals and nothing else, in one place, with a delete on each.
   const [showTests, setShowTests] = useState(false)
+  const [testCount, setTestCount] = useState(0)
+  // Empty while the whole book is in hand. See fetchDeals.
+  const [shortBook, setShortBook] = useState('')
   useEffect(() => {
     browser.auth.getUser().then(({ data: { user } }) => {
       if (!user) { fetchDeals(); return }
@@ -100,24 +104,65 @@ export default function DealsPage() {
           // The credit officer lookup that used to happen here existed only to
           // narrow this list down to a staff member's own files. Staff see the
           // whole book now, so it was a round trip whose answer was thrown away.
-          fetchDeals(role, broker)
+          fetchDeals(role, broker, showTests)
+          countTests(role, broker)
         })
     })
   }, [])
-  async function fetchDeals(role?: string, broker?: string | null) {
-    let query = browser.from('deals').select('*, clients(first_name, last_name), credit_officers(name), lenders(name)').order('created_at', { ascending: false })
-    if (role === 'broker' && broker) {
-      query = query.ilike('assigned_broker', broker)
-    }
+
+  // TEST DEALS ARE A DIFFERENT BOOK, so asking to see them is asking for a
+  // different read. Skipped on the first pass, which the effect above has
+  // already done.
+  const firstPass = useRef(true)
+  useEffect(() => {
+    if (firstPass.current) { firstPass.current = false; return }
+    setLoading(true)
+    fetchDeals(userRole || undefined, brokerKey, showTests)
+  }, [showTests])
+  async function fetchDeals(role?: string, broker?: string | null, tests = false) {
+    // A PAGE AT A TIME, UNTIL THERE ARE NO MORE. 2 Nov 2026: this asked once
+    // and the database answered with the newest thousand of 1165 without
+    // saying so, which hid 149 real deals - including two Fabio went looking
+    // for by name. See lib/the-whole-book.ts.
+    //
+    // Ordered by created_at AND id, because paging walks an ordered list by
+    // position: two deals created in the same millisecond could otherwise swap
+    // between pages, which skips one and repeats the other.
+    //
+    // AND THE TEST DEALS ARE LEFT IN THE DATABASE. 924 of those 1165 were
+    // deals the browser checks made, so the thousand rows were being spent on
+    // junk. They are fetched only when somebody asks to see them - which is
+    // what the Test deals view is - and the rule for which is which lives in
+    // lib/test-deal.ts, asked of the database here in its own words.
+    const { rows, error, truncated } = await everyRow<any>((from, to) => {
+      let q = browser.from('deals')
+        .select('*, clients(first_name, last_name), credit_officers(name), lenders(name)')
+        .order('created_at', { ascending: false }).order('id')
+      if (role === 'broker' && broker) q = q.ilike('assigned_broker', broker)
+      q = tests ? q.eq('is_test', true) : q.or(REAL_DEALS_OR)
+      return q.range(from, to)
+    })
     // STAFF SEE THE WHOLE BOOK.
     //
     // Staff used to see only the deals they were the credit officer on, so
     // Kylie could not see Mark's files at all. Fabio, 9 Sep 2026: "the staff
     // can see all broker deals." A broker still sees only their own - that one
     // is deliberate.
-    const { data, error } = await query
-    if (!error && data) setDeals(data)
+    if (!error) setDeals(rows)
+    // A SHORT BOOK HAS TO SAY SO. "Nothing is there" and "I could not finish
+    // asking" look identical on a board, and one of them is how deals go
+    // missing. See the line this draws above the toolbar.
+    setShortBook(error ? (error.message || 'the read failed') : truncated ? 'the read stopped early' : '')
     setLoading(false)
+  }
+
+  // THE TEST DEALS ARE COUNTED WITHOUT BEING FETCHED, so the panel can still
+  // offer them without a thousand rows of them crowding out real work.
+  async function countTests(role?: string, broker?: string | null) {
+    let q = browser.from('deals').select('id', { count: 'exact', head: true }).eq('is_test', true)
+    if (role === 'broker' && broker) q = q.ilike('assigned_broker', broker)
+    const { count } = await q
+    setTestCount(count || 0)
   }
   // WHAT A CLONE CARRIES IS DECIDED IN ONE FILE. See lib/clone-deal.ts - both
   // Clone buttons used to hold their own copy of the column list and their own
@@ -253,7 +298,6 @@ export default function DealsPage() {
   // Everything below this line works on `book`, never on `deals`, so the list,
   // the board, the counts and the four boxes can never disagree about whether a
   // test deal is in the book.
-  const testCount = testDealsOnly(deals).length
   const book = showTests ? testDealsOnly(deals) : realDealsOnly(deals)
   const matchesSearch = (d: any) => dealMatches(d, term)
   // THE SAME FUNCTION THE TILE COUNTED WITH. Asked once, in lib/board-tiles.ts,
@@ -444,6 +488,21 @@ export default function DealsPage() {
           <Plus size={14} />New deal
         </button>
       </div>
+      {/* A SHORT BOOK SAYS SO.
+          2 Nov 2026. The screen asked for every deal, the database answered
+          with the newest thousand of 1165, and nothing anywhere said a word -
+          so 149 real deals simply were not on screen and a search for one of
+          them found nothing. It pages now. If a page ever fails or the hard
+          stop is hit, this is the board admitting it does not have everything,
+          because "nothing is there" and "I could not finish asking" must never
+          look the same again. */}
+      {shortBook && (
+        <div className="mb-3 border border-chase-edge bg-chase-bg rounded-lg px-3.5 py-2.5 text-[12.5px] text-chase">
+          <b>This is not your whole book.</b> Some deals could not be read, so anything
+          below - the board, the counts and the search - is missing deals that exist.
+          Reload the page. ({shortBook})
+        </div>
+      )}
       {showTests && (
         <div className="mb-3 border border-waiting-edge bg-waiting-bg rounded-lg px-3.5 py-2.5 text-[12.5px] text-waiting">
           Showing test deals only. None of these is counted anywhere, none can email a client,

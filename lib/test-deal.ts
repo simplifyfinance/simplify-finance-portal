@@ -137,3 +137,20 @@ export function emailsGoTo(opts: {
     copyDropped: cc,
   }
 }
+
+// THE SAME RULE, IN THE WORDS THE DATABASE UNDERSTANDS.
+//
+// 2 Nov 2026. 924 of 1165 deals were test deals - 891 of them made in thirty
+// days by the browser checks that run on every ship - so the thousand rows the
+// database will return were being spent almost entirely on junk, and real deals
+// from September fell off the end. See lib/the-whole-book.ts.
+//
+// Fetching them and throwing them away in the browser was always the wrong
+// shape; it only became visible when there were enough of them to crowd a real
+// deal out. So the question is asked of the database now as well - and it is
+// asked HERE, next to isTestDeal, because a rule with two homes is a rule with
+// two answers, and this file exists to be the one home.
+//
+// Written as "not true" rather than "false": a deal that has somehow lost its
+// flag is a real deal, which is the same safe direction isTestDeal takes.
+export const REAL_DEALS_OR = 'is_test.is.null,is_test.eq.false'

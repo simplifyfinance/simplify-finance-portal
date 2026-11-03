@@ -1,3 +1,4 @@
+import { everyRow } from '@/lib/the-whole-book'
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { notifyEllieCreateCard, notifyCrisMoveCard } from '@/lib/salestrekker-notify'
@@ -151,9 +152,11 @@ export async function POST(req: NextRequest) {
       const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
       let sent: Array<{ userId?: string | null; at?: string | null }> = []
       try {
-        const { data: rows } = await supabase.from('deals')
-          .select('compliance_pack_user_id, compliance_pack_at')
+        // See lib/the-whole-book.ts.
+        const { rows } = await everyRow<any>((from, to) => supabase.from('deals')
+          .select('id, compliance_pack_user_id, compliance_pack_at')
           .gte('compliance_pack_at', `${today}T00:00:00`)
+          .order('id').range(from, to))
         sent = (rows || []).map((r: any) => ({ userId: r.compliance_pack_user_id, at: r.compliance_pack_at }))
       } catch {
         // No column yet. An empty day, which sends to the first person.
