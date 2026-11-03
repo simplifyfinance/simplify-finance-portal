@@ -333,7 +333,23 @@ export function assembleMilestoneEmail(input: AssembleInput): Assembled | null {
       lenderName,
       propertyAddress: propertyAddressOf(deal),
       rows,
-      details: loanDetails(deal, optionOnTheDeal(lo), splitsOnTheDeal(lo)),
+      // THE LOAN AS IT IS NOW, NOT AS IT WAS PRE-APPROVED.
+      //
+      // 3 Nov 2026. Fabio: "when I'm moving to a formal approval email it's not
+      // letting me update the rate. It's locking in whatever the lending
+      // options is giving... the RBA increased rates and we need to change
+      // rates, or we had to reprice it."
+      //
+      // The offer accepted email was switched to the deal's own answer on
+      // 21 Oct, when Belle hit the same thing. This one was not, so it went on
+      // quoting the lending option - the rate the client was PRE-APPROVED on,
+      // from before the offer was even accepted. The one email that confirms a
+      // rate to a client in writing was quoting the oldest rate on the deal.
+      //
+      // loanDetailsNow() reads the five boxes on offer accepted and falls back
+      // to the lending option only where nobody has answered. See
+      // lib/the-loan-now.ts.
+      details: loanDetailsNow(deal),
       blocks,
       contractsBy: phrases.contractsBy,
       insuredParty: phrases.insuredParty,

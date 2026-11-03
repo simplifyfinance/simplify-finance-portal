@@ -91,6 +91,19 @@ const NOT_CLIENT_FACING: Record<string, string> = {
   // prepared, and lib/rate-notice.ts has nothing to say about it. This file
   // writes a line into the file notes; no client is ever sent one.
   'lib/income-to-fact-find.ts':     'income working, internal - the 80% shading column, not an interest rate',
+  // 3 Nov 2026. Caught by this guard on its first run, which is what it is for.
+  //
+  // The rate here is a BOX A BROKER TYPES IN, on the screen that sends the
+  // formal approval email - Fabio: "the RBA increased rates and we need to
+  // change rates, or we had to reprice it." It writes offer_rate onto the deal
+  // and sends nothing itself. The email is then composed on the server from
+  // the record, and THAT is what carries the notice: see buildFormalApprovalEmail
+  // and ctx.rateNotice, loaded per lender in app/api/send-milestone-email.
+  //
+  // The screen could not carry the notice even if it wanted to - the notice is
+  // per lender and comes off the lender's own effective date, which this
+  // component never loads.
+  'components/MilestoneEmails.tsx': 'the send screen; a broker types the rate here and the email built on the server carries the notice',
   // 13 Oct 2026. Builds the fact find for a NEW deal out of this one's lending
   // options - the rate it carries is going into a liability row on a form, not
   // into anything a client is sent.

@@ -1,4 +1,7 @@
 'use client'
+import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { checkedWrite } from '@/lib/checked-write'
+import { loanNow } from '@/lib/the-loan-now'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { copyHtmlAndPlain } from '@/lib/rich-text'
 import { outstandingFromDeal } from '@/lib/documents-outstanding'
@@ -206,6 +209,50 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
   // the document's own key, so the list and the email cannot drift apart.
   const [chasing, setChasing] = useState<Record<string, boolean>>({})
   const isOfferAccepted = templateId === 'offer_accepted'
+  const isFormalApproval = templateId === 'formal_approval'
+  // THE RATE THIS EMAIL CONFIRMS.
+  //
+  // 3 Nov 2026. Fabio: "the RBA increased rates and we need to change rates,
+  // or we had to reprice it. I need that to be an editable field in the formal
+  // approval template."
+  //
+  // It is editable, and it is NOT a box that only this email can see. Typing
+  // here writes offer_rate on the deal - the same column the offer accepted
+  // step writes - and the email is then rebuilt by the server from the record.
+  // A rate that lives inside one email is a rate the next email contradicts,
+  // and every figure on these screens is read off the deal for that reason.
+  const [rateSaving, setRateSaving] = useState(false)
+  const [rateProblem, setRateProblem] = useState('')
+  const [rateNow, setRateNow] = useState<string>(String(loanNow(deal).rate || ''))
+  // WHAT IS ON THE DEAL, AS FAR AS THIS SCREEN KNOWS.
+  //
+  // Not loanNow(deal) every time: the `deal` this screen was handed is a copy
+  // from before the save, so comparing against it would make the second edit
+  // in a row look unchanged and quietly skip the write.
+  const [rateSaved, setRateSaved] = useState<string>(String(loanNow(deal).rate || ''))
+
+  async function saveRate(typed: string) {
+    const cleaned = String(typed ?? '').replace(/[^0-9.]/g, '')
+    setRateNow(cleaned)
+    // Unchanged is not a write. A blur on the way past must not touch the deal.
+    if (cleaned === rateSaved) { setRateProblem(''); return }
+    setRateSaving(true)
+    const problem = await checkedWrite(
+      createSupabaseBrowser().from('deals')
+        .update({ offer_rate: cleaned || null }).eq('id', deal.id),
+      'The rate')
+    setRateSaving(false)
+    setRateProblem(problem || '')
+    if (problem) return
+    setRateSaved(cleaned)
+    // THE PREVIEW IS REBUILT, NOT PATCHED FROM HERE.
+    //
+    // The route reads the deal by id and composes the email from the record,
+    // so one more build is the whole of it. onSent() is not called: that is
+    // what the parent listens to in order to CLOSE this screen, and a saved
+    // rate must not shut the dialog somebody is still working in.
+    load()
+  }
   // Read off the deal, never retyped. groupLabel is whose it is - "Margot" -
   // and detail is why we want it.
   const outstanding: DocRow[] = useMemo(
@@ -549,6 +596,31 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
                     className="w-20 border border-[#E3E6E8] rounded-lg px-2.5 py-1.5 text-[12.5px]" />
                   <span className="text-[11.5px] text-faint">years</span>
                 </div>
+              </>
+            )}
+
+            {/* THE RATE GOING IN THIS EMAIL. Formal approval only: the offer
+              * accepted screen has its own five boxes, and the pre-approval
+              * emails confirm no rate at all. */}
+            {isFormalApproval && (
+              <>
+                <Shout className="mt-5">The rate going in this email</Shout>
+                <div className="flex gap-2 items-center">
+                  <input value={rateNow}
+                    onChange={e => setRateNow(e.target.value.replace(/[^0-9.]/g, ''))}
+                    onBlur={e => saveRate(e.target.value)}
+                    placeholder="6.74"
+                    className="w-24 border border-[#E3E6E8] rounded-lg px-2.5 py-1.5 text-[12.5px]" />
+                  <span className="text-[11.5px] text-faint">% p.a.</span>
+                  {rateSaving && <span className="text-[11px] text-faint">saving…</span>}
+                </div>
+                {rateProblem
+                  ? <p className="mt-1 text-[11px] text-chase">{rateProblem}</p>
+                  : <p className="mt-1 text-[11px] text-faint">
+                      Taken from Offer accepted. Changing it here changes it on the deal, so the
+                      next email says the same thing and the file cannot contradict what the
+                      client was told. The repayment is worked out from it.
+                    </p>}
               </>
             )}
 
