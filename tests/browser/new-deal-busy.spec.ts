@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { findTheRobotsDeal } from './the-robots-own-deal'
 
 // WHAT KYLIE ACTUALLY DID, AS CLOSELY AS A ROBOT CAN DO IT.
 //
@@ -53,37 +54,10 @@ async function openOrCreate(page: Page): Promise<void> {
   await page.goto('/deals', { waitUntil: 'domcontentloaded' })
   await page.getByPlaceholder(/Search by name, client, purpose/i).fill(FIRST)
 
-  // WHERE THE ROBOT'S OWN DEAL LIVES NOW.
-  //
-  // 21 Sep 2026: a deal can be marked as a test, and a test deal is hidden from
-  // the deals list until somebody asks for it. The robot ticks that box on its
-  // way in - see below - so from here on its deal is NOT in the normal list.
-  //
-  // A robot that cannot find its own deal makes another one, every single ship.
-  // That is precisely the pile-up this function was written to stop, and it
-  // would have come straight back. So it looks twice: the normal list first,
-  // which is where the deals made before any of this still are, and then behind
-  // the test filter. Either is a find.
-  const lookFor = () => page.getByText(new RegExp(FIRST, 'i')).first()
-
-  let existing = lookFor()
-  let found = await existing.waitFor({ state: 'visible', timeout: 20_000 })
-    .then(() => true).catch(() => false)
-
-  if (!found) {
-    // Only drawn when there is at least one test deal, so its absence is normal
-    // and means there is nothing behind it to find.
-    const testFilter = page.getByRole('button', { name: /Test deals \(\d+\)/ })
-    if (await testFilter.count() > 0) {
-      await testFilter.first().click()
-      existing = lookFor()
-      found = await existing.waitFor({ state: 'visible', timeout: 20_000 })
-        .then(() => true).catch(() => false)
-    }
-  }
-
-  if (found) {
-    await existing.click()
+  // WHERE THE ROBOT'S OWN DEAL LIVES. One shared file, because two copies of
+  // this is how one copy came to be a month out of date - see
+  // tests/browser/the-robots-own-deal.ts for what that cost.
+  if (await findTheRobotsDeal(page, FIRST)) {
     await page.locator('[data-ready="1"]').waitFor({ timeout: 30_000 })
     return
   }

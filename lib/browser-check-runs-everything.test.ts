@@ -116,9 +116,24 @@ describe('the shared deal is still only touched by one worker at a time', () => 
 
   // And where one name does contain another inside a single spec, the search
   // has to be anchored so it cannot match the longer one.
+  //
+  // 3 Nov 2026: the anchoring moved. Both specs that make a deal kept their own
+  // copy of the looking, and one of those copies went a month out of date - it
+  // hunted for a toolbar button that had moved into the Filters panel, never
+  // found the robot's own deal, and made a new one every ship. 891 of them.
+  // The looking is one file now, so the rule is asked of the file that does the
+  // searching, and no spec is allowed to build its own search again.
   it('and the search that found the wrong deal is anchored', () => {
-    const src = readFileSync('tests/browser/new-deal.spec.ts', 'utf8')
-    expect(src).toContain('${ROBOT_FIRST}(?![A-Z])')
+    const shared = readFileSync('tests/browser/the-robots-own-deal.ts', 'utf8')
+    expect(shared).toContain('(?![A-Z])')
+    for (const f of ['new-deal.spec.ts', 'new-deal-busy.spec.ts']) {
+      const src = readFileSync(`tests/browser/${f}`, 'utf8')
+      expect(src, `${f} does not use the shared finder`).toContain('findTheRobotsDeal(')
+      // Not "no regexes" - a spec builds plenty, for tabs and applicant names.
+      // One built on its OWN robot's name is the search that went stale alone.
+      const ownSearch = /new RegExp\(`[^`]*\$\{\w*FIRST\w*\}/.test(src)
+      expect(ownSearch, `${f} builds a search on its own robot's name`).toBe(false)
+    }
   })
 
   // tab-switch's four tests are safe BECAUSE each writes a different column. If

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { findTheRobotsDeal } from './the-robots-own-deal'
 
 // A BRAND NEW DEAL, WHICH IS WHERE IT ACTUALLY HAPPENS.
 //
@@ -29,48 +30,18 @@ async function openOrCreate(page: Page): Promise<void> {
   await page.goto('/deals', { waitUntil: 'domcontentloaded' })
   await page.getByPlaceholder(/Search by name, client, purpose/i).fill(ROBOT_FIRST)
 
-  // WHERE THE ROBOT'S OWN DEAL LIVES NOW.
+  // WHERE THE ROBOT'S OWN DEAL LIVES, AND WHY IT HAS TO BE FOUND.
   //
-  // 21 Sep 2026: a deal can be marked as a test, and a test deal is hidden from
-  // the deals list until somebody asks for it. The robot ticks that box on its
-  // way in - see below - so from here on its deal is NOT in the normal list.
+  // 3 Nov 2026. This looked for a toolbar button called "Test deals (12)". That
+  // button moved into the Filters panel on 2 October, so from that day the
+  // robot never found its own deal and made a new one every ship - 891 of them
+  // in thirty days, until the pile pushed real deals off the deals screen.
+  // Nothing failed, because a new deal behaves exactly like an old one.
   //
-  // A robot that cannot find its own deal makes another one, every single ship.
-  // That is precisely the pile-up this function was written to stop, and it
-  // would have come straight back. So it looks twice: the normal list first,
-  // which is where the deals made before any of this still are, and then behind
-  // the test filter. Either is a find.
-  // ZZROBOT MUST NOT MATCH ZZROBOTTWO.
-  //
-  // 1 Oct 2026. new-deal-busy.spec.ts calls its client ZZROBOTTWO and its second
-  // applicant ZZROBOTPARTNER. Both of those CONTAIN this spec's name, so a plain
-  // substring match could pick up the other robot's deal - and did, the first
-  // time the two ran at the same time: this test typed its goals into the busy
-  // robot's deal and then failed to find them in its own.
-  //
-  // It was always a coin toss. Running one at a time only meant the coin had
-  // been landing the right way up. Anchored, it cannot land the other way:
-  // ZZROBOT followed by another letter is somebody else.
-  const lookFor = () => page.getByText(new RegExp(`${ROBOT_FIRST}(?![A-Z])`, 'i')).first()
-
-  let existing = lookFor()
-  let found = await existing.waitFor({ state: 'visible', timeout: 20_000 })
-    .then(() => true).catch(() => false)
-
-  if (!found) {
-    // Only drawn when there is at least one test deal, so its absence is normal
-    // and means there is nothing behind it to find.
-    const testFilter = page.getByRole('button', { name: /Test deals \(\d+\)/ })
-    if (await testFilter.count() > 0) {
-      await testFilter.first().click()
-      existing = lookFor()
-      found = await existing.waitFor({ state: 'visible', timeout: 20_000 })
-        .then(() => true).catch(() => false)
-    }
-  }
-
-  if (found) {
-    await existing.click()
+  // The looking is one shared file now, and it goes through the Filters panel
+  // the way a person does, so the day that moves again this fails loudly
+  // instead of quietly making deals. See tests/browser/the-robots-own-deal.ts.
+  if (await findTheRobotsDeal(page, ROBOT_FIRST)) {
     await page.locator('[data-ready="1"]').waitFor({ timeout: 30_000 })
     return
   }
