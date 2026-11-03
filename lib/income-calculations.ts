@@ -145,6 +145,8 @@ export type IncomeLine = {
   evidence?: string
 }
 
+const txt = (v: any) => String(v ?? '').trim()
+
 export function incomeBreakdownFor(applicant: any, applicantLabel: string): IncomeLine[] {
   const out: IncomeLine[] = []
 
@@ -154,8 +156,22 @@ export function incomeBreakdownFor(applicant: any, applicantLabel: string): Inco
       && type !== 'Other taxable' && type !== 'Other non-taxable') continue
 
     if (type === 'Self-employed') {
+      // AND WHICH BUSINESS IT IS.
+      //
+      // 3 Nov 2026. Fabio sent a BC email with two self-employed lines on it,
+      // word for word identical - one for KAKA Enterprises and one for Asteria
+      // Holdings, and nothing on the page to tell a client which was which.
+      // The fact find knows: the income is linked to an employer, and the form
+      // prints its name above the assessment method.
+      //
+      // Only when it is linked. An unlinked income reads exactly as it did
+      // before, because naming a business we have not been given would be
+      // worse than not naming one.
+      const business = txt((applicant?.employment || [])
+        .find((e: any) => e?.id && e.id === inc?.employmentId)?.employerName)
       out.push({
-        label: `${applicantLabel} — Self-employed income`,
+        label: `${applicantLabel} — Self-employed income`
+          + (business ? ` — ${business}` : ''),
         amount: null,
         // Still no figure. Only the name of the thing it rests on changes.
         evidence: evidenceWords(inc?.seAssessmentMethod),

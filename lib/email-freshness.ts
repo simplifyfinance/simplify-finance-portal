@@ -150,13 +150,97 @@ function normaliseNotes(s: string | null | undefined): string {
     .join('\n')
 }
 
-// What the notes should become when the scenario changes. Returns the current
-// notes unchanged whenever the broker has written anything of their own.
+// WHAT THE NOTES SHOULD BECOME WHEN THE SCENARIO CHANGES - LINE BY LINE.
+//
+// 3 Nov 2026. This used to be all or nothing on the whole box: untouched, and
+// it was swapped; one character of the broker's own, and every line stayed -
+// including the ones the OLD scenario had put there. Fabio asked whether old
+// template wording could still reach a new email, and this was the way it
+// could. A broker who added a sentence to an investment note kept the rental
+// yield line for ever, on a first home buyer.
+//
+// Both halves of that rule were right and they were being asked as one
+// question. Asked a line at a time they both hold:
+//
+//   a line the old scenario wrote     - taken out, it belongs to a deal that
+//                                       no longer exists
+//   a line anybody typed              - kept, and kept in their order
+//   the new scenario's lines          - added at the top, as they always were
+//
+// Nothing a person wrote is lost, and nothing a template wrote survives the
+// template. Compared on the trimmed line, so indenting or a stray blank line
+// does not turn a default into somebody's writing.
 export function notesAfterScenarioChange(
   current: string | null | undefined,
   previousDefaults: string[],
   nextDefaults: string[],
 ): string {
-  if (!notesAreUntouched(current, previousDefaults)) return String(current ?? '')
-  return (nextDefaults || []).join('\n')
+  const was = new Set((previousDefaults || []).map(l => String(l ?? '').trim()).filter(Boolean))
+  const theirs = String(current ?? '')
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .filter(line => !was.has(line))
+  const next = (nextDefaults || []).map(l => String(l ?? '').trim()).filter(Boolean)
+  // A LINE THE NEW SCENARIO ALSO WRITES IS NOT WRITTEN TWICE. The scenarios
+  // share wording - two investment templates say the same thing about rental
+  // yield - and a broker who kept that line would otherwise see it doubled.
+  const kept = theirs.filter(line => !next.includes(line))
+  return [...next, ...kept].join('\n')
+}
+
+// AND WHEN THE SCENARIO CHANGES, THE WORDING GOES.
+//
+// 2 Nov 2026. Fabio: "I did a BC deal card, did the template refinance + equity
+// plus purchase, I then changed the template to refinance and equity only -
+// however the wording template on html is showing original detail. We need the
+// portal always reset wording based on current bc template."
+//
+// Until now this file only WARNED. That was the right call for a figure moving
+// under a finished email - a number the broker can look at and judge - and it
+// is the wrong call here. A scenario change rewrites the whole email: every
+// paragraph, the structure, which loans are described. There is no judgement to
+// make about wording written for a deal that no longer exists. Leaving it on
+// screen only offers somebody the chance to send it.
+//
+// SO IS THIS "REWRITING ITSELF BEHIND SOMEBODY'S BACK", WHICH THIS FILE OPENS
+// BY REFUSING TO DO? No, and the difference is the whole of it. Nothing is
+// written. The old wording is taken down and the broker presses Generate, which
+// is the same hand on the same button as before - they simply cannot send the
+// wrong thing while they are getting there.
+//
+// AND NOTHING THE CLIENT HAS SEEN IS LOST. An email that went out is written
+// into the file notes as it goes, wording and all, and nothing in there can be
+// typed over - see sentEmailAsText and addSystemNote. The copy cleared here is
+// the draft, never the record.
+//
+// It says so, too. Silently emptying a preview is its own way of losing work:
+// `resetFrom` carries the scenario it was written for, so the screen can say
+// what happened and why rather than looking broken.
+
+export type EmailAfterChange = {
+  emailHtml: string
+  emailHtmlTemplate: string
+  emailFigures: null
+  emailQuestions: null
+  // The scenario the cleared wording was written for, for the screen to name.
+  // Null when there was nothing to clear.
+  resetFrom: string | null
+}
+
+export function emailAfterScenarioChange(
+  saved: SavedEmail | null | undefined,
+  previousLabel: string,
+): EmailAfterChange | null {
+  // NOTHING TO SAY WHERE THERE IS NOTHING TO CLEAR. A broker who has not
+  // generated yet must not be told their wording was reset.
+  const html = saved?.emailHtml
+  if (!html || !String(html).trim()) return null
+  return {
+    emailHtml: '',
+    emailHtmlTemplate: '',
+    emailFigures: null,
+    emailQuestions: null,
+    resetFrom: previousLabel || null,
+  }
 }

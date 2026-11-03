@@ -36,7 +36,8 @@ import { proceedCredit } from '@/lib/deal-status'
 import { emailParagraphs, htmlToPlainText, copyHtmlAndPlain} from '@/lib/rich-text'
 import { totalCost, fundsToContribute, constructionLvr, LAND_FUNDING } from '@/lib/construction'
 import { SALE_PROCEEDS_USE, isSellAndBuild } from '@/lib/sale-build'
-import { emailFreshness, needsAttention, notesAfterScenarioChange } from '@/lib/email-freshness'
+import { emailFreshness, needsAttention, notesAfterScenarioChange,
+  emailAfterScenarioChange } from '@/lib/email-freshness'
 import { missingForEmail, missingSentence } from '@/lib/bc-ready'
 import { dealFigures } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
@@ -1112,6 +1113,15 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // saying so. See emailFreshness() in lib/email-freshness.ts.
   const [emailQuestions, setEmailQuestions] = useState<string[] | null>(
     Array.isArray(s.emailQuestions) ? s.emailQuestions : null)
+  // WHAT THE CLEARED WORDING WAS WRITTEN FOR.
+  //
+  // 2 Nov 2026. Changing the scenario now takes the saved email down with it -
+  // see emailAfterScenarioChange() in lib/email-freshness.ts for why a warning
+  // was not enough. Emptying a preview without a word is its own way of losing
+  // somebody's work, so this remembers the scenario it was written for and the
+  // screen says what happened. Saved on the BC, so a reload still explains the
+  // empty preview, and cleared the moment the email is generated again.
+  const [emailResetFrom, setEmailResetFrom] = useState<string>(s.emailResetFrom || '')
   const [emailError, setEmailError] = useState('')
   const [bcCompletedAt, setBcCompletedAt] = useState<string | null>(deal.bc_completed_at || null)
   const [markingComplete, setMarkingComplete] = useState(false)
@@ -1235,7 +1245,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     brokerNotes: setBrokerNotes, templateNotes: setTemplateNotes, internalNotes: setInternalNotes,
     brokerSig: setBrokerSig, checklist: setChecklist, emailHtml: setEmailHtml,
     emailHtmlTemplate: setEmailHtmlTemplate, emailFigures: setEmailFigures,
-    emailQuestions: setEmailQuestions,
+    emailQuestions: setEmailQuestions, emailResetFrom: setEmailResetFrom,
     existingLoanBal: setExistingLoanBal, propertyValue: setPropertyValue,
     newPurchasePrice: setNewPurchasePrice, newPurchaseDeposit: setNewPurchaseDeposit,
     newPurchaseSuburb: setNewPurchaseSuburb, newPurchasePropertyType: setNewPurchasePropertyType,
@@ -1430,13 +1440,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     // pending stays in pendingSave and is written by the effect above when the
     // form actually leaves.
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, emailQuestions, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, securityLmiApplicable, securityLmi, securityLmiTreatment, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, repaymentAnalysis, analysisYearsRemaining, analysisCurrentRepayment, analysisCurrentRate, compareOptions, optionLabel, altScenarios, brand])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, emailQuestions, emailResetFrom, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, securityLmiApplicable, securityLmi, securityLmiTreatment, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, repaymentAnalysis, analysisYearsRemaining, analysisCurrentRepayment, analysisCurrentRate, compareOptions, optionLabel, altScenarios, brand])
 
   // Single source of truth for BC form fields. Used by BOTH the autosave and the
   // email payload, so a new field reaches the database and the client email together.
   // These were previously two hand-written lists, and they drifted apart.
   function buildBcData() {
-    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, emailQuestions, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, securityLmiApplicable, securityLmi, securityLmiTreatment, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, repaymentAnalysis, analysisYearsRemaining, analysisCurrentRepayment, analysisCurrentRate, compareOptions, optionLabel, altScenarios, brand }
+    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, emailQuestions, emailResetFrom, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, securityLmiApplicable, securityLmi, securityLmiTreatment, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, repaymentAnalysis, analysisYearsRemaining, analysisCurrentRepayment, analysisCurrentRate, compareOptions, optionLabel, altScenarios, brand }
   }
 
   // Does the saved email still match the scenario the deal is on? Read in three
@@ -1641,6 +1651,30 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
       notesAfterScenarioChange(prev,
         templateNotesFor(previous, saleProceedsUse),
         templateNotesFor(id, saleProceedsUse)))
+    // AND THE WORDING GOES WITH THE SCENARIO.
+    //
+    // 2 Nov 2026, Fabio on a Brad Cain deal: refinance + equity + purchase
+    // changed to refinance and equity, and "the wording template on html is
+    // showing original detail". It was - the email is a saved copy, and until
+    // now a scenario change only warned that it no longer matched.
+    //
+    // A moved figure is a judgement for the broker. A changed scenario is not:
+    // every paragraph of that email describes a deal that no longer exists.
+    // See emailAfterScenarioChange() in lib/email-freshness.ts, including why
+    // this is not the portal rewriting an email behind somebody's back.
+    resetEmailFor(templateLabel(previous))
+  }
+
+  // Taken down, and said out loud. Both places a scenario changes come through
+  // here, so they cannot disagree about what happens to the wording.
+  function resetEmailFor(previousLabel: string) {
+    const next = emailAfterScenarioChange({ emailHtml }, previousLabel)
+    if (!next) return
+    setEmailHtml(next.emailHtml)
+    setEmailHtmlTemplate(next.emailHtmlTemplate)
+    setEmailFigures(next.emailFigures)
+    setEmailQuestions(next.emailQuestions)
+    setEmailResetFrom(next.resetFrom || '')
   }
 
   // ANSWERING THE QUESTION IS A CHANGE OF SCENARIO IN EVERYTHING BUT NAME.
@@ -1661,6 +1695,10 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
       notesAfterScenarioChange(prev,
         templateNotesFor(template, previous),
         templateNotesFor(template, next)))
+    // Same rule. This changes which splits the email describes - one end debt,
+    // or a land loan and a construction facility - so the wording is as wrong
+    // as it would be after a template chip.
+    resetEmailFor(templateLabel(template))
   }
 
   function selectUse(next: string) {
@@ -1960,7 +1998,7 @@ Key assumptions: ${checklistText}`
         return
       }
       const data = await res.json()
-      if (data.html) { setEmailHtml(data.html); setEmailHtmlTemplate(template); setEmailFigures(dealFigures(deal)); setEmailQuestions(questionsDropped); if (data.brokerFirstName) { await supabase.from('deals').update({ broker_first_name: data.brokerFirstName }).eq('id', deal.id) } setActiveTab('preview') }
+      if (data.html) { setEmailHtml(data.html); setEmailHtmlTemplate(template); setEmailFigures(dealFigures(deal)); setEmailQuestions(questionsDropped); setEmailResetFrom(''); if (data.brokerFirstName) { await supabase.from('deals').update({ broker_first_name: data.brokerFirstName }).eq('id', deal.id) } setActiveTab('preview') }
       else setEmailError('No email returned. Try again.')
     } catch (e: any) {
       setEmailError(`Error: ${e.message}`)
@@ -3922,6 +3960,28 @@ Key assumptions: ${checklistText}`
                   Fill them in on the BC form and regenerate, or send as it is — nothing is blocked.
                 </div>
               </div>
+            </div>
+          )}
+          {/* THE WORDING WAS TAKEN DOWN WITH THE SCENARIO.
+            * 2 Nov 2026. Blue, not red: nothing has gone wrong. The portal
+            * tidied up after a change the broker made on purpose, and the
+            * alternative - an empty preview with no explanation - is its own
+            * way of losing somebody's work. See emailAfterScenarioChange() in
+            * lib/email-freshness.ts. */}
+          {!emailHtml && emailResetFrom && (
+            <div className="mb-3 border border-info-edge bg-info-bg rounded-xl px-4 py-3.5 flex items-start gap-3">
+              <span className="text-[15px] leading-none mt-[1px] text-info">&#8635;</span>
+              <div className="text-[13px] text-body flex-1 leading-relaxed">
+                <b className="text-ink">The wording was written for {emailResetFrom}, so it has been cleared.</b>
+                {' '}The deal is now on <b className="text-ink">{templateLabel(template)}</b>. Press
+                {' '}<b className="text-ink">Generate email</b> and it is rebuilt from the scenario the deal is
+                on now. Your broker notes are untouched, and anything already emailed to the client is in the
+                file notes.
+              </div>
+              <button onClick={generateEmail} disabled={generating}
+                className="flex-none px-3 py-1.5 text-[12.5px] font-semibold rounded-lg bg-ink text-page disabled:opacity-50">
+                {generating ? 'Generating…' : 'Generate email'}
+              </button>
             </div>
           )}
           {/* TICKED OR UNTICKED SINCE IT WAS WRITTEN.

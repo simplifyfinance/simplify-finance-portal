@@ -51,10 +51,28 @@ export function isLowDoc(method: any): boolean {
  * three full-doc methods have always said and what an unanswered method says
  * too - naming a document we do not hold would be worse than the general word.
  */
+export const DIRECTORS_SALARY = "Director's salary"
+
 export function evidenceWords(method: any): string {
   const m = txt(method)
   if (m === LOW_DOC_BAS) return 'BAS'
   if (m === LOW_DOC_LETTER) return "accountant's letter"
+  // A DIRECTOR'S SALARY IS NOT READ OFF A TAX RETURN.
+  //
+  // 3 Nov 2026. Fabio, looking at a BC email with two self-employed lines on
+  // it: "if I'm selecting an income, self-employed, under director's salary,
+  // it doesn't make sense to say income as per tax returns."
+  //
+  // It does not. The figure is a salary the company pays, and the portal
+  // already says so everywhere else - the compliance note on this very method
+  // reads "Payslips and an ATO income statement have been obtained to verify
+  // this position". The client's email was the one place still naming a
+  // document nobody looked at.
+  //
+  // This is not a low doc method. It lives here because this function is the
+  // one home for "what may the client's email say the figure rests on", and a
+  // second home is how two screens come to say different things.
+  if (m === DIRECTORS_SALARY) return 'payslips'
   return 'tax returns'
 }
 

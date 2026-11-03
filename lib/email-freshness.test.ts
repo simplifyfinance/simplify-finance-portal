@@ -136,9 +136,31 @@ describe('the notes that come with a scenario', () => {
     expect(notesAfterScenarioChange('', FHB_NOTES, BUY_SELL_NOTES)).toBe(BUY_SELL_NOTES.join('\n'))
   })
 
+  // 3 Nov 2026. THIS USED TO BE ALL OR NOTHING ON THE WHOLE BOX, and that was
+  // the hole Fabio was asking about when he asked whether old template wording
+  // could still reach a new email. It could, here: one sentence of the
+  // broker's own and EVERY line stayed, including the ones the old scenario
+  // had written - so a broker who added a note to an investment deal kept the
+  // rental yield line for ever, on a first home buyer.
+  //
+  // Both halves of the rule were right and were being asked as one question.
+  // Asked a line at a time they both hold.
   it('never deletes anything the broker typed', () => {
     const written = INVESTMENT_NOTES[0] + '\nValuation ordered 1 Sep.'
-    expect(notesAfterScenarioChange(written, INVESTMENT_NOTES, FHB_NOTES)).toBe(written)
-    expect(notesAfterScenarioChange('Client wants offset.', INVESTMENT_NOTES, BUY_SELL_NOTES)).toBe('Client wants offset.')
+    const out = notesAfterScenarioChange(written, INVESTMENT_NOTES, FHB_NOTES)
+    expect(out).toContain('Valuation ordered 1 Sep.')
+    expect(notesAfterScenarioChange('Client wants offset.', INVESTMENT_NOTES, BUY_SELL_NOTES))
+      .toContain('Client wants offset.')
+  })
+
+  it('AND DOES NOT KEEP THE OLD SCENARIO\u2019S LINES ALONGSIDE IT', () => {
+    const written = INVESTMENT_NOTES[0] + '\nValuation ordered 1 Sep.'
+    expect(notesAfterScenarioChange(written, INVESTMENT_NOTES, FHB_NOTES))
+      .not.toContain('rental yield')
+  })
+
+  it('and the new scenario goes in above what the broker wrote', () => {
+    expect(notesAfterScenarioChange('Client wants offset.', INVESTMENT_NOTES, BUY_SELL_NOTES))
+      .toBe([...BUY_SELL_NOTES, 'Client wants offset.'].join('\n'))
   })
 })
