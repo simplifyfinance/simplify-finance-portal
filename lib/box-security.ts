@@ -1,3 +1,4 @@
+import { isBeingDischarged } from './security-figures'
 import { money, readMoney } from './money'
 import { buildsSomething } from './sale-build'
 import { dutyStateOf } from './duty-state'
@@ -64,7 +65,8 @@ export type Security = {
   owing: number
 }
 
-const REFINANCING = ['To be refinanced', 'To be consolidated']
+// 3 Nov 2026. Was a list of the LIABILITY words, which a property loan never
+// says - see isBeingDischarged in lib/security-figures.ts.
 
 // EVERY SECURITY, IN THE SAME ORDER AND BY THE SAME TEST AS securityValue().
 export function securitiesOf(deal: any): Security[] {
@@ -128,7 +130,7 @@ export function securitiesOf(deal: any): Security[] {
   const ticked: string[] = Array.isArray(bc?.securityIds) ? bc.securityIds.map(txt).filter(Boolean) : []
 
   for (const p of deal?.fact_find_data?.properties || []) {
-    const loan = (p?.loans || []).find((l: any) => REFINANCING.includes(txt(l?.status)))
+    const loan = (p?.loans || []).find((l: any) => isBeingDischarged(l?.status))
     // Ticked and carrying no refinancing loan is still security - a property put
     // up purely to support the lend has no loan on it to mark.
     if (ticked.length > 0 ? !ticked.includes(txt(p?.id)) : !loan) continue

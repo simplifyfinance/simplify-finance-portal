@@ -1,3 +1,4 @@
+import { isBeingDischarged } from './security-figures'
 import { contractPrice, contractLoan, contractStampDuty } from './contract-figures'
 import { isLandPurchase, landLoanPayout, dutyApplies } from './construction'
 import { buildsSomething, purchasePriceOf } from './sale-build'
@@ -500,8 +501,9 @@ export function securityValue(deal: any): SecurityValue {
   if (buying > 0) values.push(buying)
 
   for (const p of deal?.fact_find_data?.properties || []) {
-    const involved = (p?.loans || []).some((l: any) =>
-      ['To be refinanced', 'To be consolidated'].includes(txt(l?.status)))
+    // THE PROPERTY DROPDOWN SAYS Refinance, NOT "To be refinanced".
+    // 3 Nov 2026 - see isBeingDischarged in lib/security-figures.ts.
+    const involved = (p?.loans || []).some((l: any) => isBeingDischarged(l?.status))
     if (involved && has(p?.value)) values.push(num(p.value))
   }
 
@@ -545,7 +547,7 @@ export function refinancedDebt(deal: any): number {
   let flagged = 0
   for (const p of deal?.fact_find_data?.properties || []) {
     for (const l of p?.loans || []) {
-      if (txt(l?.status) === 'To be refinanced') flagged += num(l?.balance)
+      if (isBeingDischarged(l?.status)) flagged += num(l?.balance)
     }
   }
   if (PURCHASE_ONLY_TEMPLATES.has(txt(bc.template))) return flagged

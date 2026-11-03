@@ -178,28 +178,36 @@ describe('the questions themselves', () => {
 describe('nothing is sent until the boxes are answered', () => {
   const note = 'Capacity is tight, I have focused on the smaller banks.'
 
-  it('the borrowing capacity needs a sentence and an answer', () => {
-    expect(readyToSend(tidy({ stage: 'bc', note, hard: ['Serviceability'] }))).toBe(true)
+  // 3 Nov 2026. THE BORROWING CAPACITY ASKS ONE QUESTION NOW.
+  //
+  // Fabio: "the section on was anything hard about this one is too long and
+  // not really working, so remove and only leave what they need to know."
+  //
+  // It was 28 chips in five groups, plus a second question, in front of
+  // somebody who had already written the sentence that mattered - and it was
+  // REQUIRED, so Send stayed off until they tapped something. A required
+  // question nobody wants to answer gets answered at random, and a tag picked
+  // at random is worse than no tag, because Paco counts them.
+  it('the borrowing capacity needs a sentence, and that is all', () => {
+    expect(readyToSend(tidy({ stage: 'bc', note }))).toBe(true)
   })
 
   it('and says which box is still empty, rather than just greying out', () => {
     expect(whatIsMissing(tidy({ stage: 'bc' })))
-      .toEqual(['what the broker needs to know', 'whether anything was hard about it'])
-    expect(whatIsMissing(tidy({ stage: 'bc', note })))
-      .toEqual(['whether anything was hard about it'])
-    expect(whatIsMissing(tidy({ stage: 'bc', hard: ['Credit impairment'] })))
       .toEqual(['what the broker needs to know'])
+    expect(whatIsMissing(tidy({ stage: 'bc', note }))).toEqual([])
   })
 
   it('a few characters is not a sentence', () => {
-    expect(readyToSend(tidy({ stage: 'bc', note: 'ok', hard: ['Credit impairment'] }))).toBe(false)
+    expect(readyToSend(tidy({ stage: 'bc', note: 'ok' }))).toBe(false)
   })
 
-  // THE HONEST WAY OUT. Without it somebody ticks "credit history" on a clean
-  // file to get past the box, and every count Paco does is rubbish.
-  it('and a straightforward deal has a true answer to give', () => {
+  it('AND A HANDOVER RECORDED BEFORE TODAY KEEPS ITS TAGS', () => {
+    // Nothing was deleted - the words, the groups and everything that reads
+    // them stay put, so an old handover still prints what it was given.
     expect(HARD as readonly string[]).toContain('Nothing unusual')
-    expect(readyToSend(tidy({ stage: 'bc', note, hard: ['Nothing unusual'] }))).toBe(true)
+    expect(tidy({ stage: 'bc', note, hard: ['Credit impairment'] }).hard)
+      .toEqual(['Credit impairment'])
   })
 
   it('the lending options need a reason for every lender on the deal', () => {

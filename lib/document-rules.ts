@@ -26,6 +26,7 @@
 // Relative, not '@/lib/...'. There is no vitest config in this repo, so the
 // alias resolves under Next and not under the test runner - which is how this
 // file passed a typecheck and then failed the ship gate.
+import { isBeingDischarged } from './security-figures'
 import { currentAddress, currentEmployment, fullName, notWorking, selfEmployed } from './fact-find'
 import { needsCompanyFinancials, structureAnswered } from './fact-find-options'
 import { isLowDoc, LOW_DOC_BAS } from './low-doc'
@@ -87,7 +88,10 @@ export function isRefinance(deal: any): boolean {
   // A template is a shape somebody picked; a loan marked "to be refinanced" is
   // a fact about the client. Either is enough.
   const props = deal?.fact_find_data?.properties || []
-  return props.some((p: any) => (p?.loans || []).some((l: any) => txt(l?.status) === 'To be refinanced'))
+  // See isBeingDischarged in lib/security-figures.ts. "To be refinanced" is
+  // not on the property dropdown at all - it is a word from the liability
+  // question - so this matched nothing and the documents were never asked for.
+  return props.some((p: any) => (p?.loans || []).some((l: any) => isBeingDischarged(l?.status)))
 }
 
 export function isPurchase(deal: any): boolean {

@@ -20,6 +20,7 @@
 //    facts, and flattening it to one number is why the notes never understood
 //    the purpose.
 
+import { isBeingDischarged } from './security-figures'
 import { buildsSomething } from './sale-build'
 import { totalCost, landFundingOf, landLoanPayout, landEquity } from './construction'
 import { currentAddress, currentEmployment, fullName, notWorking, selfEmployed, ageFrom } from './fact-find'
@@ -138,8 +139,9 @@ export function dealPurpose(deal: any): DealPurpose {
 
   // Properties already held whose loans are part of this deal.
   for (const p of deal?.fact_find_data?.properties || []) {
-    const involved = (p?.loans || []).some((l: any) =>
-      ['To be refinanced', 'To be consolidated'].includes(txt(l?.status)))
+    // See isBeingDischarged in lib/security-figures.ts: a property loan is
+    // marked Refinance or To be paid out, never "To be refinanced".
+    const involved = (p?.loans || []).some((l: any) => isBeingDischarged(l?.status))
     if (!involved) continue
     if (txt(p?.ownershipType) === 'Investment') investment = true
     if (txt(p?.ownershipType) === 'Owner occupied') ownerOccupied = true

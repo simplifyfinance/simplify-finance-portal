@@ -34,6 +34,11 @@ const num = (v: unknown): number => readMoney(v) || 0
 export function isBeingDischarged(status: unknown): boolean {
   const v = txt(status).toLowerCase()
   return v === 'refinance' || v === 'to be refinanced' || v === 'to be paid out'
+    // A CONSOLIDATED DEBT IS A DEBT THAT GOES AT SETTLEMENT. 3 Nov 2026: this
+    // is the liability vocabulary, and it is here because the six libraries
+    // below read BOTH shapes through this one question. Leaving it out would
+    // have fixed property loans by breaking liabilities.
+    || v === 'to be consolidated'
 }
 
 /** Every loan on this property that goes at settlement, added up. */

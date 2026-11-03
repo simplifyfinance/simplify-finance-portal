@@ -1,4 +1,5 @@
 'use client'
+import { clientName } from '@/lib/a-name-is-a-name'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { PAGE_WIDE } from '@/lib/page-width'
 import { seedFromClients, seedSummary } from '@/lib/seed-from-client'
@@ -733,7 +734,12 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
     setSaving(true)
     let clientId = selectedClient?.id
     if (!clientId) {
-      const { data, error: clientError } = await browser.from('clients').insert([form]).select().single()
+      // TIDIED ON THE WAY IN. 3 Nov 2026 - a leading space, a doubled first
+      // name and a surname that is a full stop were all sitting in the book.
+      // See lib/a-name-is-a-name.ts: nothing is guessed, only space and a
+      // repeat are removed.
+      const { data, error: clientError } = await browser.from('clients')
+        .insert([{ ...form, ...clientName(form.first_name, form.last_name) }]).select().single()
       if (clientError || !data?.id) {
         alert('Failed to create client record. Please try again.')
         setSaving(false)
@@ -776,7 +782,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
       let secondClientId: string | undefined = form2.client_id || undefined
       if (!secondClientId) {
         const { data: second } = await browser.from('clients').insert([{
-          first_name: form2.first_name, last_name: form2.last_name,
+          ...clientName(form2.first_name, form2.last_name),
           email: form2.email || null, phone: form2.phone || null,
         }]).select('id').single()
         secondClientId = (second as any)?.id || undefined

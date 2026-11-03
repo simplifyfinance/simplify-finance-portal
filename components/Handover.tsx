@@ -1,9 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { TAG_GROUPS } from '@/lib/deal-tags'
 import {
-  NOTHING_UNUSUAL, EASIER, WHY, empty, tidy, saidSomething, whatPacoKeeps, theShortVersion,
+  WHY, empty, tidy, saidSomething, whatPacoKeeps, theShortVersion,
   whatIsMissing, readyToSend, type Handover as Note, type Stage,
 } from '@/lib/handover-notes'
 
@@ -149,7 +148,7 @@ export default function HandoverBox({ dealId, stage, lenders, toWhom, onSent, on
 
         <div className="px-5">
           <span className="block text-[10px] font-bold tracking-[.07em] uppercase text-muted mb-1.5">
-            What do they need to know?
+            What does the broker need to know?
           </span>
           <textarea value={h.note} onChange={e => setH(x => ({ ...x, note: e.target.value }))}
             className={`${INP} min-h-[92px] resize-y`}
@@ -160,33 +159,23 @@ export default function HandoverBox({ dealId, stage, lenders, toWhom, onSent, on
             For the broker. Nobody reads this but the team, and Paco never sees a word of it.
           </p>
 
-          {bc ? (
-            <>
-              <Q title="Was anything hard about this one?"
-                 why="Tap what applies — and Nothing unusual is a real answer. This is the only part Paco sees, and it is what makes him useful on the next deal like it.">
-                {/* GROUPED, BECAUSE THE LIST GOT LONGER.
-                  *
-                  * 14 Oct 2026. These words came off the Lending Options tab
-                  * when that duplicate question was deleted. There are 28 of
-                  * them, and 28 chips in one wall is unreadable - so they keep
-                  * the headings they already had on the tab they came from. */}
-                {TAG_GROUPS.map(g => (
-                  <div key={g.group} className="mb-2">
-                    <div className="text-[9.5px] font-bold tracking-[.08em] uppercase text-faint mb-1.5">{g.group}</div>
-                    <Chips all={g.tags} picked={h.hard} pick={toggle('hard')} />
-                  </div>
-                ))}
-                {/* The honest way out, kept apart from the obstacles so it does
-                  * not read as one of them. */}
-                <div className="border-t border-dashed border-card-line mt-1 pt-2">
-                  <Chips all={[NOTHING_UNUSUAL]} picked={h.hard} pick={toggle('hard')} />
-                </div>
-              </Q>
-              <Q title="What would have made it easier?" why="Optional. One tap, and the broker sees it too.">
-                <Chips all={EASIER} picked={h.easier} pick={toggle('easier')} />
-              </Q>
-            </>
-          ) : (
+          {/* THE BORROWING CAPACITY ASKS NOTHING ELSE.
+            *
+            * 3 Nov 2026. The "anything hard about this one" question was 28 chips in
+            * five groups, with a second question under it, in front of
+            * somebody who had already written the sentence that mattered - and
+            * it was required, so Send stayed off until they tapped something.
+            * A required question nobody wants to answer gets answered at
+            * random, and a tag picked at random is worse than none: Paco
+            * counts them.
+            *
+            * Nothing is deleted. HARD, EASIER and TAG_GROUPS stay in
+            * lib/handover-notes.ts with everything that reads them, so a
+            * handover recorded before today still prints its tags. The
+            * question is simply not asked on new ones. The lending options
+            * side is untouched - its questions are about the LENDERS, which is
+            * what Paco is actually useful for. */}
+          {bc ? null : (
             <>
               <Q title="Why these lenders?" why="One tap each. Paco counts these — he never repeats them as a reason.">
                 {lenders.length === 0 && (

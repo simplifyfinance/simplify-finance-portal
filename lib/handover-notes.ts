@@ -155,10 +155,11 @@ export function whatIsMissing(h: Handover, lenders: string[] = []): string[] {
   const missing: string[] = []
   if (txt(h.note).length < NEEDS_A_SENTENCE) missing.push('what the broker needs to know')
 
-  if (h.stage === 'bc') {
-    if (h.hard.length === 0) missing.push('whether anything was hard about it')
-    return missing
-  }
+  // 3 Nov 2026. THE BORROWING CAPACITY ASKS ONE QUESTION NOW, so there is one
+  // thing that can be missing. "Was anything hard about this one?" was taken
+  // off the screen - see components/Handover.tsx - and a required question
+  // that is no longer asked can only hold the Send button off for ever.
+  if (h.stage === 'bc') return missing
 
   const names = (Array.isArray(lenders) ? lenders : []).map(txt).filter(Boolean)
   const unanswered = names.filter(n => (h.why[n] || []).length === 0)

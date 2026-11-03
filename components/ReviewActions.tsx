@@ -1,4 +1,5 @@
 'use client'
+import { clientName } from '@/lib/a-name-is-a-name'
 import { useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { copyHtmlAndPlain } from '@/lib/rich-text'
@@ -204,8 +205,11 @@ export default function ReviewActions({ review, figures, properties, broker, cop
   // applicant, the broker and every security in again by hand.
   const [making, setMaking] = useState(false)
 
-  const first = String(review?.first_name ?? '').trim()
-  const last = String(review?.last_name ?? '').trim()
+  // A BOOK ROW'S NAME IS WHATEVER THE IMPORT MADE OF IT. 3 Nov 2026: one of
+  // them had the whole name in the surname box, so the deal card read
+  // "Kathleen Kathleen Stone". See lib/a-name-is-a-name.ts.
+  const { first_name: first, last_name: last } =
+    clientName(review?.first_name, review?.last_name)
   const alsoCalled = secondName(review?.book_name, first, last)
   const willBeCalled = dealNameFromReview(first, last, alsoCalled, new Date().getFullYear())
 
@@ -231,7 +235,7 @@ export default function ReviewActions({ review, figures, properties, broker, cop
     let secondId: string | undefined
     if (alsoCalled) {
       const { data: made2 } = await supabase.from('clients').insert([{
-        first_name: alsoCalled.first, last_name: alsoCalled.last,
+        ...clientName(alsoCalled.first, alsoCalled.last),
         email: String(figures?.book_email2 || '').trim() || null,
         phone: String(figures?.book_phone2 || '').trim() || null,
       }]).select('id').single()

@@ -743,12 +743,24 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   //
   // The addresses, employment and income editors all go through here with the
   // whole list, so marking the list protects every row in it until it is saved.
+  // BY ID, NOT BY POSITION. 3 Nov 2026 - see the note on this patch.
+  //
+  // `who` is read here, in the render the VALUE came from, and the write below
+  // finds that same applicant inside setD. Before this the value came from the
+  // applicant on screen at render time and the destination was whichever slot
+  // was active when the write ran, which are different people the moment
+  // somebody clicks to applicant 2 while a payslip is still being read.
   function updateApplicant(field: keyof FactFindApplicant, value: any) {
     const who = d.applicants?.[activeApplicant]?.id
     if (who) markDirty(ownRef.current, `applicants#${who}.${String(field)}`)
     setD(prev => {
-      const apps = [...prev.applicants]
-      apps[activeApplicant] = { ...apps[activeApplicant], [field]: value }
+      // AN APPLICANT WITH NO ID IS THE ONLY CASE LEFT FOR POSITION. Records
+      // made before applicants had ids still exist, and refusing to write to
+      // them would be a worse fault than the one being fixed.
+      const apps = prev.applicants.map((a: any, i: number) => {
+        const mine = who ? a?.id === who : i === activeApplicant
+        return mine ? { ...a, [field]: value } : a
+      })
       return { ...prev, applicants: apps }
     })
   }
@@ -1012,8 +1024,25 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   // updateIncome reads applicant.income as THIS render saw it. Six of them in a
   // row would each overwrite the last and only the final field would land - the
   // payslip would appear to fill one box and clear the other five.
+  // AND THE INCOME LIST IS BUILT FROM THE RECORD, NOT FROM THE RENDER.
+  //
+  // 3 Nov 2026. `applicant.income` is the list as it was when this render
+  // happened. A payslip card reports what it read from an effect, seconds
+  // later, by which time another income line may have been added or read - and
+  // mapping over the old list writes those changes back out again. Reading the
+  // applicant out of `prev` keeps every other line as the record has it and
+  // changes only the one named.
   function updateIncomeFields(id: string, patch: Partial<Income>) {
-    updateApplicant('income', applicant.income.map(i => i.id === id ? { ...i, ...patch } : i))
+    const who = d.applicants?.[activeApplicant]?.id
+    if (who) markDirty(ownRef.current, `applicants#${who}.income`)
+    setD(prev => {
+      const apps = prev.applicants.map((a: any, i: number) => {
+        const mine = who ? a?.id === who : i === activeApplicant
+        if (!mine) return a
+        return { ...a, income: (a?.income || []).map((x: any) => x?.id === id ? { ...x, ...patch } : x) }
+      })
+      return { ...prev, applicants: apps }
+    })
   }
 
   // WHAT THE PAYSLIP BUTTON DOES. The figures are worked out in lib - this puts

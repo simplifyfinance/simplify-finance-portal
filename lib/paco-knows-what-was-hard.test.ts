@@ -103,39 +103,50 @@ describe('turning one on and off', () => {
 // These tests did not get deleted with the block. They moved, because what
 // they were protecting is still worth protecting: the chips must come off one
 // list, nothing may nag, and the question must be asked ONCE.
-describe('where this question lives now', () => {
+describe('WHERE THIS QUESTION LIVES NOW - NOWHERE, AND ON PURPOSE', () => {
   const lo = readFileSync('app/(app)/deals/[id]/LOForm.tsx', 'utf8')
   const box = readFileSync('components/Handover.tsx', 'utf8')
 
-  it('is asked in the handover box, and nowhere else', () => {
-    expect(box, 'the question has gone missing altogether').toContain('Was anything hard about this one?')
-    expect(lo, 'the duplicate is back on the Lending Options tab')
-      .not.toContain('What made this one hard?')
+  // 3 Nov 2026. Fabio: "the section on was anything hard about this one is too
+  // long and not really working, so remove and only leave what they need to
+  // know. Change wording to what does the broker need to know."
+  //
+  // 28 chips in five groups, plus a second question under it, in front of
+  // somebody who had already written the sentence that mattered - and
+  // required, so Send stayed off until they tapped something. A required
+  // question nobody wants to answer gets answered at random, and a tag picked
+  // at random is worse than none, because Paco COUNTS them. Asking it was
+  // making his numbers worse, not better.
+  it('the borrowing capacity handover does not ask it', () => {
+    expect(box).not.toContain('Was anything hard about this one?')
+    expect(box).not.toContain('What would have made it easier?')
   })
 
-  it('draws the groups off the one list rather than a second copy', () => {
-    expect(box).toContain('TAG_GROUPS.map')
-    // A hand-written chip would drift from lib/deal-tags.ts the first time the
-    // list changed.
-    for (const t of ['Limited title', 'Casual income', 'SMSF']) {
-      expect(box, `${t} is written out by hand instead of coming off the list`)
-        .not.toContain(`>${t}<`)
-    }
+  it('AND ASKS THE ONE THING IT DOES ASK IN FABIO\u2019S WORDS', () => {
+    expect(box).toContain('What does the broker need to know?')
   })
 
-  it('still offers the honest way out, and takes it from one place', () => {
-    // Without "Nothing unusual" somebody ticks a real obstacle on a clean file
-    // to get past a box they cannot skip, and every count Paco does is rubbish.
-    expect(box).toContain('NOTHING_UNUSUAL')
-    expect(box, 'the words are written out here as well as in handover-notes')
-      .not.toContain("'Nothing unusual'")
+  it('and the duplicate did not come back on the Lending Options tab', () => {
+    // 14 Oct 2026: it was asked twice, once there and once here. Neither.
+    expect(lo).not.toContain('What made this one hard?')
   })
 
-  it('nothing nags about which chip you pick', () => {
-    const at = box.indexOf('Was anything hard about this one?')
-    const block = box.slice(at, at + 1800)
-    expect(block).not.toContain('text-chase')
-    expect(block).not.toContain('border-chase-edge')
+  it('AND NOTHING WAS DELETED FROM THE LIBRARY', () => {
+    // A handover recorded before today still prints its tags on the broker's
+    // side and in the file note. The question is not asked on new ones; the
+    // old answers are not taken away.
+    const notes = readFileSync('lib/handover-notes.ts', 'utf8')
+    expect(notes).toContain('NOTHING_UNUSUAL')
+    expect(notes).toContain('EASIER')
+    expect(readFileSync('lib/deal-tags.ts', 'utf8')).toContain('TAG_GROUPS')
+  })
+
+  it('AND THE LENDING OPTIONS SIDE IS UNTOUCHED', () => {
+    // Its questions are about the LENDERS, which is what Paco is actually
+    // useful for - why each bank is on the deal, and what one of them did that
+    // surprised us.
+    expect(box).toContain('Why these lenders?')
+    expect(box).toContain('Anything a lender did that surprised you?')
   })
 })
 

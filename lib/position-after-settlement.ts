@@ -18,6 +18,7 @@
 // AND IT WRITES ONLY TO A NEW DEAL'S FACT FIND. Never the client record. The
 // question of whether a settled deal updates the client's own file is a
 // separate one with its own answer, and nothing here may pre-empt it.
+import { isBeingDischarged } from './security-figures'
 import { splitsOf } from './deal-structure'
 import { securitiesOf } from './securities'
 // WHICH OPTION THIS DEAL IS ON, NOT WHICH WE RECOMMENDED. Those are the same
@@ -33,6 +34,9 @@ const money = (n: number): string => n > 0 ? n.toLocaleString('en-AU') : ''
 
 // A loan on a fact find property is "in this deal" when somebody marked it so.
 // Same two words lib/funds-to-complete.ts has always used.
+// 3 Nov 2026. Kept, because other files import it, but nothing here decides
+// with it any more - a property loan says Refinance or To be paid out. See
+// isBeingDischarged in lib/security-figures.ts.
 export const REFINANCING = ['To be refinanced', 'To be consolidated']
 
 export type ChangeKind = 'close' | 'add' | 'keep' | 'funds'
@@ -105,7 +109,7 @@ export function positionChanges(deal: any, savingsNow: string): PositionChange[]
   // 1. EVERY LIABILITY THEY HAVE, AND WHAT BECOMES OF IT.
   for (const p of props) {
     for (const l of p?.loans || []) {
-      const going = REFINANCING.includes(txt(l?.status))
+      const going = isBeingDischarged(l?.status)
       const reads = [txt(l.lenderName), num(l.balance) > 0 && `$${money(num(l.balance))}`,
                      txt(l.repaymentType), txt(l.interestRate) && `${txt(l.interestRate)}%`]
                      .filter(Boolean).join(' · ')

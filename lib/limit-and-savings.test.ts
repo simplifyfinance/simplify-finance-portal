@@ -1,3 +1,4 @@
+import { isBeingDischarged } from './security-figures'
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import {
@@ -42,10 +43,18 @@ describe('what happens to a liability', () => {
 
   // AND EVERY PLACE THAT ACTS ON IT STILL DOES. Those deals are live and the
   // refinance has not stopped happening just because the word left a dropdown.
+  //
+  // 3 Nov 2026: this used to check that each file contained the WORDS. It now
+  // checks the thing the words were standing in for, because those files stopped
+  // deciding for themselves - a property loan says Refinance or To be paid out,
+  // never "To be refinanced", so deciding on that word there matched nothing at
+  // all. See lib/a-property-loan-says-refinance.test.ts.
   it('and everything that reads it still reads it', () => {
+    expect(isBeingDischarged('To be refinanced'),
+      'an old deal stopped being recognised').toBe(true)
     for (const f of ['lib/funds-to-complete.ts', 'lib/box-security.ts', 'lib/position-after-settlement.ts']) {
-      expect(readFileSync(f, 'utf8'), `${f} stopped recognising an old deal`)
-        .toContain('To be refinanced')
+      expect(readFileSync(f, 'utf8'), `${f} no longer asks the one question`)
+        .toContain('isBeingDischarged(')
     }
   })
 })

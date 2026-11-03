@@ -248,7 +248,10 @@ describe('it reaches the other two tabs', () => {
     const box = readFileSync('lib/box-security.ts', 'utf8')
     expect(box).toContain('securityIds')
     // And the old inference survives for every deal that has not ticked one.
-    expect(box).toContain('REFINANCING.includes')
+    // 3 Nov 2026: it used to ask a list of the LIABILITY words, which a
+    // property loan never says - see isBeingDischarged in
+    // lib/security-figures.ts and lib/a-property-loan-says-refinance.test.ts.
+    expect(box).toContain('isBeingDischarged(l?.status)')
   })
 })
 
