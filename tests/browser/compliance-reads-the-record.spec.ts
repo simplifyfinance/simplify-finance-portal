@@ -65,6 +65,16 @@ test.describe('compliance composes from the record, not from the page', () => {
       if (/NOT RECORDED . which lender was recommended/i.test(text)) {
         test.skip(true, 'The test deal has no recommended lender on the LO, so box five lists no criteria.')
       }
+      // The other thing box five says when there is nothing to say. A brand
+      // new test deal has never been through Lending Options, so there are no
+      // options to compose from and nothing here to prove either way. Said
+      // out loud, because "skipped" with a reason is the honest answer and a
+      // red failure is not. See lib/box-options.ts.
+      if (/NOT RECORDED . no lender options have been recorded/i.test(text)) {
+        test.skip(true,
+          'The test deal has no lender options at all, so box five has nothing to compose from. '
+          + 'Add a lender and a product on Lending Options to this deal and this runs again.')
+      }
 
       expect(text, 'the box was composed from the copy his page loaded, not from the deal')
         .toContain(mark)

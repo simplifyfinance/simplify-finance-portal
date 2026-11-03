@@ -800,6 +800,12 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   const [extracting, setExtracting] = useState(false)
   const [extractedData, setExtractedData] = useState<any>(null)
   const [showExtractReview, setShowExtractReview] = useState(false)
+  // HOW MANY ANSWERS CAME OFF THE FORM LAYER. 3 Nov 2026 - see
+  // lib/the-answers-are-in-the-form.ts. Worth saying out loud: a fact find
+  // that is a scan rather than a fillable form reads zero here, and that is
+  // the difference between "the client left it blank" and "we could not read
+  // what they typed".
+  const [typedAnswers, setTypedAnswers] = useState<number | null>(null)
 
   async function extractFactFindPdf(file: File) {
     setExtracting(true)
@@ -820,6 +826,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
         alert('Extraction failed: ' + data.error)
       } else {
         setExtractedData(data.extracted)
+        setTypedAnswers(typeof data.typedAnswers === 'number' ? data.typedAnswers : null)
         setShowExtractReview(true)
       }
       await uploadDocument(file)
@@ -1249,10 +1256,26 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
             See components/DealRail.tsx. */}
 
         {showExtractReview && extractedData && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowExtractReview(false)}>
-          <div className="bg-card rounded-2xl p-6 w-[480px] max-h-[80vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          {/* NO CLICK-AWAY. 3 Nov 2026: clicking the dark edge threw the whole
+            * extraction away without a word, and the only way back was to
+            * upload the file again. The buttons at the bottom say what happens;
+            * the backdrop said nothing and did the most destructive thing on
+            * the screen. */}
+          <div className="bg-card rounded-2xl p-6 w-[480px] max-h-[80vh] overflow-y-auto shadow-xl">
             <div className="text-base font-semibold mb-1">Review extracted data</div>
-            <p className="text-xs text-gray-400 mb-4">Check this looks right before applying — you can fine-tune any field afterwards in the normal form.</p>
+            <p className="text-xs text-gray-400 mb-3">Check this looks right before applying — you can fine-tune any field afterwards in the normal form.</p>
+            {/* WHAT WAS ACTUALLY READ OFF THE FORM. */}
+            {typedAnswers !== null && (
+              <p className={`text-[11.5px] mb-4 rounded-lg px-2.5 py-2 ${typedAnswers > 0
+                ? 'text-done bg-done-bg border border-done-edge'
+                : 'text-chase bg-chase-bg border border-chase-edge'}`}>
+                {typedAnswers > 0
+                  ? `${typedAnswers} typed answers read straight out of the form.`
+                  : 'No typed answers could be read out of this file — it is a scan or a flattened PDF, '
+                    + 'so everything below was read off the picture and is worth checking twice.'}
+              </p>
+            )}
 
             {extractedData.applicants?.map((a: any, i: number) => (
               <div key={i} className="bg-gray-50 rounded-lg p-3 mb-3">
