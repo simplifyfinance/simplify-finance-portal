@@ -127,7 +127,17 @@ describe('AND THE SCREEN SHOWS THEM WITHOUT STORING THEM', () => {
     // is corrected. The typed box still wins the instant somebody types.
     expect(FORM).not.toContain('setSecurityBalances({ ...securityBalances, [String(p.id)]: ghost')
     expect(FORM).not.toContain('[String(p.id)]: known.')
-    // The only place the derived figures appear is as a placeholder.
-    expect((FORM.match(/known\.(owes|releasing|limit)/g) || []).length).toBe(3)
+    // FOUR USES, AND EVERY ONE OF THEM IS A READ.
+    //
+    // Three are the placeholders above. The fourth, since 4 Nov 2026, is the
+    // loan amount handed to a valuation request: a broker who has not typed a
+    // limit still has one - it is the splits against that security - and a
+    // valuation ordered with a blank loan amount is one Valerio writes back
+    // about. It is sent, never stored, which is what the two rules above are
+    // actually guarding. See components/OrderValuation.tsx.
+    //
+    // A fifth needs the same justification in writing, which is the point of
+    // locking the number rather than the shape.
+    expect((FORM.match(/known\.(owes|releasing|limit)/g) || []).length).toBe(4)
   })
 })

@@ -1,4 +1,5 @@
 'use client'
+import OrderValuation from '@/components/OrderValuation'
 import HandoverBox from '@/components/Handover'
 import WhatNow from '@/components/WhatNow'
 import WhatWeStillNeed from '@/components/WhatWeStillNeed'
@@ -2535,6 +2536,17 @@ Key assumptions: ${checklistText}`
                                     <span className="text-[11px] text-gray-400 w-[110px] text-right">
                                       drawn {fmtMoney(drawnOf(String(p.id)))}
                                     </span>
+                                    {/* A VALUATION IS OF A HOUSE, SO IT IS ON THE HOUSE.
+                                      * 4 Nov 2026. A deal with a house being refinanced and
+                                      * one being bought has two of them - different lenders,
+                                      * different weeks - and a single button at the top of
+                                      * the page could not say which it meant. See
+                                      * components/OrderValuation.tsx. */}
+                                    <OrderValuation deal={deal} me={me}
+                                      security={{ id: String(p.id), address: String(p.address || ''),
+                                        use: String(p.ownershipType || ''),
+                                        value: String(p.value || ''),
+                                        limit: String(securityLimits[String(p.id)] || known.limit || '') }} />
                                     {/* THE TICK CHANGES THE ARITHMETIC, NOT THE LABEL. Ticked,
                                         there is no increase split, the LVR is the balance alone,
                                         and this property contributes nothing to funds to complete
