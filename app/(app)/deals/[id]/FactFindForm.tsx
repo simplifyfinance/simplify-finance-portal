@@ -1,4 +1,5 @@
 'use client'
+import RunServiceability from '@/components/RunServiceability'
 import DropZone from '@/components/DropZone'
 import { isLowDoc } from '@/lib/low-doc'
 import WhoSharesThisDeal from '@/components/WhoSharesThisDeal'
@@ -1435,6 +1436,12 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
           </button>
         ))}
       </div>
+
+      {/* RUN SERVICEABILITY. 4 Nov 2026 - under the stage strip rather than at
+        * the end, because nobody fills a fact find front to back in one go and
+        * the moment you want a capacity is the moment you have just changed a
+        * figure. See components/RunServiceability.tsx. */}
+      <RunServiceability deal={deal} me={me} />
 
       {(stage === 'personal' || stage === 'employment' || stage === 'income') && applicantTabs}
 
