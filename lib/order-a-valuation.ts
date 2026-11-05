@@ -38,6 +38,28 @@ export const ACCESS_CONTACTS = ['Agent', 'Owner', 'Occupier', 'Tenant', 'Borrowe
 export const TENURES = ['Freehold', 'Strata', 'Company title', 'Leasehold'] as const
 export const ANCILLARY = ['Pool', 'Tennis court', 'Carport'] as const
 
+// BANKWEST ASKS ITS OWN FOUR, and it is not ordered through CoreLogic at all -
+// Valerio signs into Bankwest's own broker portal for these. 5 Nov 2026.
+export const BW_SPECIAL: [label: string, key: string][] = [
+  ['Bridging finance', 'BRIDGING'],
+  ['Fixed-price build contract over $1M', 'FIXED_PRICE_OVER_1M'],
+  ['Cost-plus build contract', 'COST_PLUS'],
+  ['House and land package', 'HOUSE_AND_LAND'],
+  ['Complex of 4+ dwellings', 'COMPLEX_4PLUS'],
+  ["Not at arm's length", 'NOT_ARMS_LENGTH'],
+  ['Over 2 hectares', 'OVER_2HA'],
+  ['Two-tiered marketing', 'TWO_TIERED'],
+  ['Non-standard lease', 'NON_STANDARD_LEASE'],
+  ['3+ dwellings on one title', 'THREE_PLUS_ON_TITLE'],
+  ['Second mortgage', 'SECOND_MORTGAGE'],
+  ['Leasehold', 'LEASEHOLD'],
+]
+
+// NOT SUPPORTED YET, AND SAID OUT LOUD RATHER THAN REFUSED. Valerio orders
+// every other ticked lender and writes back that this one needs a person, so
+// ticking it is not a mistake - it is a note to whoever reads the reply.
+export const BY_HAND = ['CBA']
+
 /**
  * A STREET, A SUBURB, A STATE AND A POSTCODE, OUT OF ONE LINE.
  *
@@ -89,7 +111,11 @@ export function propertyUseOf(use: any): string {
 const enumOf = (v: any) => txt(v).toUpperCase().replace(/[.\s]+/g, '_')
 
 export type Answers = {
-  lender?: string
+  // ONE PROPERTY, SEVERAL LENDERS, ONE EMAIL. 5 Nov 2026: "If several lenders
+  // are ticked, send them all in the one email... Valerio places a separate
+  // order per lender." Everything else on the request is shared, so asking the
+  // same fifteen questions once per bank would be asking them again.
+  lenders?: string[]
   propertyType?: string
   securityCategory?: string
   accessType?: string
@@ -104,13 +130,25 @@ export type Answers = {
   anzHolds?: boolean
   anzOnCompletion?: boolean
   anzAncillary?: string[]
+  /** Only read when Bankwest is one of the ticked lenders. */
+  bwUnder50?: boolean
+  bwOffThePlan?: boolean
+  bwCurrentLenderBwCba?: boolean
+  bwSpecial?: string[]
 }
+
+/** The broker the valuation is ordered UNDER, which is not who pressed the button. */
+export type Broker = { name?: string; email?: string }
 
 export type Valuation = {
   to: string
   subject: string
   body: string
   ref: string
+  /** Who to copy, worked out once so the screen and the email agree. */
+  cc: string[]
+  /** Ticked lenders Valerio cannot order - he says so and does the rest. */
+  byHand: string[]
   missing: string[]
 }
 
@@ -122,8 +160,24 @@ export function valuationRef(deal: any, security: any): string {
   return `SF-${String(n).padStart(5, '0')}`
 }
 
-export function isAnz(lender: any): boolean {
-  return txt(lender).toUpperCase().replace(/[^A-Z]/g, '') === 'ANZ'
+const bare = (v: any) => txt(v).toUpperCase().replace(/[^A-Z]/g, '')
+
+// ANZ IS ANZ WHATEVER THE LIBRARY CALLS IT. CoreLogic's own list says
+// "ANZ - Brokers", so an exact match would have missed it.
+export function isAnz(lenders: any): boolean {
+  return list(lenders).some(l => bare(l).startsWith('ANZ'))
+}
+
+export function hasBankwest(lenders: any): boolean {
+  return list(lenders).some(l => bare(l).startsWith('BANKWEST'))
+}
+
+export function byHandOnly(lenders: any): string[] {
+  return list(lenders).filter(l => BY_HAND.some(b => bare(l).startsWith(bare(b))))
+}
+
+function list(v: any): string[] {
+  return (Array.isArray(v) ? v : v ? [v] : []).map(txt).filter(Boolean)
 }
 
 /** Loan ÷ value, as a whole percent. Filled in, and still editable. */
@@ -134,8 +188,32 @@ export function expectedLvr(limit: any, value: any): string {
   return String(Math.round((l / v) * 100))
 }
 
+/**
+ * WHO THE REPLY GOES TO.
+ *
+ * 5 Nov 2026. "Replies go to RequestedByEmail, cc the broker (if different)
+ * and fabio@simplifyfinance.com.au (no duplicate cc if Fabio is the requester
+ * or broker)."
+ *
+ * Credit staff order these on a broker's deal, so the person who pressed the
+ * button and the person whose file it is are often two different people. Both
+ * want the answer, and neither wants it twice.
+ */
+export function copyList(requester: any, broker: any): string[] {
+  const seen = new Set([txt(requester).toLowerCase()].filter(Boolean))
+  const out: string[] = []
+  for (const who of [txt(broker), COPY_TO]) {
+    const key = who.toLowerCase()
+    if (!key || seen.has(key)) continue
+    seen.add(key)
+    out.push(who)
+  }
+  return out
+}
+
 export function buildValuation(
-  deal: any, security: any, a: Answers, who: { name?: string; email?: string },
+  deal: any, security: any, a: Answers,
+  who: { name?: string; email?: string }, broker?: Broker,
 ): Valuation {
   const bc = deal?.bc_data || {}
   const ff = deal?.fact_find_data || {}
@@ -144,7 +222,9 @@ export function buildValuation(
   const addr = splitAddress(security?.address)
   const value = digits(security?.value)
   const limit = digits(security?.limit)
-  const anz = isAnz(a.lender)
+  const anz = isAnz(a.lenders)
+  const bw = hasBankwest(a.lenders)
+  const purchase = purpose === 'PURCHASE'
 
   // THE PERSON WHO OPENS THE DOOR. Owner and Borrower are the client, so the
   // name is already known and nobody types it; an agent or a tenant is not on
@@ -159,7 +239,15 @@ export function buildValuation(
     line('DealRef', valuationRef(deal, security)),
     line('RequestedByName', txt(who?.name)),
     line('RequestedByEmail', txt(who?.email)),
-    line('Lender', enumOf(a.lender)),
+    // THE BROKER THE ORDER IS PLACED UNDER, which is not the person who
+    // pressed the button. Valerio signs into CoreLogic with that broker's own
+    // login, so a valuation ordered by credit still lands in the right
+    // broker's account.
+    line('BrokerName', txt(broker?.name)),
+    line('BrokerEmail', txt(broker?.email)),
+    // Exactly as CoreLogic's own "Choose a Lender" page spells them, which is
+    // why these are the library's names and not an enum of ours.
+    line('Lender', (a.lenders || []).map(txt).filter(Boolean).join(' | ')),
     line('LoanPurpose', purpose),
     line('PropertyUse', propertyUseOf(security?.use)),
     line('LoanAmount', limit),
@@ -185,6 +273,14 @@ export function buildValuation(
     line('ANZ_HoldsSecurity', anz ? (a.anzHolds ? 'Y' : 'N') : ''),
     line('ANZ_OnCompletion', anz ? (a.anzOnCompletion ? 'Y' : 'N') : ''),
     line('ANZ_Ancillary', anz ? (a.anzAncillary || []).map(enumOf).join(', ') : ''),
+    // BANKWEST ONLY, and two of its four depend on the purpose - it asks about
+    // off the plan on a purchase and about the current lender on a refinance,
+    // never both.
+    line('BW_Under50sqm', bw ? yn(a.bwUnder50) : ''),
+    line('BW_OffThePlan', bw && purchase ? yn(a.bwOffThePlan) : ''),
+    line('BW_CurrentLenderBWCBA', bw && !purchase ? yn(a.bwCurrentLenderBwCba) : ''),
+    // NONE IS AN ANSWER, not an empty line. Blank here would read as unasked.
+    line('BW_Special', bw ? ((a.bwSpecial || []).length ? (a.bwSpecial || []).join(', ') : 'NONE') : ''),
     '=== END ===',
   ].join('\n')
 
@@ -193,7 +289,9 @@ export function buildValuation(
     subject: `VALUATION REQUEST v1 – ${txt(app?.firstName) || 'client'} – ${addr.suburb || 'property'}`,
     body,
     ref: valuationRef(deal, security),
-    missing: missingFor(a, { addr, value, limit, purpose, security, anz }),
+    cc: copyList(who?.email, broker?.email),
+    byHand: byHandOnly(a.lenders),
+    missing: missingFor(a, { addr, value, limit, purpose, security, anz, bw, purchase, broker }),
   }
 }
 
@@ -208,7 +306,12 @@ export function buildValuation(
  */
 function missingFor(a: Answers, ctx: any): string[] {
   const out: string[] = []
-  if (!txt(a.lender)) out.push('the lender')
+  if (!(a.lenders || []).filter(Boolean).length) out.push('at least one lender')
+  // REQUIRED, because Valerio signs in as this person. Normally the deal's own
+  // broker and nobody is asked; a deal with none has to be told.
+  if (!txt(ctx.broker?.name) || !txt(ctx.broker?.email)) {
+    out.push('which broker to order it under')
+  }
   if (!txt(a.propertyType)) out.push('the property type')
   if (!propertyUseOf(ctx.security?.use)) out.push('whether it is owner occupied or an investment')
   if (!ctx.limit) out.push('the loan amount — nothing is recorded against this security')
@@ -223,7 +326,19 @@ function missingFor(a: Answers, ctx: any): string[] {
     if (!digits(a.anzLvr)) out.push("ANZ's expected LVR")
     if (!txt(a.anzTenure)) out.push('the title — ANZ asks')
   }
+  if (ctx.bw) {
+    if (a.bwUnder50 === undefined) out.push('whether it is under 50 m² — Bankwest asks')
+    if (ctx.purchase && a.bwOffThePlan === undefined) out.push('whether it is off the plan — Bankwest asks')
+    if (!ctx.purchase && a.bwCurrentLenderBwCba === undefined) {
+      out.push('whether the current lender is Bankwest or CBA — Bankwest asks')
+    }
+  }
   return out
+}
+
+/** Y, N, or blank where nobody has answered - never a guessed N. */
+function yn(v: boolean | undefined): string {
+  return v === undefined ? '' : v ? 'Y' : 'N'
 }
 
 /** Does this security look orderable at all? Used to decide the button's state. */

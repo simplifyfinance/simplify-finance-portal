@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import {
   buildValuation, splitAddress, loanPurposeOf, valueTypeOf, propertyUseOf,
-  expectedLvr, isAnz, valuationRef, canOrder, VALUER_EMAIL,
+  expectedLvr, isAnz, hasBankwest, byHandOnly, copyList, valuationRef, canOrder,
+  VALUER_EMAIL, COPY_TO,
 } from './order-a-valuation'
 
 // A VALUATION IS OF A HOUSE, NOT OF A DEAL.
@@ -39,11 +40,12 @@ const DEAL = {
 }
 
 const ANSWERS = {
-  lender: 'ING', propertyType: 'House', accessType: 'Owner',
+  lenders: ['ING'], propertyType: 'House', accessType: 'Owner',
   accessMobile: '0412 345 678',
 }
 const WHO = { name: 'Ellie', email: 'ellie@simplifyfinance.com.au' }
-const v = buildValuation(DEAL, SECURITY, ANSWERS, WHO)
+const BROKER = { name: 'Fabio De Castro', email: 'fabio@simplifyfinance.com.au' }
+const v = buildValuation(DEAL, SECURITY, ANSWERS, WHO, BROKER)
 
 describe('THE ADDRESS IS PULLED APART, NEVER RETYPED', () => {
   it('street, suburb, state and postcode out of one line', () => {
@@ -106,7 +108,7 @@ describe('WHAT THE DEAL ALREADY KNOWS IS NOT ASKED', () => {
 
   it('and an agent is somebody the deal has never heard of', () => {
     const agent = buildValuation(DEAL, SECURITY,
-      { ...ANSWERS, accessType: 'Agent', accessFirst: 'Sam', accessLast: 'Reed' }, WHO)
+      { ...ANSWERS, accessType: 'Agent', accessFirst: 'Sam', accessLast: 'Reed' }, WHO, BROKER)
     expect(agent.body).toContain('AccessFirstName: Sam')
     expect(agent.body).toContain('AccessLastName: Reed')
   })
@@ -114,14 +116,16 @@ describe('WHAT THE DEAL ALREADY KNOWS IS NOT ASKED', () => {
 
 describe('ANZ ASKS FIVE MORE, AND NOBODY ELSE IS ASKED THEM', () => {
   const anz = buildValuation(DEAL, SECURITY, {
-    ...ANSWERS, lender: 'ANZ', anzLvr: '80', anzTenure: 'Company title',
+    ...ANSWERS, lenders: ['ANZ - Brokers'], anzLvr: '80', anzTenure: 'Company title',
     anzHolds: true, anzOnCompletion: false, anzAncillary: ['Pool', 'Carport'],
-  }, WHO)
+  }, WHO, BROKER)
 
-  it('it knows which lender that is', () => {
-    expect(isAnz('ANZ')).toBe(true)
-    expect(isAnz('anz')).toBe(true)
-    expect(isAnz('ING')).toBe(false)
+  it('it knows which lender that is, whatever the library calls it', () => {
+    // CoreLogic's own list says "ANZ - Brokers", so an exact match misses it.
+    expect(isAnz(['ANZ'])).toBe(true)
+    expect(isAnz(['ANZ - Brokers'])).toBe(true)
+    expect(isAnz(['ING', 'ANZ'])).toBe(true)
+    expect(isAnz(['ING'])).toBe(false)
   })
 
   it('and the five go out in its words', () => {
@@ -143,7 +147,7 @@ describe('ANZ ASKS FIVE MORE, AND NOBODY ELSE IS ASKED THEM', () => {
 
   it('and an answer typed for ANZ does not leak out under another lender', () => {
     const ing = buildValuation(DEAL, SECURITY,
-      { ...ANSWERS, lender: 'ING', anzLvr: '80', anzTenure: 'Strata' }, WHO)
+      { ...ANSWERS, lenders: ['ING'], anzLvr: '80', anzTenure: 'Strata' }, WHO, BROKER)
     expect(ing.body).not.toContain('STRATA')
     expect(ing.body).not.toContain('ANZ_ExpectedLVR: 80')
   })
@@ -197,8 +201,8 @@ describe('AND IT SAYS WHAT VALERIO WOULD ASK FOR', () => {
   })
 
   it('and names each one in words, not as a key', () => {
-    const bare = buildValuation(DEAL, SECURITY, {}, WHO)
-    expect(bare.missing).toContain('the lender')
+    const bare = buildValuation(DEAL, SECURITY, {}, WHO, BROKER)
+    expect(bare.missing).toContain('at least one lender')
     expect(bare.missing).toContain('the property type')
     expect(bare.missing).toContain('who lets the valuer in')
     expect(bare.missing).toContain('a mobile for the access contact')
@@ -206,21 +210,21 @@ describe('AND IT SAYS WHAT VALERIO WOULD ASK FOR', () => {
 
   it('AND A HOUSE WITH NO ADDRESS CANNOT BE VALUED', () => {
     // A purchase that is still TBA has nothing for CoreLogic to look up.
-    const tba = buildValuation(DEAL, { ...SECURITY, address: 'TBA' }, ANSWERS, WHO)
+    const tba = buildValuation(DEAL, { ...SECURITY, address: 'TBA' }, ANSWERS, WHO, BROKER)
     expect(tba.missing.join(' ')).toContain('a full address')
     expect(canOrder({ address: 'TBA' })).toBe(true)
     expect(canOrder({ address: '' })).toBe(false)
   })
 
   it('and a company name is only wanted when the tick is on', () => {
-    expect(buildValuation(DEAL, SECURITY, { ...ANSWERS, inCompany: true }, WHO).missing)
+    expect(buildValuation(DEAL, SECURITY, { ...ANSWERS, inCompany: true }, WHO, BROKER).missing)
       .toContain('the company name')
-    expect(buildValuation(DEAL, SECURITY, ANSWERS, WHO).missing)
+    expect(buildValuation(DEAL, SECURITY, ANSWERS, WHO, BROKER).missing)
       .not.toContain('the company name')
   })
 
   it('AND ANZ’S OWN QUESTIONS ARE ONLY MISSING FOR ANZ', () => {
-    expect(buildValuation(DEAL, SECURITY, { ...ANSWERS, lender: 'ANZ' }, WHO).missing)
+    expect(buildValuation(DEAL, SECURITY, { ...ANSWERS, lenders: ['ANZ'] }, WHO, BROKER).missing)
       .toContain("ANZ's expected LVR")
     expect(v.missing).not.toContain("ANZ's expected LVR")
   })
@@ -287,5 +291,184 @@ describe('AND THE SCREEN ASKS FOUR THINGS, NOT FIFTEEN', () => {
 
   it('AND A STRAY CLICK DOES NOT THROW A TYPED MOBILE AWAY', () => {
     expect(UI).toContain('NO CLICK-AWAY')
+  })
+})
+
+// --- 5 Nov 2026, the second spec -------------------------------------------
+//
+// Five changes, and three of them exist because the person who PRESSES the
+// button is not always the person whose deal it is.
+
+describe('ONE PROPERTY, SEVERAL LENDERS, ONE EMAIL', () => {
+  const three = buildValuation(DEAL, SECURITY,
+    { ...ANSWERS, lenders: ['ING', 'ANZ - Brokers', 'Macquarie'],
+      anzLvr: '80', anzTenure: 'Freehold', anzHolds: false, anzOnCompletion: false }, WHO, BROKER)
+
+  it('they go out on one line, as CoreLogic spells them', () => {
+    // "separated by ' | ' (e.g. ING | ANZ - Brokers | Macquarie)". These are
+    // the library's names, which is why they are not an enum of ours.
+    expect(three.body).toContain('Lender: ING | ANZ - Brokers | Macquarie')
+  })
+
+  it('AND EVERYTHING ELSE IS ASKED ONCE', () => {
+    // Three lenders is three orders off one set of answers. Asking the same
+    // fifteen questions per bank would be asking them again.
+    expect((three.body.match(/StreetAddress:/g) || []).length).toBe(1)
+    expect((three.body.match(/AccessMobile:/g) || []).length).toBe(1)
+  })
+
+  it('and a bank in the list brings its own questions with it', () => {
+    expect(three.body).toContain('ANZ_ExpectedLVR: 80')
+  })
+
+  it('AND A LENDER VALERIO CANNOT ORDER IS NAMED, NOT REFUSED', () => {
+    // He orders the others and writes back that this one needs a person, so
+    // ticking it is a note rather than a mistake.
+    expect(byHandOnly(['ING', 'CBA'])).toEqual(['CBA'])
+    expect(byHandOnly(['ING'])).toEqual([])
+    expect(buildValuation(DEAL, SECURITY, { ...ANSWERS, lenders: ['ING', 'CBA'] }, WHO, BROKER).byHand)
+      .toEqual(['CBA'])
+  })
+
+  it('and nothing ticked is the one thing it will not send', () => {
+    expect(buildValuation(DEAL, SECURITY, { ...ANSWERS, lenders: [] }, WHO, BROKER).missing)
+      .toContain('at least one lender')
+  })
+})
+
+describe('AND IT IS ORDERED UNDER THE BROKER, NOT THE PRESSER', () => {
+  it('both names go, and they are different people', () => {
+    // Valerio signs into CoreLogic with the broker's own login, so a
+    // valuation ordered by credit still lands in the right broker's account.
+    expect(v.body).toContain('RequestedByName: Ellie')
+    expect(v.body).toContain('RequestedByEmail: ellie@simplifyfinance.com.au')
+    expect(v.body).toContain('BrokerName: Fabio De Castro')
+    expect(v.body).toContain('BrokerEmail: fabio@simplifyfinance.com.au')
+  })
+
+  it('AND A DEAL WITH NO BROKER IS ASKED, NOT GUESSED', () => {
+    const none = buildValuation(DEAL, SECURITY, ANSWERS, WHO, undefined)
+    expect(none.missing).toContain('which broker to order it under')
+  })
+
+  it('and half a broker is no broker', () => {
+    expect(buildValuation(DEAL, SECURITY, ANSWERS, WHO, { name: 'Someone' }).missing)
+      .toContain('which broker to order it under')
+  })
+})
+
+describe('AND NOBODY IS COPIED TWICE', () => {
+  it('the broker and Fabio, when credit pressed it', () => {
+    expect(copyList('ellie@simplifyfinance.com.au', 'mark@simplifyfinance.com.au'))
+      .toEqual(['mark@simplifyfinance.com.au', COPY_TO])
+  })
+
+  it('AND FABIO ONCE WHEN FABIO IS THE BROKER', () => {
+    expect(copyList('ellie@simplifyfinance.com.au', COPY_TO)).toEqual([COPY_TO])
+  })
+
+  it('AND NOT AT ALL WHEN FABIO PRESSED IT HIMSELF', () => {
+    // The reply already goes to the sender. Copying them is a second email
+    // saying the same thing.
+    expect(copyList(COPY_TO, COPY_TO)).toEqual([])
+    expect(copyList(COPY_TO, '')).toEqual([])
+  })
+
+  it('and the broker is not copied on their own request', () => {
+    expect(copyList('mark@simplifyfinance.com.au', 'mark@simplifyfinance.com.au'))
+      .toEqual([COPY_TO])
+  })
+
+  it('AND CASE IS NOT A DIFFERENT PERSON', () => {
+    expect(copyList('Fabio@SimplifyFinance.com.au', COPY_TO)).toEqual([])
+  })
+
+  it('and the request carries the same list the screen shows', () => {
+    expect(v.cc).toEqual([COPY_TO])
+  })
+})
+
+describe('AND BANKWEST ASKS ITS OWN FOUR', () => {
+  const bw = buildValuation(DEAL, SECURITY, {
+    ...ANSWERS, lenders: ['Bankwest'], bwUnder50: false,
+    bwCurrentLenderBwCba: true, bwSpecial: ['BRIDGING', 'OVER_2HA'],
+  }, WHO, BROKER)
+
+  it('it knows when Bankwest is one of them', () => {
+    expect(hasBankwest(['Bankwest'])).toBe(true)
+    expect(hasBankwest(['ING', 'Bankwest'])).toBe(true)
+    expect(hasBankwest(['ING'])).toBe(false)
+  })
+
+  it('and the four go out in its words', () => {
+    expect(bw.body).toContain('BW_Under50sqm: N')
+    expect(bw.body).toContain('BW_CurrentLenderBWCBA: Y')
+    expect(bw.body).toContain('BW_Special: BRIDGING, OVER_2HA')
+  })
+
+  it('AND NOTHING TICKED IS NONE, NOT BLANK', () => {
+    // Blank would read as a question nobody was asked.
+    const plain = buildValuation(DEAL, SECURITY,
+      { ...ANSWERS, lenders: ['Bankwest'], bwUnder50: false, bwCurrentLenderBwCba: false }, WHO, BROKER)
+    expect(plain.body).toContain('BW_Special: NONE')
+  })
+
+  it('AND IT ASKS ONE OR THE OTHER, NEVER BOTH', () => {
+    // Off the plan on a purchase; the current lender on a refinance.
+    expect(bw.body).toContain('BW_OffThePlan:\n')
+    const buying = buildValuation(DEAL, { ...SECURITY, id: 'BEING_PURCHASED' },
+      { ...ANSWERS, lenders: ['Bankwest'], bwUnder50: false, bwOffThePlan: true }, WHO, BROKER)
+    expect(buying.body).toContain('BW_OffThePlan: Y')
+    expect(buying.body).toContain('BW_CurrentLenderBWCBA:\n')
+  })
+
+  it('and a purchase is asked about off the plan, not about its current lender', () => {
+    const buying = buildValuation(DEAL, { ...SECURITY, id: 'BEING_PURCHASED' },
+      { ...ANSWERS, lenders: ['Bankwest'], bwUnder50: false }, WHO, BROKER)
+    expect(buying.missing).toContain('whether it is off the plan — Bankwest asks')
+    expect(buying.missing).not.toContain('whether the current lender is Bankwest or CBA — Bankwest asks')
+  })
+
+  it('AND NOTHING OF BANKWEST’S LEAKS OUT UNDER ANOTHER LENDER', () => {
+    const ing = buildValuation(DEAL, SECURITY,
+      { ...ANSWERS, lenders: ['ING'], bwUnder50: true, bwSpecial: ['BRIDGING'] }, WHO, BROKER)
+    expect(ing.body).toContain('BW_Under50sqm:\n')
+    expect(ing.body).not.toContain('BRIDGING')
+  })
+
+  it('AND AN UNANSWERED YES OR NO IS BLANK, NEVER A GUESSED NO', () => {
+    // "No" is an answer with consequences. Nobody has given it yet.
+    const unasked = buildValuation(DEAL, SECURITY, { ...ANSWERS, lenders: ['Bankwest'] }, WHO, BROKER)
+    expect(unasked.body).toContain('BW_Under50sqm:\n')
+    expect(unasked.missing).toContain('whether it is under 50 m² — Bankwest asks')
+  })
+})
+
+describe('AND THE SCREEN KEEPS UP', () => {
+  const UI = readFileSync('components/OrderValuation.tsx', 'utf8')
+
+  it('lenders are ticked, not chosen one at a time', () => {
+    expect(UI).toContain('Lenders — tick as many as you want')
+    // The broker is still a dropdown, and should be - there is one of those.
+    expect(UI).not.toContain('{lenders.map(l => <option')
+  })
+
+  it('AND THE BROKER COMES OFF user_profiles, WHICH ALREADY HOLDS THE EMAIL', () => {
+    expect(UI).toContain("from('user_profiles')")
+    expect(UI).toContain('broker_key')
+  })
+
+  it('and the deal’s own broker is shown rather than asked', () => {
+    expect(UI).toContain('deal?.assigned_broker && broker')
+  })
+
+  it('AND THE CC LIST IS THE ONE THE LIBRARY WORKED OUT', () => {
+    // So the screen and the email cannot disagree about who was copied.
+    expect(UI).toContain('req.cc.join')
+  })
+
+  it('and Bankwest brings its panel with it', () => {
+    expect(UI).toContain('Bankwest asks four more')
+    expect(UI).toContain('BW_SPECIAL.map')
   })
 })
