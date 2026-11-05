@@ -80,6 +80,20 @@ if ! ./scripts/check-whole-book.sh; then
   exit 1
 fi
 
+# ONE PLACE READS THE TICKED SECURITIES.
+#
+# 17 Aug 2026. A deal cloned off a refinance and changed to a purchase kept one
+# ticked house. The BC no longer draws the securities block on a purchase, so
+# nobody could untick it, and every reader that went at bc.securityIds itself
+# went on counting it - PROPERTY VALUE $538,085 and LVR 96.6% on a $650,000
+# purchase. Fabio: "where i 538 coming from???"
+echo "Checking who reads the ticked securities..."
+if ! ./scripts/check-securities.sh; then
+  echo
+  echo "NOT SHIPPED - fix the above first."
+  exit 1
+fi
+
 # A SPLIT'S JOB IS NOT ITS POSITION IN THE LIST.
 #
 # 30 Oct 2026. Four deals in two days came out wrong the same way: the panel

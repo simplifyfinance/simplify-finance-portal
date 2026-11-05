@@ -11,7 +11,7 @@ import { andList } from './and-list'
 // leaves no runtime edge back to box-one and the circle stays broken.
 import type { Gap } from './box-one'
 import { buysNothing } from './buying'
-import { canHaveManySecurities } from './complex-refinance'
+import { securityIdsOf } from './securities'
 import { refinancesNothing } from './a-scenario-keeps-its-own-figures'
 import { withArticle } from './article'
 
@@ -141,8 +141,7 @@ export function securitiesOf(deal: any): Security[] {
   // The ticks are cleared on a scenario change now as well - see
   // lib/a-scenario-keeps-its-own-figures.ts - but every deal recorded before
   // today still has them, and a stale tick must not reach a compliance pack.
-  const ticked: string[] = canHaveManySecurities(bc?.template)
-    && Array.isArray(bc?.securityIds) ? bc.securityIds.map(txt).filter(Boolean) : []
+  const ticked: string[] = securityIdsOf(bc)
 
   // AND THE INFERENCE IS NOT MADE ON A SCENARIO THAT REFINANCES NOTHING.
   //

@@ -23,6 +23,7 @@
 // have the question whether or not we invite it.
 
 import { money, readMoney } from './money'
+import { securityIdsOf, canHaveManySecurities } from './securities'
 import { andList } from './and-list'
 import { purposeLabel, purposeOf, fundsUsedFor, offsetLine } from './debt-recycling'
 
@@ -32,46 +33,15 @@ const num = (v: any): number => readMoney(v) || 0
 export function isComplexRefinance(template: any): boolean {
   return txt(template) === 'complex_refinance'
 }
-
-// WHICH SCENARIOS CAN BE SECURED BY MORE THAN ONE HOUSE.
+// canHaveManySecurities LIVES IN lib/securities.ts NOW.
 //
-// 15 Oct 2026. Fabio, on an equity release and purchase where two properties
-// were being refinanced at once: "I also would like to add the ability of
-// adding another property into the template ... and then under the loan split
-// sections, we will then tag which property relates to which. We had this
-// already done in the complex scenario."
-//
-// He is right that it was already done. Complex refinance has picked its
-// securities from the fact find by id since 12 Oct, and every split already
-// carries securityId. The only thing stopping Equity release + purchase from
-// doing the same was this predicate naming one template.
-//
-// A LIST, NOT A GUESS. Anything that refinances an existing property can need
-// two; a straight purchase cannot. Adding a template here is the whole job -
-// the securities block, the per-split Security box and the LVR across the
-// securities all read this one answer.
-// 16 Oct 2026. Fabio, looking at a Refinance + equity release with two houses
-// ticked on the fact find and one set of figures on the BC: "I want the same
-// thing on refinance and equity release and refinance only ... the LO is
-// working in the refinance equity template but the BC still has the old view -
-// did you miss that?"
-//
-// I did. The list named two templates and his two were not on it. Everything
-// else already asks this one question, so this line was the whole of the form.
-//
-// THE EMAIL WAS NOT THE WHOLE OF IT, and that is the part I had left unfinished
-// the day before. Those templates print the deal-level existingLoanBal and
-// equityRelease - the exact two boxes that leave the form once each property
-// carries its own - so adding a name here without touching the email gives a
-// client a Split 1 card with no balance and a Split 2 card headed "Equity
-// release amount" with nothing beside it. See securedByMany below, and the
-// property cards in app/api/generate-email/route.ts that read it.
-const MANY_SECURITIES = ['complex_refinance', 'investment_equity',
-                         'refinance_equity', 'refinance_only', 'top_up', 'top_up_purchase']
-
-export function canHaveManySecurities(template: any): boolean {
-  return MANY_SECURITIES.includes(txt(template))
-}
+// 17 Aug 2026. securityIdsOf() has to ask it before it hands back a tick, and
+// this file has to ask securityIdsOf() for the same reason, so one of the two
+// had to move or they would import each other. It is a question about
+// securities, so it went to the file about securities. Re-exported here
+// because half the portal already asks this file for it, and a rename that
+// touches twelve call sites to move one function is not a fix.
+export { canHaveManySecurities } from './securities'
 
 // A REFINANCE ONLY RELEASES NOTHING, SO IT IS NOT ASKED.
 //
@@ -105,7 +75,7 @@ export function canReleaseEquity(template: any): boolean {
 // deals that have securities on them, and nothing else changes.
 export function securedByMany(bc: any): boolean {
   if (!canHaveManySecurities(bc?.template)) return false
-  return Array.isArray(bc?.securityIds) && bc.securityIds.filter((x: any) => txt(x)).length > 0
+  return securityIdsOf(bc).length > 0
 }
 
 // WHICH HOUSE A SPLIT IS AGAINST.
@@ -325,7 +295,7 @@ export function securedHeading(bc: any): string {
 // an LVR divides by must not depend on whether somebody has written the loan
 // against it yet.
 export function securityWorth(bc: any): number {
-  const ids = new Set((Array.isArray(bc?.securityIds) ? bc.securityIds : []).map(txt).filter(Boolean))
+  const ids = new Set(securityIdsOf(bc))
   if (ids.size === 0) return 0
   const list = Array.isArray(bc?.ffProperties) ? bc.ffProperties : []
   return list.filter((p: any) => ids.has(txt(p?.id)))
@@ -333,13 +303,13 @@ export function securityWorth(bc: any): number {
 }
 
 export function balanceTotal(bc: any): number {
-  const ids = Array.isArray(bc?.securityIds) ? bc.securityIds.map(txt).filter(Boolean) : []
+  const ids = securityIdsOf(bc)
   const total = ids.reduce((sum: number, id: string) => sum + balanceFor(bc, id), 0)
   return total > 0 ? total : num(bc?.existingLoanBal)
 }
 
 export function releaseTotal(bc: any): number {
-  const ids = Array.isArray(bc?.securityIds) ? bc.securityIds.map(txt).filter(Boolean) : []
+  const ids = securityIdsOf(bc)
   const total = ids.reduce((sum: number, id: string) => sum + releaseFor(bc, id), 0)
   return total > 0 ? total : num(bc?.equityRelease)
 }

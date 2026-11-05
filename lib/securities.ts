@@ -32,7 +32,6 @@
 
 import { readMoney, money } from './money'
 import { isTopUp, lendingAgainst } from './top-up'
-import { canHaveManySecurities } from './complex-refinance'
 import { TEMPLATE_LABELS } from './templates'
 
 const txt = (v: any) => String(v ?? '').trim()
@@ -69,6 +68,47 @@ export type Security = {
   // Typed on the BC. Blank is legitimate - plenty of deals are drawn to the
   // limit and there is nothing extra approved.
   limit: string
+}
+
+
+// WHICH SCENARIOS CAN BE SECURED BY MORE THAN ONE HOUSE.
+//
+// 15 Oct 2026. Fabio, on an equity release and purchase where two properties
+// were being refinanced at once: "I also would like to add the ability of
+// adding another property into the template ... and then under the loan split
+// sections, we will then tag which property relates to which. We had this
+// already done in the complex scenario."
+//
+// He is right that it was already done. Complex refinance has picked its
+// securities from the fact find by id since 12 Oct, and every split already
+// carries securityId. The only thing stopping Equity release + purchase from
+// doing the same was this predicate naming one template.
+//
+// A LIST, NOT A GUESS. Anything that refinances an existing property can need
+// two; a straight purchase cannot. Adding a template here is the whole job -
+// the securities block, the per-split Security box and the LVR across the
+// securities all read this one answer.
+// 16 Oct 2026. Fabio, looking at a Refinance + equity release with two houses
+// ticked on the fact find and one set of figures on the BC: "I want the same
+// thing on refinance and equity release and refinance only ... the LO is
+// working in the refinance equity template but the BC still has the old view -
+// did you miss that?"
+//
+// I did. The list named two templates and his two were not on it. Everything
+// else already asks this one question, so this line was the whole of the form.
+//
+// THE EMAIL WAS NOT THE WHOLE OF IT, and that is the part I had left unfinished
+// the day before. Those templates print the deal-level existingLoanBal and
+// equityRelease - the exact two boxes that leave the form once each property
+// carries its own - so adding a name here without touching the email gives a
+// client a Split 1 card with no balance and a Split 2 card headed "Equity
+// release amount" with nothing beside it. See securedByMany below, and the
+// property cards in app/api/generate-email/route.ts that read it.
+const MANY_SECURITIES = ['complex_refinance', 'investment_equity',
+                         'refinance_equity', 'refinance_only', 'top_up', 'top_up_purchase']
+
+export function canHaveManySecurities(template: any): boolean {
+  return MANY_SECURITIES.includes(txt(template))
 }
 
 export function securityIdsOf(bc: any): string[] {

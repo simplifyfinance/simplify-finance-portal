@@ -25,6 +25,7 @@
 // months and $364,412 of interest. His site: the same, to the dollar.
 
 import { readMoney } from './money'
+import { securityIdsOf } from './securities'
 
 const n = (v: any) => readMoney(v) ?? 0
 const txt = (v: any) => String(v ?? '').trim()
@@ -199,7 +200,7 @@ export function offersAnalysis(template: any): boolean {
  * client already owes - never the new total lending.
  */
 export function analysedBalance(bc: any): number {
-  const ids: string[] = Array.isArray(bc?.securityIds) ? bc.securityIds.map(String) : []
+  const ids: string[] = securityIdsOf(bc)
   const balances = bc?.securityBalances
   if (ids.length > 0 && balances && typeof balances === 'object') {
     const total = ids.reduce((t, id) => t + n(balances[id]), 0)
@@ -312,7 +313,7 @@ export function analysisFor(bc: any, ff: any, newRate?: any): Analysis | null {
 export function currentRateOf(bc: any, ff: any): string {
   const typed = txt(bc?.analysisCurrentRate)
   if (typed) return typed
-  const ids = new Set((Array.isArray(bc?.securityIds) ? bc.securityIds : []).map((x: any) => txt(x)))
+  const ids = new Set(securityIdsOf(bc))
   const props: any[] = Array.isArray(ff?.properties) ? ff.properties : []
   const rates = new Set<string>()
   for (const p of props) {

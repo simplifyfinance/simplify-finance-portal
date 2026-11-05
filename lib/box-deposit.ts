@@ -7,6 +7,7 @@ import { dealRow, splitsOf, isMixed } from './deal-structure'
 import { applicantsOf } from './applicants'
 import { variantOf, andList, type Gap } from './box-one'
 import { isTopUp, increaseTotal, lendingAgainst, anyRefinanced, isDollarForDollar } from './top-up'
+import { securityIdsOf } from './securities'
 
 // BOX SEVEN — DEPOSIT / EQUITY.
 //
@@ -360,7 +361,7 @@ export function boxSeven(deal: any): Box {
   // box must never imply on a top up is a refinance.
   else if (shape === 'top_up' || shape === 'top_up_purchase') {
     const bcNow = deal?.bc_data || {}
-    const ids: string[] = Array.isArray(bcNow?.securityIds) ? bcNow.securityIds.map(String) : []
+    const ids: string[] = securityIdsOf(bcNow)
     const staying = ids.filter(id => !isDollarForDollar(bcNow, id))
     const owed = staying.reduce((t, id) =>
       t + num((bcNow?.securityBalances || {})[id]), 0)

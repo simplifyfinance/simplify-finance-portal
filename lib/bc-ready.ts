@@ -21,6 +21,7 @@
 import { everySplitHasAPurpose } from './debt-recycling'
 import { isSellAndBuild } from './sale-build'
 import { everySplitHasAProperty } from './complex-refinance'
+import { securityIdsOf } from './securities'
 
 const txt = (v: any) => String(v ?? '').trim()
 const empty = (v: any) => txt(v) === '' || txt(v) === '0'
@@ -152,7 +153,8 @@ export function missingForEmail(template: string, d: any): MissingBox[] {
   // The template decides, except where an answer inside the template decides
   // instead. Asked of the record, so nothing has to pass a second argument.
   const base = boxesForScenario(txt(template), d)
-  const securedByMany = Array.isArray(d?.securityIds) && d.securityIds.length > 0
+  // One answer: securityIdsOf asks the scenario first. See lib/securities.ts.
+  const securedByMany = securityIdsOf({ ...d, template: txt(template) }).length > 0
   const wanted = securedByMany ? base.filter(k => !ON_THE_SECURITIES.includes(k)) : base
   const missing = wanted
     .filter(k => empty(valueOf(k, d)))
