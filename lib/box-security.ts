@@ -11,6 +11,8 @@ import { andList } from './and-list'
 // leaves no runtime edge back to box-one and the circle stays broken.
 import type { Gap } from './box-one'
 import { buysNothing } from './buying'
+import { canHaveManySecurities } from './complex-refinance'
+import { refinancesNothing } from './a-scenario-keeps-its-own-figures'
 import { withArticle } from './article'
 
 // BOX NINE — SECURITY.
@@ -127,9 +129,31 @@ export function securitiesOf(deal: any): Security[] {
   // The inference is not being replaced. Every deal that is not a complex
   // refinance, and every complex refinance where nobody has ticked anything,
   // still reaches it untouched below.
-  const ticked: string[] = Array.isArray(bc?.securityIds) ? bc.securityIds.map(txt).filter(Boolean) : []
+  //
+  // AND ONLY WHERE THE SCENARIO HAS THAT QUESTION. 17 Aug 2026. This read the
+  // ticks with no template in its hand. A deal cloned off a refinance and
+  // changed to a purchase still carried one ticked house, the BC had stopped
+  // drawing the securities block so nobody could untick it, and this counted it
+  // beside the property being bought - a property value of $538,085 and an LVR
+  // of 96.6% on a deal the BC said was 80%. canHaveManySecurities() is the same
+  // question the BC asks before it draws the block at all.
+  //
+  // The ticks are cleared on a scenario change now as well - see
+  // lib/a-scenario-keeps-its-own-figures.ts - but every deal recorded before
+  // today still has them, and a stale tick must not reach a compliance pack.
+  const ticked: string[] = canHaveManySecurities(bc?.template)
+    && Array.isArray(bc?.securityIds) ? bc.securityIds.map(txt).filter(Boolean) : []
 
-  for (const p of deal?.fact_find_data?.properties || []) {
+  // AND THE INFERENCE IS NOT MADE ON A SCENARIO THAT REFINANCES NOTHING.
+  //
+  // 17 Aug 2026, the other half of the same clone. With the stale tick gone,
+  // this fell through to the rule below - any property whose loan is marked to
+  // be refinanced is security - and Glenfield Park's loan still said so,
+  // because the fact find came across with the clone too. A purchase pays out
+  // nothing, so there is no property being refinanced to find.
+  const nothingToPayOut = refinancesNothing(bc?.template)
+
+  for (const p of nothingToPayOut ? [] : (deal?.fact_find_data?.properties || [])) {
     const loan = (p?.loans || []).find((l: any) => isBeingDischarged(l?.status))
     // Ticked and carrying no refinancing loan is still security - a property put
     // up purely to support the lend has no loan on it to mark.

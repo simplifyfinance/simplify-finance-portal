@@ -23,6 +23,7 @@ import { auDate } from '@/lib/client-position'
 import { PURPOSES, isDebtRecycling, limitCheck } from '@/lib/debt-recycling'
 import { isComplexRefinance, canHaveManySecurities, canReleaseEquity,
          groupsOf } from '@/lib/complex-refinance'
+import { figuresAfterScenarioChange, splitsAfterScenarioChange } from '@/lib/a-scenario-keeps-its-own-figures'
 import { ffProperties, securitiesOf, securitiesWithPurchase, totalsOf, groupBySecurity,
          orphanSplits, canBuyAndRefinance, purchaseLoanOf,
         BEING_PURCHASED, BEING_PURCHASED_LABEL,
@@ -1664,6 +1665,28 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     // See emailAfterScenarioChange() in lib/email-freshness.ts, including why
     // this is not the portal rewriting an email behind somebody's back.
     resetEmailFor(templateLabel(previous))
+    // AND THE FIGURES THAT BELONGED TO THE OLD SCENARIO GO WITH IT.
+    //
+    // 17 Aug 2026, Fabio on Bradley Cain Refi Cash Out 2026_2026_Copy: "when I
+    // clone a deal and change the template I dont want the working or the old
+    // security to carry". A clone brings the whole bc_data across, which is
+    // what it is for, and until now a scenario change cleared the splits, the
+    // notes and the wording and left the figures exactly where they were.
+    //
+    // They were invisible and still being read. A purchase does not draw an
+    // Existing loan balance box, so the refinance's $350,000 sat in the record
+    // unseen and printed inside a card headed NEW PURCHASE; the house ticked as
+    // security on the refinance was counted beside the one being bought and put
+    // the LVR on the lending options at 96.6%.
+    //
+    // NOT THE BROKER'S OWN PARAGRAPH. Asked directly: "dont clear my paragrah".
+    // See lib/a-scenario-keeps-its-own-figures.ts, which holds the whole rule
+    // and reads its list of boxes off lib/bc-ready.ts rather than keeping a
+    // second one.
+    const cleared = figuresAfterScenarioChange(buildBcData(), id)
+    for (const key of cleared.keys) BC_SETTERS[key]?.(cleared.values[key])
+    // And the copy of it that Keep carries onto the splits themselves.
+    setSplits(prev => splitsAfterScenarioChange(prev, id) as Split[])
   }
 
   // Taken down, and said out loud. Both places a scenario changes come through

@@ -1209,7 +1209,6 @@ export async function POST(req: NextRequest) {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(fmtNum(totalLending(d.splits)), '[amount]')}</strong>.`) +
       p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>.`) +
-      p13('Here is a breakdown of the structure:') +
       card('The Purchase',
         purchaseBlock({
           price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),

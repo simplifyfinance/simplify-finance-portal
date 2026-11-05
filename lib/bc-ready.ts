@@ -119,12 +119,39 @@ function valueOf(key: string, d: any): any {
 // go and fill in boxes that are not on the screen any more.
 const ON_THE_SECURITIES = ['suburb', 'existingLoanBal', 'propertyValue', 'equityRelease']
 
+// WHICH BOXES THIS SCENARIO HAS A HOME FOR.
+//
+// 17 Aug 2026. Fabio, on a cloned refinance switched to a purchase: "when I
+// clone a deal and change the template I dont want the working or the old
+// security to carry". It was carrying. A purchase has no Existing loan balance
+// box and no Property value box, so the two figures were invisible on the form
+// and still being read - into the client's email, and into the LVR on the
+// lending options.
+//
+// The list of what a scenario asks for already exists, right above. It was
+// being used for one question only: what is still blank. This is the same list
+// answering the other half of the same question: what has no business being
+// filled in at all. One list, so the two cannot disagree - which is the fault
+// this codebase keeps paying for.
+// Is this a scenario with a box list of its own? "custom" means "leave my
+// structure alone and show me everything", and an unrecognised template is a
+// deal recorded by a version of the portal this one does not know about.
+// Neither can be asked what it has no home for, so neither is.
+export function scenarioHasItsOwnBoxes(template: unknown): boolean {
+  const t = txt(template)
+  return t !== 'custom' && Object.prototype.hasOwnProperty.call(NEEDS, t)
+}
+
+export function boxesForScenario(template: string, d: any): string[] {
+  return isSellAndBuild({ ...d, template })
+    ? NEEDS.buy_sell_build
+    : (NEEDS[txt(template)] || NEEDS.custom)
+}
+
 export function missingForEmail(template: string, d: any): MissingBox[] {
   // The template decides, except where an answer inside the template decides
   // instead. Asked of the record, so nothing has to pass a second argument.
-  const base = isSellAndBuild({ ...d, template })
-    ? NEEDS.buy_sell_build
-    : (NEEDS[txt(template)] || NEEDS.custom)
+  const base = boxesForScenario(txt(template), d)
   const securedByMany = Array.isArray(d?.securityIds) && d.securityIds.length > 0
   const wanted = securedByMany ? base.filter(k => !ON_THE_SECURITIES.includes(k)) : base
   const missing = wanted
