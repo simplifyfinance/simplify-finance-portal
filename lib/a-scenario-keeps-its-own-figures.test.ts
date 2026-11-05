@@ -4,6 +4,8 @@ import { readFileSync } from 'fs'
 import { figuresAfterScenarioChange, clearedSentence, refinancesNothing,
          SCENARIO_FIGURES, SECURITY_BOXES } from './a-scenario-keeps-its-own-figures'
 import { securitiesOf as boxSecuritiesOf } from './box-security'
+import { securityIdsOf } from './securities'
+import { securityValue } from './funds-to-complete'
 
 // Brad's cloned deal, as it reached the lending options.
 const CLONE: any = {
@@ -198,5 +200,63 @@ describe('the purchase email says it once', () => {
     const branch = route.slice(start, route.indexOf('} else if', start + 10))
     expect(branch).toContain('structureLead(')
     expect(branch).not.toContain("p13('Here is a breakdown of the structure:')")
+  })
+})
+
+// ---------------------------------------------------------------------------
+// WHERE $538,085 WAS COMING FROM.
+//
+// The strip read securityValue(), which reads securitiesWithPurchase(), which
+// reads securitiesOf(), which read the ticks with no template in its hand. One
+// ticked house from the refinance, no purchase beside it because
+// canBuyAndRefinance says a plain purchase does not refinance - so the whole
+// denominator was the old house. Fabio: "where i 538 coming from???"
+
+describe('the ticks are read only where the scenario has them', () => {
+  const bc = (template: string) => ({ template, securityIds: ['p-glenfield'] })
+
+  it('returns none on a scenario that cannot hold securities', () => {
+    expect(securityIdsOf(bc('oo_purchase'))).toEqual([])
+    expect(securityIdsOf(bc('fhb'))).toEqual([])
+  })
+
+  it('returns them on a scenario that can', () => {
+    expect(securityIdsOf(bc('complex_refinance'))).toEqual(['p-glenfield'])
+    expect(securityIdsOf(bc('refinance_equity'))).toEqual(['p-glenfield'])
+  })
+
+  // A record with no template on it, and custom, keep what they have.
+  it('leaves a record with no template alone', () => {
+    expect(securityIdsOf({ securityIds: ['p-glenfield'] })).toEqual(['p-glenfield'])
+    expect(securityIdsOf(bc('custom'))).toEqual(['p-glenfield'])
+    expect(securityIdsOf(bc('something_shipped_later'))).toEqual(['p-glenfield'])
+  })
+})
+
+describe('the deal structure strip on the cloned purchase', () => {
+  const DEAL: any = {
+    fact_find_data: { properties: [{ id: 'p-glenfield',
+      address: '2/6-14 Mirrul Street, Glenfield Park NSW 2650', value: '538085',
+      loans: [{ status: 'To be refinanced', lenderName: 'ANZ', balance: '350000' }] }] },
+    bc_data: {
+      template: 'oo_purchase',
+      purchasePrice: '650,000', stampDuty: '24,000', deposit: '154,000',
+      // everything the clone left behind
+      securityIds: ['p-glenfield'], propertyValue: '538,085', existingLoanBal: '350,000',
+      splits: [{ label: 'Split 1', amount: '520,000', rate: '5.99' }],
+    },
+  }
+
+  it('values the security at what is being paid for it', () => {
+    expect(securityValue(DEAL).total).toBe(650000)
+  })
+
+  it('does not put the old house in the denominator', () => {
+    expect(securityValue(DEAL).total).not.toBe(538085)
+  })
+
+  it('gives an LVR a credit officer can act on', () => {
+    // 520,000 over 650,000, not 520,000 over 538,085.
+    expect(securityValue(DEAL).lvr).toBe(80)
   })
 })

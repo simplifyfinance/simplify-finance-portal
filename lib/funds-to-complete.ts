@@ -3,6 +3,7 @@ import { contractPrice, contractLoan, contractStampDuty } from './contract-figur
 import { isLandPurchase, landLoanPayout, dutyApplies } from './construction'
 import { buildsSomething, purchasePriceOf } from './sale-build'
 import { buysNothing } from './buying'
+import { refinancesNothing } from './a-scenario-keeps-its-own-figures'
 import { securitiesWithPurchase, totalsOf, canBuyAndRefinance,
          BEING_PURCHASED, purchaseLoanOf } from './securities'
 import { isTopUp, cashReleased, isDollarForDollar } from './top-up'
@@ -500,14 +501,29 @@ export function securityValue(deal: any): SecurityValue {
       : has(bc.newPurchasePrice) ? num(bc.newPurchasePrice) : 0)
   if (buying > 0) values.push(buying)
 
-  for (const p of deal?.fact_find_data?.properties || []) {
+  // AND NOT ON A SCENARIO THAT PAYS NOTHING OUT. 17 Aug 2026.
+  //
+  // The same inference lib/box-security.ts makes, and the same correction. A
+  // clone brings the fact find across with the old loan still marked to be
+  // refinanced; a purchase refinances nothing, so there is no property being
+  // paid out to find. See lib/a-scenario-keeps-its-own-figures.ts.
+  for (const p of refinancesNothing(bc?.template) ? [] : (deal?.fact_find_data?.properties || [])) {
     // THE PROPERTY DROPDOWN SAYS Refinance, NOT "To be refinanced".
     // 3 Nov 2026 - see isBeingDischarged in lib/security-figures.ts.
     const involved = (p?.loans || []).some((l: any) => isBeingDischarged(l?.status))
     if (involved && has(p?.value)) values.push(num(p.value))
   }
 
-  if (values.length === 0 && has(bc.propertyValue)) values.push(num(bc.propertyValue))
+  // THE LAST RESORT, AND NOT ON A SCENARIO WITH NO SUCH BOX.
+  //
+  // propertyValue is a refinance figure. On the cloned purchase it was the only
+  // thing left in `values` once the two corrections above had done their work,
+  // and $538,085 went on being the denominator of the LVR. A purchase is worth
+  // what is being paid for it; if that is not recorded then nothing is, which
+  // is what the next two lines say.
+  if (values.length === 0 && !refinancesNothing(bc?.template) && has(bc.propertyValue)) {
+    values.push(num(bc.propertyValue))
+  }
 
   const total = values.reduce((s, v) => s + v, 0)
   const loan = loanAmount(deal)

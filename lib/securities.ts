@@ -32,6 +32,8 @@
 
 import { readMoney, money } from './money'
 import { isTopUp, lendingAgainst } from './top-up'
+import { canHaveManySecurities } from './complex-refinance'
+import { TEMPLATE_LABELS } from './templates'
 
 const txt = (v: any) => String(v ?? '').trim()
 const num = (v: any): number => readMoney(v) || 0
@@ -70,6 +72,33 @@ export type Security = {
 }
 
 export function securityIdsOf(bc: any): string[] {
+  // ONLY WHERE THE SCENARIO HAS THAT QUESTION. 17 Aug 2026.
+  //
+  // This is the one place the ticks are read, and it was reading them with no
+  // template in its hand. A deal cloned off a refinance and changed to an
+  // owner-occupied purchase still carried one ticked house: the BC had stopped
+  // drawing the securities block so nobody could untick it, canBuyAndRefinance
+  // said no so the house being bought was never added beside it, and the deal
+  // structure strip printed PROPERTY VALUE $538,085 and LVR 96.6% against a
+  // $650,000 purchase with $520,000 of lending. Fabio: "where i 538 coming
+  // from???"
+  //
+  // canHaveManySecurities() is the same question the BC asks before it draws
+  // the block at all. Asked here, every reader gets the same answer - the
+  // strip, the compliance pack, the client email, the LVR and the deposit box -
+  // rather than each one remembering to ask.
+  //
+  // The ticks are cleared on a scenario change now as well, see
+  // lib/a-scenario-keeps-its-own-figures.ts. That fixes the record going
+  // forward; this fixes every deal already recorded.
+  // A RECORD WITH NO TEMPLATE ON IT KEEPS WHAT IT HAS. Same rule as
+  // buysNothing() in lib/buying.ts: this is not the opposite of
+  // canHaveManySecurities, it is the narrow case we are sure about. A blank or
+  // unrecognised template, and "custom" which draws every box there is, all
+  // behave exactly as they did before this line existed.
+  const t = txt(bc?.template)
+  const known = Object.prototype.hasOwnProperty.call(TEMPLATE_LABELS, t)
+  if (t && known && t !== 'custom' && !canHaveManySecurities(t)) return []
   return Array.isArray(bc?.securityIds) ? bc.securityIds.map(txt).filter(Boolean) : []
 }
 
