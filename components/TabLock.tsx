@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { canUnlock, unlockNote, reasonIsEnough, TAB_LABEL } from '@/lib/deal-lock'
 import { addSystemNote } from '@/components/DealFile'
+import SomethingChanged from '@/components/SomethingChanged'
 
 // Read only past lodgement.
 //
@@ -15,13 +16,20 @@ import { addSystemNote } from '@/components/DealFile'
 // input, textarea, select and button inside it, so all five tabs are covered
 // without touching five large forms and hoping nothing was missed.
 
-export default function TabLock({ locked, tab, dealId, role, me, onUnlocked, children }: {
+export default function TabLock({ locked, tab, dealId, deal, role, me, onUnlocked,
+                                  onDealPatched, children }: {
   locked: boolean
   tab: string
   dealId: string
+  // THE WHOLE DEAL, for the fact find's "Something changed" panel below. The
+  // lock already knows the deal is lodged; this is what lets it offer the one
+  // thing a lodged fact find still has to be able to do. See
+  // components/SomethingChanged.tsx.
+  deal?: any
   role: string | undefined
   me: { id: string | null; name: string }
   onUnlocked: () => void
+  onDealPatched?: (patch: any) => void
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
@@ -70,6 +78,19 @@ export default function TabLock({ locked, tab, dealId, role, me, onUnlocked, chi
           </span>
         )}
       </div>
+
+      {/* AND THE ONE THING A LODGED FACT FIND STILL HAS TO DO.
+        *
+        * 17 Aug 2026, Ellie: a client moved house during the application. The
+        * fact find above is read only and stays that way - it is what the
+        * lender was told. The new address goes BESIDE it rather than over it.
+        *
+        * Out here rather than on the field because the lock is one <fieldset
+        * disabled> around everything above, which is why it has never leaked.
+        * An exception to that would not stay an exception. */}
+      {tab === 'FactFind' && deal && onDealPatched && (
+        <SomethingChanged deal={deal} me={me} onDealPatched={onDealPatched} />
+      )}
 
       {open && (
         <div className="fixed inset-0 bg-black/30 flex items-start justify-center z-50 p-6 overflow-y-auto"

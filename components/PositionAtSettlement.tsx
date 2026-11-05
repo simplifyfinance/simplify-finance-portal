@@ -7,6 +7,9 @@ import {
   type Applicant,
 } from '@/lib/client-position'
 import SaveTheAssessment from '@/components/SaveTheAssessment'
+import {
+  pendingFor, clientPatchFor, marked, recordedBy, type Change,
+} from '@/lib/changed-since-lodgement'
 
 // RECORDING WHAT A CLIENT OWNS, AT THE MOMENT A DEAL SETTLES.
 //
@@ -75,9 +78,49 @@ export default function PositionAtSettlement({ deal, onDone }: {
     )
   }
 
+  // WHAT CHANGED WHILE THE DEAL WAS WITH THE BANK.
+  //
+  // 17 Aug 2026. A client who moved house mid-application has the new address
+  // recorded beside the lodged fact find - see lib/changed-since-lodgement.ts.
+  // This is where it lands on their record, because this is the question the
+  // portal already asks at settlement and the one somebody is already reading.
+  //
+  // Fabio: "maybe my staff is going to forget". They are not asked to
+  // remember. They are shown it, ticked, with the name of whoever recorded it.
+  const [takeChange, setTakeChange] = useState<Record<string, boolean>>({})
+  const pending: Record<string, Change[]> = Object.fromEntries(
+    linked.map(a => [a.id, pendingFor(deal, a.id)]))
+  const everyChange = Object.values(pending).flat()
+  // Ticked to start with, like the position itself. Somebody took the trouble
+  // to record it; the default is that it counts.
+  const wanted = (c: Change) => takeChange[c.id] !== false
+
   async function save() {
     setBusy(true); setErr('')
     for (const applicant of linked) {
+      // THE CHANGES GO EVEN WHERE THE POSITION IS LEFT ALONE.
+      //
+      // They are two different answers. "Do not replace what they own" is
+      // about this deal's assets and liabilities; a client's new address is
+      // true either way, and tying one to the other would lose it silently.
+      const theirs = (pending[applicant.id] || []).filter(wanted)
+      if (theirs.length > 0) {
+        const patch = clientPatchFor(theirs)
+        const problem = await checkedWrite(
+          supabase.from('clients').update(patch).eq('id', applicant.clientId),
+          `${applicantName(applicant)}'s details`)
+        if (problem) { setBusy(false); setErr(problem); return }
+        const now = new Date().toISOString()
+        let list = deal?.changes_since_lodgement
+        for (const c of theirs) list = marked({ changes_since_lodgement: list }, c.id, { appliedAt: now })
+        const stamped = await checkedWrite(
+          supabase.from('deals').update({ changes_since_lodgement: list }).eq('id', deal.id),
+          'The record of which changes were carried over')
+        // The client HAS been updated. Saying nothing here would mean the same
+        // change is offered again next time somebody opens this.
+        if (stamped) { setBusy(false); setErr(stamped); return }
+      }
+
       if (!choice[applicant.id]) continue
       const next = positionFor(factFind, applicant)
 
@@ -147,6 +190,29 @@ export default function PositionAtSettlement({ deal, onDone }: {
           This deal has settled. Replacing a client&rsquo;s position writes what this Fact Find
           holds &mdash; including the loan that just settled &mdash; over what is on their record today.
         </p>
+
+        {everyChange.length > 0 && (
+          <div className="border border-info-edge bg-info-bg rounded-xl px-3.5 py-3 mb-3">
+            <p className="text-[10px] font-bold tracking-[.07em] uppercase text-brand-ink m-0 mb-2">
+              Changed during the application
+            </p>
+            {linked.map(a => (pending[a.id] || []).map(c => (
+              <label key={c.id} className="flex items-start gap-2.5 py-1.5 cursor-pointer">
+                <input type="checkbox" checked={wanted(c)} className="mt-[3px]"
+                  onChange={e => setTakeChange(p => ({ ...p, [c.id]: e.target.checked }))} />
+                <span className="text-[12.5px] text-body leading-[1.45]">
+                  {c.applicantName ? c.applicantName + ' · ' : ''}{c.label} &rarr;{' '}
+                  <b className="text-ink">{c.now}</b>
+                  <span className="block text-[11.5px] text-faint mt-[2px]">{recordedBy(c)}</span>
+                </span>
+              </label>
+            )))}
+            <p className="text-[11.5px] text-muted m-0 mt-1.5 leading-[1.5]">
+              These go onto the client&rsquo;s record whatever you answer below. The lodged fact
+              find is not touched.
+            </p>
+          </div>
+        )}
 
         {linked.map(a => {
           const next = positionFor(factFind, a)

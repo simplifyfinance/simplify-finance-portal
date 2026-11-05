@@ -40,6 +40,7 @@ import { answered as answeredSplit } from '@/lib/who-shares-this-deal'
 import TabLock from '@/components/TabLock'
 import { DealAlerts, FileNotes, AlertChips, useDealFile } from '@/components/DealFile'
 import { isLocked } from '@/lib/deal-lock'
+import { changeCountLine } from '@/lib/changed-since-lodgement'
 import { isWithLender } from '@/lib/deal-phase'
 import DocumentsBox from '@/components/DocumentsBox'
 import DealPrompts from '@/components/DealPrompts'
@@ -327,6 +328,19 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
                     were moving." A fixed-height row in the header cannot do
                     that. It locks nothing and warns about nothing. */}
                 <DealPresence dealId={dealData.id} tab={tabs.find(t => t.key === stage)?.label || stage} onSameTab={setWhoElseHere} />
+                {/* THE DEAL IS NOT WHAT WAS LODGED ANY MORE.
+                  *
+                  * 17 Aug 2026. One line, here, where the deal names itself -
+                  * not a badge on every tab and not a red page. Either it is
+                  * there or it is not. What to do about it lives in Needs
+                  * action, which already shows on the pipeline without the
+                  * deal being opened. See lib/changed-since-lodgement.ts. */}
+                {changeCountLine(dealData) && (
+                  <span className="text-[11px] font-[600] text-brand-ink bg-info-bg
+                                   border border-info-edge rounded-md px-2 py-[3px]">
+                    {changeCountLine(dealData)}
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -773,8 +787,9 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
         'grid grid-cols-[minmax(0,1.9fr)_minmax(0,clamp(330px,26vw,440px))] gap-3 items-start max-[1100px]:grid-cols-1'}>
         <div className="min-w-0">
       <TabLock locked={isLocked(dealData) && !dealUnlocked} tab={stage} dealId={dealData.id}
-        role={userRole} me={me}
-        onUnlocked={() => { setDealUnlocked(true); reloadFile() }}>
+        deal={dealData} role={userRole} me={me}
+        onUnlocked={() => { setDealUnlocked(true); reloadFile() }}
+        onDealPatched={(patch: any) => { setDealData((prev: any) => ({ ...prev, ...patch })); reloadFile() }}>
         <TabBoundary tab={stage}>
           {stage === 'FactFind' && <FactFindForm whoElseHere={whoElseHere} me={me} deal={dealData} onDocumentsChanged={() => setDocumentsVersion(v => v + 1)} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} onSaveStatus={setSaveStatus} />}
           {stage === 'Statements' && <StatementAnalysis deal={dealData} />}
