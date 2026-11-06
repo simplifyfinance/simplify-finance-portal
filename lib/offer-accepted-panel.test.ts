@@ -37,42 +37,62 @@ describe('what to do with this lender', () => {
 })
 
 describe('how long is left on the preapproval', () => {
+  // THE TERMS COME OFF THE LENDER RECORD NOW. 17 Aug 2026. They were a list of
+  // ten banks written into lib/offer-accepted-rules.ts, so the panel said
+  // nothing at all for every other lender - and on a screen about a deadline
+  // that reads as "there is no deadline". Fabio now keeps them in the lender
+  // library. See lib/lender-approval.ts.
+  const STG = { name: 'St George', preapproval_days: 90,
+                preapproval_extends: true, preapproval_extend_days: 90 }
+  const WLTH = { name: 'WLTH', preapproval_days: 90,
+                 preapproval_extends: true, preapproval_extend_days: 90,
+                 preapproval_extend_fee: 100 }
+  const BANKWEST = { name: 'Bankwest', preapproval_days: 90, preapproval_extends: false }
   const deal = (over: any = {}) => ({
-    preapproval_at: '2026-07-01T00:00:00Z',
-    lenders: { name: 'St George' }, ...over,
+    preapproval_at: '2026-07-01T00:00:00Z', ...over,
   })
 
   it('counts ninety days and names the day it runs out', () => {
-    const line = preapprovalLine(deal(), new Date('2026-07-10T00:00:00Z'))!
+    const line = preapprovalLine(deal(), STG, new Date('2026-07-10T00:00:00Z'))!
     expect(line.text).toContain('stands until 29 Sep 2026')
   })
 
   it('changes its tone inside a fortnight, and offers the extension', () => {
-    const line = preapprovalLine(deal(), new Date('2026-09-20T00:00:00Z'))!
+    const line = preapprovalLine(deal(), STG, new Date('2026-09-20T00:00:00Z'))!
     expect(line.text).toContain('runs out on 29 Sep 2026')
     expect(line.text).toContain('extend it by another 90 days')
   })
 
   it('says plainly when it has already gone', () => {
-    const line = preapprovalLine(deal(), new Date('2026-10-05T00:00:00Z'))!
+    const line = preapprovalLine(deal(), STG, new Date('2026-10-05T00:00:00Z'))!
     expect(line.text).toContain('ran out on 29 Sep 2026')
   })
 
   it('names the fee where there is one', () => {
-    const line = preapprovalLine(deal({ lenders: { name: 'WLTH' } }),
-      new Date('2026-09-20T00:00:00Z'))!
+    const line = preapprovalLine(deal(), WLTH, new Date('2026-09-20T00:00:00Z'))!
     expect(line.text).toContain('extend it, for $100')
   })
 
   it('and says a lender does not extend where they do not', () => {
-    const line = preapprovalLine(deal({ lenders: { name: 'Bankwest' } }),
-      new Date('2026-09-20T00:00:00Z'))!
+    const line = preapprovalLine(deal(), BANKWEST, new Date('2026-09-20T00:00:00Z'))!
     expect(line.text).toContain('do not extend it')
   })
 
-  it('nothing at all with no preapproval date, or a lender we do not hold', () => {
-    expect(preapprovalLine(deal({ preapproval_at: null }))).toBeNull()
-    expect(preapprovalLine(deal({ lenders: { name: 'Pepper Money' } }))).toBeNull()
+  it('nothing at all with no preapproval date', () => {
+    expect(preapprovalLine(deal({ preapproval_at: null }), STG)).toBeNull()
+  })
+
+  // THE CHANGE, SAID OUT LOUD. This used to return null for Pepper, which drew
+  // no line and left the deal looking like it had no clock on it.
+  it('says so when nobody has recorded that lender\'s terms', () => {
+    const line = preapprovalLine(deal(), { name: 'Pepper Money' })!
+    expect(line.kind).toBe('unknown')
+    expect(line.text).toBe('How long a Pepper Money preapproval stands is not recorded.')
+  })
+
+  it('does not say "a this lender" when the lender has no name either', () => {
+    expect(preapprovalLine(deal(), null)!.text)
+      .toBe('How long this preapproval stands is not recorded.')
   })
 })
 

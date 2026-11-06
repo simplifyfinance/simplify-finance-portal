@@ -6,6 +6,11 @@ import { useBusyWhile } from '@/components/useBusy'
 import { SkelLine, SkelTile, SkelPanel, SkelRows } from '@/components/Skeleton'
 import { legalFeeLabel, confirmedFeeLabel, DEFAULT_LEGAL_FEE_LABEL, feeText } from '@/lib/lender-fees'
 import { readNotice, announcedFrom, hasTakenEffect, niceDate, NO_NOTICE } from '@/lib/rate-notice'
+import { everyRow } from '@/lib/the-whole-book'
+import { REAL_DEALS_OR } from '@/lib/test-deal'
+import { approvalSummary } from '@/lib/lender-approval'
+import LenderFeeTable from '@/components/LenderFeeTable'
+import type { FeeKey } from '@/lib/fee-gaps'
 
 // legal_fee_label: what THIS bank calls the fee charged at settlement. Most say
 // "Settlement fee"; Bankwest says "Legal fee". Blank means Legal fee, which is
@@ -24,7 +29,14 @@ type Lender = { id: string; name: string; active: boolean; legal_fee_label?: str
   rate_notice_for?: string | null
   rate_notice_from?: string | null
   rate_notice_by?: string | null
-  rate_notice_at?: string | null }
+  rate_notice_at?: string | null
+  // HOW LONG AN APPROVAL FROM THIS BANK STANDS. Null is not recorded and stays
+  // not recorded - the deal says so rather than borrowing ninety days from the
+  // bank next to it. See lib/lender-approval.ts. 17 Aug 2026.
+  preapproval_days?: number | null
+  preapproval_extends?: boolean | null
+  preapproval_extend_days?: number | null
+  preapproval_extend_fee?: number | null }
 type Product = {
   id: string
   lender_id: string
@@ -100,6 +112,8 @@ export default function LenderLibrary() {
   const [products, setProducts] = useState<Product[]>([])
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
+  // How many deals each lender is on, for the table at the top of the page.
+  const [use, setUse] = useState<Record<string, number>>({})
   const [showAddLender, setShowAddLender] = useState(false)
   const [newLenderName, setNewLenderName] = useState('')
   const [savingLender, setSavingLender] = useState(false)
@@ -151,13 +165,26 @@ export default function LenderLibrary() {
   }, [])
 
   async function fetchAll() {
-    const [{ data: lData }, { data: pData }, { data: sData }] = await Promise.all([
+    const [{ data: lData }, { data: pData }, { data: sData }, dealRows] = await Promise.all([
       supabase.from('lenders').select('*').order('name'),
       supabase.from('lender_products').select('*').order('product_name'),
       // A settings table without the column yet comes back empty and nothing is
       // drawn - the same way the rest of this page degrades.
       supabase.from('settings').select('rate_notice').eq('id', 'singleton').maybeSingle(),
+      // WHICH LENDERS WE ACTUALLY WRITE DEALS WITH, so the table on top can put
+      // them first. A page at a time: a limit of twenty thousand is not a limit
+      // the database honours - it caps the answer at a thousand and says
+      // nothing. See lib/the-whole-book.ts.
+      everyRow<any>((from, to) => supabase.from('deals').select('lender_id')
+        .not('lender_id', 'is', null).or(REAL_DEALS_OR)
+        .order('id').range(from, to)),
     ])
+    const tally: Record<string, number> = {}
+    for (const d of (dealRows?.rows || [])) {
+      const id = String(d?.lender_id || '')
+      if (id) tally[id] = (tally[id] || 0) + 1
+    }
+    setUse(tally)
     setNotice(readNotice((sData as any)?.rate_notice))
     if (lData) setLenders(lData)
     if (pData) setProducts(pData)
@@ -223,6 +250,37 @@ export default function LenderLibrary() {
       rate_notice_by: value ? meName : null,
       rate_notice_at: value ? new Date().toISOString() : null,
     } : l))
+  }
+
+  // A FEE TYPED STRAIGHT INTO THE TABLE AT THE TOP.
+  //
+  // Same row, same column, same database as the box inside the product below -
+  // there is no second copy and no second save. 17 Aug 2026.
+  async function setFee(productId: string, key: FeeKey, raw: string) {
+    const value = raw.trim()
+    const problem = await checkedWrite(
+      supabase.from('lender_products').update({ [key]: value }).eq('id', productId),
+      'That fee')
+    if (problem) { setWriteError(problem); return }
+    setWriteError('')
+    setProducts(prev => prev.map(p => p.id === productId ? { ...p, [key]: value } : p))
+  }
+
+  // THE FOUR BOXES FABIO OWNS, beside the repricing rule. Blank puts one back
+  // to not recorded, which is how a term is removed when a bank drops it.
+  async function setApproval(id: string, patch: Record<string, any>) {
+    const problem = await checkedWrite(
+      supabase.from('lenders').update(patch).eq('id', id), 'The approval terms')
+    if (problem) { setWriteError(problem); return }
+    setWriteError('')
+    setLenders(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l))
+  }
+
+  const wholeDays = (raw: string): number | null => {
+    const clean = raw.replace(/[^0-9]/g, '').trim()
+    if (clean === '') return null
+    const n = Number(clean)
+    return Number.isFinite(n) && n > 0 ? n : null
   }
 
   async function setRepriceOver(id: string, raw: string) {
@@ -654,6 +712,27 @@ export default function LenderLibrary() {
         </div>
       )}
 
+      {/* THE SUMMARY OPENS THE PAGE. 17 Aug 2026.
+        *
+        * It was a tab on Reports and read only, so finding a blank fee and
+        * fixing it were on two different screens. Fabio: "I feel like we're
+        * double handling ... can it take over the library?" Not take over -
+        * the library holds nine more fields per product and is where you add
+        * and archive things. So the view moved here instead, and the six fees
+        * that reach a client are typed into the cell.
+        *
+        * Capped and scrolling inside itself, so the lender list below is
+        * always on the screen. See components/LenderFeeTable.tsx. */}
+      {!loading && (
+        <LenderFeeTable lenders={lenders as any} products={products as any}
+          use={use} onFee={setFee} />
+      )}
+
+      <div className="flex items-center gap-2.5 mb-2.5">
+        <span className="text-[10px] font-bold tracking-[.08em] uppercase text-faint">Every lender</span>
+        <span className="flex-1 h-px bg-line" />
+      </div>
+
       <div className="space-y-2">
         {shownLenders().map(lender => {
           const lps = shownProducts(lender)
@@ -678,6 +757,8 @@ export default function LenderLibrary() {
                   {archivedHere ? ` · ${archivedHere} archived` : ''}
                   {' · '}{legalFeeLabel(lender)}
                   {!confirmedFeeLabel(lender) && <span className="text-chase"> (not checked)</span>}
+                  {/* So "not recorded" is visible without opening anything. */}
+                  {' · '}{approvalSummary(lender)}
                 </span>
                 <span onClick={e => e.stopPropagation()}>
                   {lender.active
@@ -772,6 +853,71 @@ export default function LenderLibrary() {
                     <span className="text-xs text-gray-500">%</span>
                     <span className="text-[11px] text-gray-400">
                       Up or down. Leave it blank where there is no rule &mdash; the deal then says to check, rather than assuming.
+                    </span>
+                  </div>
+                  {/* HOW LONG AN APPROVAL FROM THIS BANK STANDS.
+                      17 Aug 2026. Fabio: "on the offer accepted, it doesn't
+                      know that the offer accepted lasts 90 days. Is there
+                      somewhere in the lender library that I can update that?"
+                      There was not - it was a list of ten banks in
+                      lib/offer-accepted-rules.ts, so Pepper, La Trobe, Liberty
+                      and Firstmac got no line at all on the deal, and nothing
+                      on a screen about a deadline reads as "there is no
+                      deadline". Blank stays blank, same as the rule above. */}
+                  <div className="flex items-center gap-2 px-5 py-2.5 border-t border-gray-50 flex-wrap"
+                       onClick={e => e.stopPropagation()}>
+                    <span className="text-xs text-gray-500">A preapproval from them stands for</span>
+                    <input defaultValue={lender.preapproval_days ?? ''}
+                      key={`pd${lender.id}${lender.preapproval_days ?? ''}`}
+                      onBlur={e => {
+                        const was = lender.preapproval_days ?? ''
+                        if (e.target.value.trim() !== String(was)) {
+                          setApproval(lender.id, { preapproval_days: wholeDays(e.target.value) })
+                        }
+                      }}
+                      placeholder="N/A"
+                      className={`text-xs border border-gray-200 rounded-lg px-2 py-1 bg-card w-[64px] text-right ${
+                        lender.preapproval_days ? 'text-ink' : 'text-gray-400 placeholder:text-gray-300'}`} />
+                    <span className="text-xs text-gray-500">days, and they</span>
+                    <select value={lender.preapproval_extends === true ? 'yes'
+                                 : lender.preapproval_extends === false ? 'no' : ''}
+                      onChange={e => setApproval(lender.id, {
+                        preapproval_extends: e.target.value === '' ? null : e.target.value === 'yes',
+                      })}
+                      className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-card text-ink">
+                      <option value="">— not said —</option>
+                      <option value="yes">will extend it</option>
+                      <option value="no">do not extend it</option>
+                    </select>
+                    {lender.preapproval_extends === true && (
+                      <>
+                        <span className="text-xs text-gray-500">by</span>
+                        <input defaultValue={lender.preapproval_extend_days ?? ''}
+                          key={`ped${lender.id}${lender.preapproval_extend_days ?? ''}`}
+                          onBlur={e => {
+                            const was = lender.preapproval_extend_days ?? ''
+                            if (e.target.value.trim() !== String(was)) {
+                              setApproval(lender.id, { preapproval_extend_days: wholeDays(e.target.value) })
+                            }
+                          }}
+                          placeholder="90"
+                          className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-card w-[56px] text-right text-ink" />
+                        <span className="text-xs text-gray-500">days, for $</span>
+                        <input defaultValue={lender.preapproval_extend_fee ?? ''}
+                          key={`pef${lender.id}${lender.preapproval_extend_fee ?? ''}`}
+                          onBlur={e => {
+                            const was = lender.preapproval_extend_fee ?? ''
+                            if (e.target.value.trim() !== String(was)) {
+                              setApproval(lender.id, { preapproval_extend_fee: wholeDays(e.target.value) })
+                            }
+                          }}
+                          placeholder="nothing"
+                          className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-card w-[72px] text-right text-ink" />
+                      </>
+                    )}
+                    <span className="text-[11px] text-gray-400">
+                      Leave the days blank where nobody has told us &mdash; the deal then says it is
+                      not recorded, rather than assuming ninety.
                     </span>
                   </div>
                   {/* WHEN DOES THIS BANK'S CHANGE START.

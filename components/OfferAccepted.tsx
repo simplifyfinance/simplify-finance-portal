@@ -82,11 +82,22 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
 
   // The lender's own repricing rule, typed into the lender library. Null is N/A
   // and stays N/A - see docs/lender-reprice-schema.sql.
+  //
+  // AND HOW LONG ITS APPROVAL STANDS, read from the same row. 17 Aug 2026.
+  // That used to be a list of ten banks in lib/offer-accepted-rules.ts, so a
+  // deal with Pepper got no clock at all. See lib/lender-approval.ts.
+  const [lenderRow, setLenderRow] = useState<any>(null)
   useEffect(() => {
-    if (!deal?.lender_id) { setThreshold(null); return }
+    if (!deal?.lender_id) { setThreshold(null); setLenderRow(null); return }
     let alive = true
-    supabase.from('lenders').select('reprice_over_percent').eq('id', deal.lender_id).maybeSingle()
-      .then(({ data }: any) => { if (alive) setThreshold(data?.reprice_over_percent ?? null) })
+    supabase.from('lenders')
+      .select('name, reprice_over_percent, preapproval_days, preapproval_extends, preapproval_extend_days, preapproval_extend_fee')
+      .eq('id', deal.lender_id).maybeSingle()
+      .then(({ data }: any) => {
+        if (!alive) return
+        setThreshold(data?.reprice_over_percent ?? null)
+        setLenderRow(data || null)
+      })
     return () => { alive = false }
   }, [deal?.lender_id])
 
@@ -134,7 +145,7 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
 
   const lenderName = d?.lenders?.name || lenderOnTheDeal(d?.lo_data || {})
   const blanks = stillBlank(d)
-  const preapproval = preapprovalLine(d)
+  const preapproval = preapprovalLine(d, lenderRow)
   const steps = lenderSteps(lenderName)
 
   // IF THE LOAN ABSORBS THE DIFFERENCE. Said as the conditional it is: nothing

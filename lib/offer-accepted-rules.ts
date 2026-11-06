@@ -133,7 +133,19 @@ export type PreapprovalAge = {
 }
 
 // HOW LONG IS LEFT ON THE PREAPPROVAL. Ninety days from the day it was given.
-export function preapprovalAge(preapprovalAt: any, rule: LenderRule | null, now = new Date()): PreapprovalAge | null {
+// JUST THE THREE FIGURES THE CLOCK NEEDS.
+//
+// 17 Aug 2026. These used to come off a LenderRule, which also carries the
+// names and the process notes. They come off the lender record now - see
+// lib/lender-approval.ts - and a LenderRule still satisfies this shape, so
+// nothing that called this before had to change.
+export type ApprovalTerms = {
+  preapprovalDays: number
+  canExtend: boolean
+  extendFee?: number
+}
+
+export function preapprovalAge(preapprovalAt: any, rule: ApprovalTerms | null, now = new Date()): PreapprovalAge | null {
   if (!preapprovalAt || !rule) return null
   const from = new Date(preapprovalAt)
   if (Number.isNaN(from.getTime())) return null

@@ -39,11 +39,14 @@ export const FEES_THAT_REACH_A_CLIENT: { key: FeeKey; label: string }[] = [
   { key: 'discharge_fee', label: 'Discharge' },
 ]
 
-// THE FIVE COLUMNS ON THE SCREEN, from the mock Fabio approved on 30 Oct 2026.
-// The other three are counted and searched like the rest - they are left out of
-// the table because eight columns of dashes is a wall, not a list.
+// THE COLUMNS ON THE SCREEN, from the mock Fabio approved on 30 Oct 2026, with
+// Monthly added on 17 Aug 2026 when the table moved onto the lender library and
+// its cells became editable. The remaining two - rate lock and early repayment
+// - are counted and searched like the rest; they are off the table because
+// eight columns of blanks is a wall, not a list, and they are two boxes down
+// inside the product.
 export const FEE_COLUMNS: FeeKey[] =
-  ['application_fee', 'annual_fee', 'valuation_fee', 'legal_fee', 'discharge_fee']
+  ['application_fee', 'annual_fee', 'monthly_fee', 'valuation_fee', 'discharge_fee', 'legal_fee']
 
 export type LibProduct = {
   id: string

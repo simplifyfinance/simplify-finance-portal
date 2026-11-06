@@ -12,6 +12,7 @@
 import { ruleFor, preapprovalAge, repricingCheck, repricingLine,
          needsAnzAcknowledgement, type LenderRule } from './offer-accepted-rules'
 import { lenderOnTheDeal } from './client-agreement'
+import { approvalOf, extensionWords, lenderWord, type ApprovalRow } from './lender-approval'
 import { dayMonthYear } from './same-date-everywhere'
 import { loanAmount } from './funds-to-complete'
 
@@ -56,17 +57,39 @@ function lenderOnDeal(deal: any): string {
   return String(deal?.lenders?.name || '').trim() || lenderOnTheDeal(deal?.lo_data || {})
 }
 
-export function preapprovalLine(deal: any, now = new Date()): PanelLine | null {
-  const rule = ruleFor(lenderOnDeal(deal))
-  const age = preapprovalAge(deal?.preapproval_at, rule, now)
-  if (!age || !rule) return null
+// THE TERMS COME OFF THE LENDER RECORD NOW. 17 Aug 2026.
+//
+// They were a list of ten banks in lib/offer-accepted-rules.ts, so Pepper, La
+// Trobe, Liberty and Firstmac got no line at all - and nothing, on a screen
+// about a deadline, reads as "there is no deadline". Fabio: "is there
+// somewhere in the lender library that I can update that?" Now there is. See
+// lib/lender-approval.ts.
+//
+// `lender` is the row off `lenders` the panel already loads for the repricing
+// threshold. Passing nothing keeps the old behaviour of saying nothing, which
+// is what every caller that has not been updated should do.
+export function preapprovalLine(deal: any, lender?: ApprovalRow | null,
+                                now = new Date()): PanelLine | null {
+  if (!deal?.preapproval_at) return null
+  const a = approvalOf(lender)
+
+  // NOT RECORDED IS A LINE, NOT A BLANK. This is the whole of the change: a
+  // lender nobody has filled in says so, and says where to fill it in, rather
+  // than leaving a deal looking like it has no clock on it.
+  if (!a) {
+    const name = txt(lender?.name)
+    return { kind: 'unknown',
+      text: name
+        ? `How long a ${name} preapproval stands is not recorded.`
+        : 'How long this preapproval stands is not recorded.' }
+  }
+
+  const age = preapprovalAge(deal?.preapproval_at,
+    { preapprovalDays: a.days, canExtend: a.extends, extendFee: a.extendFee ?? undefined }, now)
+  if (!age) return null
 
   const on = dayMonthYear(age.expiresOn)
-  const extend = age.canExtend
-    ? (age.extendFee
-        ? ` They will extend it, for $${age.extendFee}.`
-        : ' They will extend it by another 90 days.')
-    : ' They do not extend it.'
+  const extend = extensionWords(a)
 
   if (age.expired) {
     return { kind: 'clock', text: `The preapproval ran out on ${on}.${extend}` }
