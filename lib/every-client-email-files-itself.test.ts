@@ -36,6 +36,12 @@ const NOT_TO_A_CLIENT: Record<string, string> = {
   'app/api/docs-received/route.ts': 'tells our staff to file documents; internal',
   'app/api/invite-user/route.ts': 'invites a staff member to the portal; no deal exists',
   'app/api/2fa/send/route.ts': 'the sign-in code, to one of us; no deal exists',
+  // GOES TO A ROBOT, NOT A PERSON. The valuations bot reads a plain-text block
+  // of Key: Value lines and orders in CoreLogic - see
+  // docs/CRM_valuation_email_spec.md. The client is never on it and never
+  // hears about it; what a SalesTrekker card wants is what the CLIENT was
+  // told. 17 Aug 2026.
+  'app/api/send-valuation/route.ts': 'the valuations bot; a plain-text order, never seen by a client',
   // GOES TO A CLIENT, AND HAS NO DEAL BEHIND IT. Fabio, 22 Oct 2026: "on
   // templates folder only ones associated to deal as those are the one that
   // have bcc". The Templates page has no deal card, so there is no code to

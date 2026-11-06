@@ -2,6 +2,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite } from '@/lib/checked-write'
+import { sentSummary, sentNote, sentAtWords, type Sent } from '@/lib/valuation-sent'
 import { addSystemNote } from '@/components/DealFile'
 import {
   buildValuation, splitAddress, loanPurposeOf, expectedLvr, isAnz, hasBankwest,
@@ -46,6 +47,13 @@ export default function OrderValuation({ deal, security, me, onOrdered }: {
   const [a, setA] = useState<Answers>({ securityCategory: 'Residential', accessType: 'Owner' })
   const [busy, setBusy] = useState(false)
   const [trouble, setTrouble] = useState('')
+  // WHAT WENT, ONCE IT HAS GONE. Fabio, 17 Aug 2026: "than a new box shows
+  // saying email sent valuation amount X LVR X Banks X for Broker X". Null
+  // until the mail service has actually accepted it - see send().
+  const [sent, setSent] = useState<{ box: Sent; when: string } | null>(null)
+  // Set only where the send itself failed. The old copy-and-paste way is then
+  // offered as the fallback, because nothing in this portal is ever blocked.
+  const [failed, setFailed] = useState('')
 
   const ref = valuationRef(deal, security)
   // WHEN IT WAS LAST ASKED FOR, PER SECURITY. Seeded from the deal and kept
@@ -108,52 +116,70 @@ export default function OrderValuation({ deal, security, me, onOrdered }: {
 
   const set = (k: keyof Answers) => (v: any) => setA(x => ({ ...x, [k]: v }))
 
-  async function order() {
-    setBusy(true); setTrouble('')
-    // FIRST, WHILE THE CLICK IS STILL LIVE. See lib/send-again.ts.
-    let copied = true
-    try { await navigator.clipboard.writeText(req.body) } catch { copied = false }
-    if (!copied) {
-      setTrouble('The request could not be put on your clipboard, so nothing was opened. Try again.')
+  // SENT BY THE PORTAL, NOT PASTED BY A PERSON.
+  //
+  // 17 Aug 2026. This used to put the request on the clipboard and open a blank
+  // mail window. Six steps - press, copy, open, paste, check, send - and three
+  // of them can simply not happen with nothing here any the wiser. A valuation
+  // everybody believes was ordered and was not is a week lost on a deal.
+  //
+  // The email is rebuilt on the server from the deal read fresh, so what goes
+  // out is what this screen was showing. See app/api/send-valuation/route.ts.
+  async function send() {
+    setBusy(true); setTrouble(''); setFailed('')
+    let out: any = {}
+    try {
+      const res = await fetch('/api/send-valuation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dealId: deal.id, securityId: String(security.id),
+          answers: a, brokerEmail,
+        }),
+      })
+      out = await res.json().catch(() => ({}))
+      if (!res.ok || !out?.ok) {
+        setFailed(out?.error || `The mail service refused the send (${res.status}).`)
+        setBusy(false)
+        return
+      }
+    } catch {
+      setFailed('The portal could not reach the mail service. Nothing has been sent.')
       setBusy(false)
       return
     }
-    // THE BROKER AND FABIO, NEITHER OF THEM TWICE. Worked out in the library
-    // so this screen and the email cannot disagree about who was copied.
+
+    const box = sentSummary(deal, security, a, { name: me?.name, email: me?.email }, broker)
+    setOrdered(out.when)
+    onOrdered?.({ valuations_ordered: out.valuationsOrdered })
+    setSent({ box, when: out.when })
+
+    // ONE LINE, WITH THE NUMBERS IN IT, so somebody opening this deal in three
+    // weeks can see what was ordered without going to anybody's mailbox.
+    try {
+      await addSystemNote(deal.id, sentNote(box), { id: me?.id || null, name: me?.name || '' })
+    } catch { /* a missing line is smaller than a blocked order */ }
+
+    // The email HAS gone. A date that would not save is a record nobody kept,
+    // not an order that did not happen, and saying "not sent" here would send
+    // somebody to order it twice.
+    if (out.saveProblem) {
+      setTrouble('It was sent, but the date could not be saved on the deal, so the button '
+        + `will not show it. ${out.saveProblem}`)
+    }
+    setBusy(false)
+  }
+
+  // THE OLD WAY, KEPT AS THE FALLBACK. One button wide, for the day the mail
+  // service is down. Nothing in this portal is ever blocked.
+  async function copyAndOpen() {
+    let copied = true
+    try { await navigator.clipboard.writeText(req.body) } catch { copied = false }
+    if (!copied) { setTrouble('The request could not be put on your clipboard.'); return }
     const cc = req.cc.length ? `cc=${encodeURIComponent(req.cc.join(','))}&` : ''
     window.location.href = `mailto:${encodeURIComponent(req.to)}?${cc}`
       + `subject=${encodeURIComponent(req.subject)}`
       + `&body=${encodeURIComponent('Paste the request here — it is on your clipboard.')}`
-
-    // WHEN IT WAS ASKED FOR, PER SECURITY. A deal with two houses has two
-    // answers, and "valuation requested" with no date is not worth reading.
-    const when = new Date().toISOString()
-    const next = { ...(deal?.valuations_ordered || {}), [String(security.id)]: when }
-    const problem = await checkedWrite(
-      createSupabaseBrowser().from('deals').update({ valuations_ordered: next }).eq('id', deal.id),
-      'The valuation request')
-    // THE EMAIL HAS ALREADY OPENED. A failed write is a date nobody recorded,
-    // not an order that did not happen, and saying "nothing was sent" here
-    // would be a lie that sends somebody to order it twice.
-    if (problem) {
-      setTrouble('The email is open and on your clipboard, but the date could not be saved '
-        + `on the deal, so this button will not show it. ${problem}`)
-    } else {
-      setOrdered(when)
-      onOrdered?.({ valuations_ordered: next })
-    }
-
-    try {
-      await addSystemNote(deal.id,
-        `Valuation requested for ${security.address || 'a security'} — ${ref}. `
-          + `${(a.lenders || []).join(', ') || 'No lender named'}, `
-          + `${purpose.toLowerCase().replace('_', ' ')}`
-          + `${broker?.name ? `, under ${broker.name}` : ''}.`,
-        { id: me?.id || null, name: me?.name || '' })
-    } catch { /* a missing line is smaller than a blocked order */ }
-
-    setBusy(false)
-    if (!problem) setOpen(false)
   }
 
   const Pills = ({ all, picked, pick }: { all: readonly string[]; picked?: string; pick: (v: string) => void }) => (
@@ -188,7 +214,58 @@ export default function OrderValuation({ deal, security, me, onOrdered }: {
         <div className="fixed inset-0 z-50 bg-ink/45 flex items-start justify-center p-6 overflow-y-auto">
           {/* NO CLICK-AWAY. A mobile number typed and lost to a stray click is
             * the same fault the extract review had. */}
-          <div className="bg-card rounded-2xl w-[600px] max-w-full shadow-[0_24px_64px_rgba(0,0,0,0.32)] mt-8">
+          <div className={`bg-card rounded-2xl w-[600px] max-w-full shadow-[0_24px_64px_rgba(0,0,0,0.32)] mt-8 ${
+              sent ? 'border border-done-edge overflow-hidden' : ''}`}>
+          {sent ? (
+            /* THE BOX THAT COMES BACK.
+             *
+             * Fabio, 17 Aug 2026: "than a new box shows saying email sent
+             * valuation amount X LVR X Banks X for Broker X".
+             *
+             * Built from the same inputs the email was built from - see
+             * lib/valuation-sent.ts - so the screen cannot claim a figure the
+             * email did not carry. The valuation amount says WHICH KIND it is,
+             * because CoreLogic is told which and the two produce different
+             * answers. Ordered for and Sent by are two lines because they are
+             * two people. */
+            <>
+              <div className="bg-done-bg border-b border-done-edge px-5 py-4">
+                <p className="m-0 mb-1 text-[16px] font-bold text-done">✓ Valuation ordered</p>
+                <p className="m-0 text-[12.5px] text-body leading-relaxed">
+                  Sent to Valerio{sentAtWords(sent.when) ? ` at ${sentAtWords(sent.when)}` : ''}.
+                  It comes back by email.
+                </p>
+              </div>
+              <div className="px-5 py-3">
+                {sent.box.rows.map(r => (
+                  <div key={r.label}
+                    className="flex text-[13px] text-body py-[6px] border-b border-[var(--color-line-soft)] last:border-b-0">
+                    <span className="text-muted w-[170px] shrink-0">{r.label}</span>
+                    <span className="font-semibold text-ink min-w-0">{r.value}</span>
+                  </div>
+                ))}
+                {req.byHand.length > 0 && (
+                  <p className="mt-2.5 mb-0 text-[12px] text-chase leading-relaxed">
+                    Valerio cannot order {req.byHand.join(', ')} himself — he will say so and
+                    do the rest.
+                  </p>
+                )}
+                {trouble && <p className="mt-2.5 mb-0 text-[11.5px] text-chase">{trouble}</p>}
+              </div>
+              <div className="border-t border-[var(--color-line-soft)] px-5 py-3 flex items-center gap-2.5">
+                <span className="text-[11px] text-faint leading-relaxed">
+                  On the file notes as <b className="text-body">{me?.name || 'you'}</b>.
+                  {sent.box.copiedTo.length > 0 && <> Valerio replies to you, with{' '}
+                    {sent.box.brokerName || 'the broker'} copied.</>}
+                </span>
+                <button onClick={() => { setSent(null); setOpen(false) }}
+                  className="ml-auto px-3.5 py-2 text-[12.5px] font-semibold rounded-lg bg-ink text-page">
+                  Done
+                </button>
+              </div>
+            </>
+          ) : (
+          <>
             <div className="px-5 pt-4">
               <h3 className="m-0 mb-1 text-[15.5px] font-bold text-ink">Order a valuation</h3>
               <p className="m-0 mb-3 text-[12px] text-muted leading-relaxed">
@@ -427,19 +504,49 @@ export default function OrderValuation({ deal, security, me, onOrdered }: {
               )}
 
               {trouble && <p className="mt-2 text-[11.5px] text-chase">{trouble}</p>}
+
+              {/* NOT SENT, SAID OUT LOUD, with the old way still on the screen.
+                * Nothing is recorded and no reference is issued, so pressing
+                * Send again is safe - which the box says rather than leaving
+                * somebody to wonder. */}
+              {failed && (
+                <div className="mt-3 border border-chase-edge bg-chase-bg rounded-xl px-3.5 py-3">
+                  <p className="m-0 mb-1 text-[13px] font-bold text-chase">⚠ Not sent</p>
+                  <p className="m-0 mb-2 text-[12.5px] text-body leading-relaxed">
+                    Nothing has reached Valerio. Nothing is recorded against the deal and no
+                    reference has been issued, so pressing Send again is safe.
+                  </p>
+                  <p className="m-0 mb-2.5 text-[12px] text-muted">Reported as: <i>{failed}</i></p>
+                  <button onClick={copyAndOpen}
+                    className="text-[12px] rounded-lg border border-line bg-card text-muted px-3 py-1.5">
+                    Copy it and open my mail
+                  </button>
+                </div>
+              )}
             </div>
 
+            {/* WHO IT IS GOING FROM AND WHO IS COPIED, BEFORE IT GOES, so
+              * nobody has to remember the spec. The cc list is worked out in
+              * lib/order-a-valuation.ts, so this line and the email agree. */}
             <div className="border-t border-[var(--color-line-soft)] px-5 py-3 flex items-center gap-2.5">
-              <span className="text-[11px] text-faint">Comes back as <b className="text-body">{ref}</b></span>
+              <span className="text-[11px] text-faint leading-relaxed">
+                Goes to Valerio from <b className="text-body">{me?.email || 'your own address'}</b>
+                {req.cc.length > 0 && <> · cc <b className="text-body">{broker?.name || req.cc[0]}</b></>}
+                <br />Comes back as <b className="text-body">{ref}</b>
+              </span>
               <button onClick={() => setOpen(false)}
                 className="ml-auto px-3.5 py-2 text-[12.5px] rounded-lg border border-line bg-card text-muted">
                 Cancel
               </button>
-              <button onClick={order} disabled={busy}
+              {/* Cannot be pressed twice. Two valuations on one property is a
+                * real cost, not a tidiness problem. */}
+              <button onClick={send} disabled={busy}
                 className="px-3.5 py-2 text-[12.5px] font-semibold rounded-lg bg-ink text-page disabled:opacity-50">
-                {busy ? 'Opening…' : 'Order it'}
+                {busy ? 'Sending…' : 'Send it'}
               </button>
             </div>
+          </>
+          )}
           </div>
         </div>
       )}

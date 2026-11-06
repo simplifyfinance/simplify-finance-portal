@@ -261,20 +261,54 @@ describe('AND THE SCREEN ASKS FOUR THINGS, NOT FIFTEEN', () => {
     expect(UI).not.toContain('BorrowerLastName')
   })
 
-  it('AND THE CLIPBOARD IS WRITTEN BEFORE THE MAILTO SPENDS THE CLICK', () => {
-    const at = UI.indexOf('async function order()')
-    const block = UI.slice(at, UI.indexOf('const Pills', at))
-    expect(block.indexOf('window.location.href')).toBeGreaterThan(block.indexOf('clipboard.writeText'))
+  // THE PORTAL SENDS IT NOW. 17 Aug 2026.
+  //
+  // This used to put the request on the clipboard and open a blank mail window
+  // for somebody to paste into - six steps, three of which can simply not
+  // happen with nothing here any the wiser. Fabio: "I don't want to copy and
+  // paste to the bot - cant we use resend so the email goes without my staff
+  // having to press". See app/api/send-valuation/route.ts.
+  it('SENDS IT RATHER THAN ASKING SOMEBODY TO PASTE IT', () => {
+    const at = UI.indexOf('async function send()')
+    expect(at).toBeGreaterThan(-1)
+    const block = UI.slice(at, UI.indexOf('async function copyAndOpen', at))
+    expect(block).toContain("fetch('/api/send-valuation'")
+    expect(block).not.toContain('clipboard.writeText')
+    expect(block).not.toContain('window.location.href')
+  })
+
+  it('AND THE OLD WAY IS KEPT AS THE FALLBACK', () => {
+    // Nothing in this portal is ever blocked. The day the mail service is down,
+    // the clipboard and the mail window are one button away.
+    expect(UI).toContain('async function copyAndOpen')
+    expect(UI).toContain('Copy it and open my mail')
+  })
+
+  it('AND NOTHING IS RECORDED UNTIL IT HAS ACTUALLY GONE', () => {
+    // A deal that says a valuation was ordered when none was is worse than no
+    // record at all. The route writes the date after the send, not before.
+    // The UPDATE, not the SELECT - the route reads the column on the way in,
+    // which is why this looks for the write and not just the name.
+    const route = readFileSync('app/api/send-valuation/route.ts', 'utf8')
+    const write = route.indexOf('.update({ valuations_ordered')
+    expect(write).toBeGreaterThan(-1)
+    expect(write).toBeGreaterThan(route.indexOf('api.resend.com'))
   })
 
   it('AND A FAILED WRITE DOES NOT SAY THE ORDER DID NOT HAPPEN', () => {
-    // By then the email is open. Saying nothing was sent would send somebody
+    // By then the email has gone. Saying nothing was sent would send somebody
     // to order the same valuation twice.
-    expect(UI).toContain('The email is open and on your clipboard')
+    expect(UI).toContain('It was sent, but the date could not be saved')
   })
 
-  it('and the file writes itself', () => {
-    expect(UI).toContain('Valuation requested for')
+  it('and the file writes itself, with the figures in it', () => {
+    expect(UI).toContain('sentNote(box)')
+  })
+
+  it('and the box that comes back says what went', () => {
+    // Fabio's own list: valuation amount, LVR, banks, broker.
+    expect(UI).toContain('Valuation ordered')
+    expect(UI).toContain('sent.box.rows')
   })
 
   it('AND THE BUTTON SAYS WHEN, AND STAYS PRESSABLE', () => {
