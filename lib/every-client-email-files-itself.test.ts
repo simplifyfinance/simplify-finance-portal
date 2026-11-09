@@ -46,6 +46,9 @@ const NOT_TO_A_CLIENT: Record<string, string> = {
   // date, a calculation light. The client is never on it and never hears
   // about it. 17 Aug 2026, Alan's item 5.
   'app/api/flag-raised/route.ts': 'tells management something in the portal is wrong; internal',
+  // AND BACK TO WHOEVER SPOTTED IT, once it is fixed and checked. One of us,
+  // about our own screens. No client is on it and none ever hears about it.
+  'app/api/flag-closed/route.ts': 'tells whoever flagged it that it is fixed and checked; internal',
   // GOES TO A CLIENT, AND HAS NO DEAL BEHIND IT. Fabio, 22 Oct 2026: "on
   // templates folder only ones associated to deal as those are the one that
   // have bcc". The Templates page has no deal card, so there is no code to

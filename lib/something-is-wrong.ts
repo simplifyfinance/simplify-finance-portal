@@ -119,8 +119,12 @@ export const FORGOTTEN_DAYS = 14
 
 export function forgotten(f: Flag, now: Date = new Date()): boolean {
   if (!isOpen(f)) return false
-  const last = txt(f.sent_back_at) || txt(f.fixed_at) || txt(f.raised_at)
-  const t = new Date(last).getTime()
+  // THE LAST THING THAT HAPPENED, whichever it was. Not the first one filled
+  // in - a flag sent back on the 7th and fixed again on the 9th has both, and
+  // reading them in a fixed order would start the clock from the wrong one.
+  const t = Math.max(...[f.sent_back_at, f.fixed_at, f.raised_at]
+    .map(d => new Date(txt(d)).getTime())
+    .filter(n => Number.isFinite(n)), -Infinity)
   if (!Number.isFinite(t)) return false
   return (now.getTime() - t) / 86_400_000 >= FORGOTTEN_DAYS
 }
@@ -223,4 +227,59 @@ function shortDate(v: any, tz: string): string {
     return new Intl.DateTimeFormat('en-AU',
       { timeZone: tz, day: 'numeric', month: 'short' }).format(d)
   } catch { return '' }
+}
+
+// --- the list management works from ------------------------------------------
+
+// LIBRARY FIRST, THEN BY AGE.
+//
+// A library problem is wrong on every quote until it is fixed; a deal problem
+// is wrong on one file. That is the whole ordering rule, and it does not need
+// a setting - nobody should have to decide what to look at first when the
+// difference is that plain.
+export function inWorkOrder(list: Flag[]): Flag[] {
+  return (list || []).slice().sort((a, b) => {
+    const sa = a?.scope === 'library' ? 0 : 1
+    const sb = b?.scope === 'library' ? 0 : 1
+    if (sa !== sb) return sa - sb
+    return txt(a?.raised_at).localeCompare(txt(b?.raised_at))
+  })
+}
+
+/**
+ * The button that goes where the fix is.
+ *
+ * A library problem opens the lender library; a deal problem opens the deal.
+ * Nobody should have to go looking for the screen they were told about.
+ * A deal flag with no deal behind it falls back to the library rather than
+ * offering a link to nowhere.
+ */
+export function whereToFixIt(f: Flag): { label: string; href: string } {
+  const deal = txt(f?.deal_id)
+  if (f?.scope === 'deal' && deal) return { label: 'Open the deal', href: `/deals/${deal}` }
+  if (f?.scope === 'library') return { label: 'Open the lender library', href: '/lenders' }
+  return deal
+    ? { label: 'Open the deal', href: `/deals/${deal}` }
+    : { label: 'Open the lender library', href: '/lenders' }
+}
+
+/**
+ * Sent back: the fix did not hold.
+ *
+ * It returns to Waiting on a fix and the clock starts again. The trail keeps
+ * the fix that failed rather than quietly rewinding, so the second attempt is
+ * visibly a second attempt.
+ */
+export function noteWhenSentBack(f: Flag): string {
+  const why = txt(f?.sent_back_why)
+  return `The ${txt(f?.where_at).toLowerCase() || 'flagged'} problem was marked fixed, but it is not`
+    + ` fixed.${why ? ' ' + why : ''}`
+}
+
+/** The line under a sent-back flag, so the next person knows it is attempt two. */
+export function sentBackLine(f: Flag, tz = 'Australia/Sydney'): string {
+  if (!txt(f?.sent_back_at)) return ''
+  const when = shortDate(f?.sent_back_at, tz)
+  const why = txt(f?.sent_back_why)
+  return `Sent back${when ? ' ' + when : ''}${why ? ': ' + why : '.'}`
 }

@@ -58,6 +58,11 @@ export const SETTINGS_PANES: SettingsPane[] = [
     blurb: 'Bank statement collection and other outside services.' },
   { key: 'statements', label: 'Statement analysis',
     blurb: 'What the statement analysis looks for, and when it raises a flag.' },
+  // THE CORRECTION LOOP. Alan's item 5, 17 Aug 2026. It lives in Settings
+  // rather than on the board because it is not somebody's day's work - it is
+  // the thing management empties.
+  { key: 'something-wrong', label: 'Something wrong',
+    blurb: 'What the team has flagged as wrong, and whether the fix has actually been checked.' },
   { key: 'review-email', label: 'Portfolio review email',
     blurb: 'The wording of the opportunity email. Every figure in it comes from the client\u2019s own review.' },
 ]

@@ -6,6 +6,7 @@ import {
   statusOf, isOpen, waitingOnAFix, readyToCheck, openOn, forgotten,
   headline, raisedLine, cardLine, noteWhenRaised, noteWhenChecked,
   raisedSubject, raisedBody, closedSubject, closedBody,
+  inWorkOrder, whereToFixIt, noteWhenSentBack, sentBackLine,
   type Flag,
 } from './something-is-wrong'
 
@@ -161,5 +162,46 @@ describe('nothing counts anything', () => {
     const names = [...src.matchAll(/^export (?:function|const) (\w+)/gm)].map(m => m[1])
     expect(names.length).toBeGreaterThan(5)
     expect(names.filter(n => /count|total|score|tally|stats/i.test(n))).toEqual([])
+  })
+})
+
+describe('the list management works from', () => {
+  const LIB_OLD: Flag = { ...RAISED, id: 'a', scope: 'library', raised_at: '2026-10-24T04:00:00Z' }
+  const LIB_NEW: Flag = { ...RAISED, id: 'b', scope: 'library', raised_at: '2026-11-06T04:00:00Z' }
+  const DEAL_OLD: Flag = { ...RAISED, id: 'c', scope: 'deal', raised_at: '2026-09-01T04:00:00Z' }
+
+  // A library problem is wrong on every quote; a deal problem is wrong on one
+  // file. Age only breaks the tie.
+  it('puts the library ones first, then the oldest', () => {
+    expect(inWorkOrder([DEAL_OLD, LIB_NEW, LIB_OLD]).map(f => f.id)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('sends the button where the fix is', () => {
+    expect(whereToFixIt(LIB_OLD)).toEqual({ label: 'Open the lender library', href: '/lenders' })
+    expect(whereToFixIt(DEAL_OLD)).toEqual({ label: 'Open the deal', href: '/deals/d1' })
+  })
+
+  // A link to nowhere is worse than no link.
+  it('does not offer a deal that is not there', () => {
+    const orphan: Flag = { ...DEAL_OLD, deal_id: null }
+    expect(whereToFixIt(orphan).href).toBe('/lenders')
+  })
+
+  it('keeps a fix that did not hold, rather than rewinding', () => {
+    const back: Flag = {
+      ...FIXED, fixed_at: null, sent_back_at: '2026-11-07T04:00:00Z',
+      sent_back_why: 'Still showing $350 on a new quote.',
+    }
+    expect(statusOf(back)).toBe('waiting_on_a_fix')
+    expect(sentBackLine(back)).toBe('Sent back 7 Nov: Still showing $350 on a new quote.')
+    expect(noteWhenSentBack(back)).toContain('it is not fixed')
+    expect(sentBackLine(RAISED)).toBe('')
+  })
+
+  // And the clock starts again from the sending back, not from the original.
+  it('counts forgotten from the sending back', () => {
+    const back: Flag = { ...RAISED, fixed_at: null, sent_back_at: '2026-11-07T04:00:00Z' }
+    expect(forgotten(back, new Date('2026-11-20T00:00:00Z'))).toBe(false)
+    expect(forgotten(back, new Date('2026-11-22T00:00:00Z'))).toBe(true)
   })
 })
