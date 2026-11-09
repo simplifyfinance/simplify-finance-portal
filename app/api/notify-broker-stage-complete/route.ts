@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { resolveBrokerProfile } from '@/lib/broker-profile'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { siteUrl } from '@/lib/site-url'
-
-const STAGE_LABELS: Record<string, string> = { BC: 'Borrowing Capacity', LO: 'Lending Options' }
+import { STAGE_LABELS, handoverSubject, handoverHtml, handoverText, shapeOf,
+         dealLine } from '@/lib/a-handover-tells-the-broker'
+import { money, readMoney } from '@/lib/money'
 
 export async function POST(req: NextRequest) {
   const { dealId, stage } = await req.json()
@@ -21,7 +22,9 @@ export async function POST(req: NextRequest) {
 
   const { data: deal, error: dealError } = await supabase
     .from('deals')
-    .select('id, deal_name, assigned_broker, assigned_credit_officer')
+    // The lender, the shape and the amount so the email can say which file it
+    // is without the reader opening anything. 17 Aug 2026.
+    .select('id, deal_name, assigned_broker, assigned_credit_officer, loan_amount, transaction_type, property_use, lenders(name)')
     .eq('id', dealId)
     .single()
 
@@ -42,6 +45,30 @@ export async function POST(req: NextRequest) {
 
   const stageLabel = STAGE_LABELS[stage] || stage
 
+  // COMPLIANCE PREP IS ITS OWN EMAIL, not the same sentence with a different
+  // noun in it. Alan's November brief, item 4: the broker wants to add
+  // information or double-check details BEFORE compliance is finalised, so the
+  // email says that rather than announcing a state change. See
+  // lib/a-handover-tells-the-broker.ts.
+  const officerName = String((deal as any).assigned_credit_officer || '').trim()
+  const amount = readMoney((deal as any).loan_amount)
+  const facts = {
+    dealName: String(deal.deal_name || ''),
+    brokerFirstName: brokerRecord.name?.split(' ')[0] || '',
+    officerName,
+    lender: String(((deal as any).lenders as any)?.name || ''),
+    shape: shapeOf(deal),
+    amount: amount !== null ? money(amount) : '',
+    dealUrl: `${siteUrl()}/deals/${dealId}`,
+  }
+  const handover = stage === 'COMPLIANCE'
+  const subject = handover
+    ? handoverSubject(facts)
+    : `${stageLabel} ready for your review: ${deal.deal_name}`
+  const html = handover
+    ? handoverHtml(facts)
+    : `<p>Hi ${facts.brokerFirstName},</p><p>The credit team has completed the <strong>${stageLabel}</strong> stage for <strong>${deal.deal_name}</strong>. It's ready for you to add your personalisation and send to the client.</p><p><a href="${facts.dealUrl}">Open the deal</a></p><p style="font-size:12px;color:#A79F93;margin-top:16px">${dealLine(facts)}</p>`
+
   try {
     await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -53,8 +80,9 @@ export async function POST(req: NextRequest) {
         from: 'Simplify Finance Portal <notifications@simplifyfinance.com.au>',
         to: brokerRecord.email,
         cc: 'info@simplifyfinance.com.au',
-        subject: `${stageLabel} ready for your review: ${deal.deal_name}`,
-        html: `<p>Hi ${brokerRecord.name?.split(' ')[0] || ''},</p><p>The credit team has completed the <strong>${stageLabel}</strong> stage for <strong>${deal.deal_name}</strong>. It's ready for you to add your personalisation and send to the client.</p><p><a href="${siteUrl()}/deals/${dealId}">Open the deal</a></p>`
+        subject,
+        html,
+        ...(handover ? { text: handoverText(facts) } : {}),
       })
     })
     return NextResponse.json({ ok: true, emailSent: true })
