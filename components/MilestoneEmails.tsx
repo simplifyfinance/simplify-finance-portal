@@ -10,6 +10,7 @@ import { SENT_WITH } from '@/lib/offer-accepted-email'
 import { menuFor, menuToBrowse, lastSent, templateById, type MenuItem, type TemplateId } from '@/lib/milestone-emails'
 import { useSender } from '@/app/(app)/templates/useSender'
 import { SenderPanel } from '@/app/(app)/templates/TemplateFields'
+import MissingFigures from '@/components/MissingFigures'
 
 // THE CLIENT EMAILS A DEAL CAN SEND.
 //
@@ -419,6 +420,23 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
           )}
         </div>
 
+        {/* WHAT IS MISSING, AT THE TOP OF THE SCREEN.
+          *
+          * 9 Nov 2026. This used to be a red line at the BOTTOM, under the whole
+          * preview, and Fabio scrolled a formal approval without ever reaching
+          * it: "this one doesn't have the breakdown of the purchase numbers and
+          * for some reason I can't add the loan amount on it." The portal had
+          * told him. Nobody gets to the bottom of a preview.
+          *
+          * It carries the boxes as well, because naming a missing figure and
+          * then leaving somebody to find which screen owns it is half a message
+          * - and on a deal with no borrowing capacity there is no screen to send
+          * them to. */}
+        {/* load(), not onSent() - onSent is what closes this screen, and a saved
+          * figure must not shut the dialog somebody is still working in. The same
+          * reason saveRate() calls load() further down. */}
+        <MissingFigures deal={deal} templateId={templateId} onSaved={() => load()} />
+
         <div className="flex flex-wrap items-stretch">
           {/* --- what goes in ------------------------------------------- */}
           <div className="flex-1 min-w-[330px] basis-[400px] p-4 border-r border-[#F2F4F5]">
@@ -669,7 +687,8 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
         {!!preview?.problems?.length && (
           <div className="px-5 pb-1">
             <ul className="text-[12px] text-chase list-disc pl-4 space-y-1">
-              {preview.problems.map((p, i) => <li key={i}>{p}</li>)}
+              {preview.problems.filter(p => !p.startsWith('The money block is left out'))
+                .map((p, i) => <li key={i}>{p}</li>)}
             </ul>
           </div>
         )}

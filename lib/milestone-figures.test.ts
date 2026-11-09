@@ -8,6 +8,9 @@ import { describe, it, expect } from 'vitest'
 import {
   milestoneRows, priceOf, dutyOf, contributionOf, figuresAreComplete,
   missingFigures, loanDetails,
+  dutyIsRecorded,
+  loanForEmail,
+  figuresToFill,
 } from './milestone-figures'
 
 const BC_ONLY = {
@@ -76,7 +79,55 @@ describe('an email with half the figures is worse than one with none', () => {
     const bare = { bc_data: { dutyState: 'NSW' }, lo_data: {} }
     expect(figuresAreComplete(bare)).toBe(false)
     expect(missingFigures(bare))
-      .toEqual(['the purchase price', 'the loan amount', "the clients' contribution"])
+      .toEqual(['the purchase price', 'the loan amount', 'the stamp duty'])
+  })
+
+  // THE CONTRIBUTION CAME OFF THIS LIST ON 9 NOV 2026.
+  //
+  // purchaseRows() works it out - total cost minus the loan - so demanding
+  // somebody type it was refusing to print a block over a figure the email
+  // never reads. It cost Kelly Twyford's formal approval its whole breakdown.
+  it('does not ask for a contribution it works out itself', () => {
+    const noDeposit = { ...CONTRACTED, contract_deposit: null, bc_data: { ...CONTRACTED.bc_data, deposit: null } }
+    expect(missingFigures(noDeposit)).toEqual([])
+    const row = milestoneRows(noDeposit).find(r => r.label.startsWith('Your contribution'))
+    expect(row?.value).toBeDefined()
+  })
+
+  // NOT RECORDED IS NOT $0. money(0) prints "$0" - a figure, not a blank - and
+  // total cost and the contribution are then both short by the duty. On a
+  // $900,000 Victorian purchase that is about $49,000 of cash the client is not
+  // told to bring, in writing.
+  it('treats a duty nobody has typed as missing', () => {
+    const noDuty = { ...CONTRACTED, contract_stamp_duty: null,
+                     bc_data: { ...CONTRACTED.bc_data, stampDuty: null } }
+    expect(dutyIsRecorded(noDuty)).toBe(false)
+    expect(missingFigures(noDuty)).toEqual(['the stamp duty'])
+    expect(milestoneRows(noDuty).length).toBeGreaterThan(0)   // the rows still build
+  })
+
+  // KELLY TWYFORD, 9 NOV 2026. No borrowing capacity at all - bc_data null, and
+  // the history shows it was never filled rather than wiped. The $200,000 was
+  // typed when the deal was marked lodged, and the email was not looking there.
+  it('falls back to what the deal actually lodged at', () => {
+    const twyford: any = {
+      contract_price: 900000, contract_stamp_duty: 49070,
+      lodged_total: 200000, bc_data: null, lo_data: {},
+    }
+    expect(loanForEmail(twyford)).toBe(200000)
+    expect(missingFigures(twyford)).toEqual([])
+    const rows = milestoneRows(twyford)
+    expect(rows.find(r => r.label === 'Loan amount')?.value).toBe('$200,000')
+    expect(rows.find(r => r.label.startsWith('Total cost'))?.value).toBe('$949,070')
+    expect(rows.find(r => r.label.startsWith('Your contribution'))?.value).toBe('$749,070')
+  })
+
+  // One list, said two ways - the words for the warning, the column for the box.
+  it('says where each missing figure is written', () => {
+    const bare = { bc_data: { dutyState: 'NSW' }, lo_data: {} }
+    expect(figuresToFill(bare).map(f => f.column))
+      .toEqual(['contract_price', 'contract_loan_amount', 'contract_stamp_duty'])
+    expect(figuresToFill(bare).map(f => f.words)).toEqual(missingFigures(bare))
   })
 
   it('does not treat nil duty as missing — it is the answer on a first home buyer', () => {

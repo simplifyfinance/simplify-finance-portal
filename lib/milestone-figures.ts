@@ -20,6 +20,7 @@ import { contractPrice, contractStampDuty } from './contract-figures'
 import { loanAmount } from './funds-to-complete'
 import { depositAsAssessed } from './contract-funding'
 import { isRefinance } from './document-rules'
+import { amountOf } from './deal-phase'
 import { balanceTotal, releaseTotal } from './complex-refinance'
 import { money } from './money'
 
@@ -61,7 +62,7 @@ export function milestoneRows(deal: any): PurchaseRow[] {
   if (isRefinance(deal)) {
     const rows: PurchaseRow[] = []
     const add = (label: string, n: number) => { if (n > 0) rows.push({ label, value: money(n) }) }
-    add('Loan amount', loanAmount(deal))
+    add('Loan amount', loanForEmail(deal))
     add('Balance being refinanced', balanceTotal(bc))
     add('Cash out', releaseTotal(bc))
     return rows
@@ -71,7 +72,7 @@ export function milestoneRows(deal: any): PurchaseRow[] {
     price: priceOf(deal),
     duty: dutyOf(deal),
     dutyLabel: dutyLabelFor(bc),
-    loan: loanAmount(deal),
+    loan: loanForEmail(deal),
     contribution: contributionOf(deal),
     contributionFrom: 'savings',
     // The record, not three of its fields - so a premium recorded against a
@@ -91,25 +92,12 @@ export function figuresAreComplete(deal: any): boolean {
 }
 
 export function missingFigures(deal: any): string[] {
-  const out: string[] = []
-
-  // ON A REFINANCE, ONLY THE LOAN AMOUNT IS OWED.
-  //
-  // 28 Oct 2026. Asking a refinance for a purchase price and a deposit is
-  // asking for something that does not exist, and the answer is always
-  // "missing" - which silently cost every refinance its money block, and with
-  // it the one figure the client was waiting to read.
-  if (isRefinance(deal)) {
-    if (loanAmount(deal) <= 0) out.push('the loan amount')
-    return out
-  }
-
-  if (priceOf(deal) <= 0) out.push('the purchase price')
-  if (loanAmount(deal) <= 0) out.push('the loan amount')
-  if (contributionOf(deal) <= 0) out.push("the clients' contribution")
-  // Duty is not in the list on purpose. Zero duty is a real answer on a first
-  // home buyer, and purchaseRows already prints it as one.
-  return out
+  // ONE LIST, SAID TWO WAYS. These words go in `problems`; the same list with
+  // its boxes and its columns is what components/MissingFigures.tsx draws at
+  // the top of the send screen. A second copy of "what is missing" would be a
+  // screen offering a box for something the gate does not want, or refusing to
+  // print over something it never asked for.
+  return figuresToFill(deal).map(f => f.words)
 }
 
 // --- the loan's own details ------------------------------------------------
@@ -182,4 +170,93 @@ function monthlyOf(option: any): string {
   if (reps.length !== 1) return ''
   const n = num(reps[0])
   return n > 0 ? `$${n.toLocaleString('en-AU', { maximumFractionDigits: 0 })}` : ''
+}
+
+// --- the figures that are not there, and where to put them -------------------
+
+// THE LOAN A DEAL ACTUALLY HAS.
+//
+// 9 Nov 2026. Kelly Twyford's formal approval went out with no money block at
+// all. The deal has a $900,000 contract price, $200,000 recorded when it was
+// lodged on 9 October, and NO BORROWING CAPACITY - bc_data is null, and the
+// history shows it was never filled rather than wiped. Fabio: "I am sure there
+// was data in there." There never was; the deal was worked through the fact
+// find, the lending options and the contract.
+//
+// loanAmount() reads the contract, then the BC's splits, then the lending
+// options. amountOf() in lib/deal-phase.ts reads what the deal lodged and
+// settled at. Two functions, one fact, and on this deal they disagreed: 0
+// against $200,000.
+//
+// This is the usual medicine - ask the second one only when the first has
+// nothing, so no deal that works today can change.
+export function loanForEmail(deal: any): number {
+  return loanAmount(deal) || amountOf(deal) || 0
+}
+
+// RECORDED, WHICH IS NOT THE SAME AS MORE THAN ZERO.
+//
+// A first home buyer's duty is $0 and that is an answer. A duty nobody has
+// typed is also 0 through num(), and that is not. Told apart here, because
+// money(0) prints "$0" - a figure, not a blank - and the two lines under it
+// are then both short by the duty. On Twyford that was about $49,000 less cash
+// than she has to bring, in writing, over a broker's signature.
+const recorded = (v: any) => v !== null && v !== undefined && String(v).trim() !== ''
+
+export function dutyIsRecorded(deal: any): boolean {
+  return recorded(deal?.contract_stamp_duty) || recorded(deal?.bc_data?.stampDuty)
+}
+
+export type MissingFigure = {
+  key: 'price' | 'loan' | 'duty'
+  // In a sentence: "the purchase price is not on the deal".
+  words: string
+  // The box on the screen, and the column it is written to. Contract columns,
+  // because they sit at the top of every precedence chain in this portal - a
+  // figure typed here cannot be quietly outranked by an older one.
+  column: 'contract_price' | 'contract_loan_amount' | 'contract_stamp_duty'
+  label: string
+  // Why the email cannot be built without it. Said, not implied.
+  why: string
+}
+
+/**
+ * What has to be recorded before the money block can print, and where it goes.
+ *
+ * THE CONTRIBUTION IS NOT ON THIS LIST ANY MORE. purchaseRows() works it out -
+ * total cost minus the loan - so demanding somebody type it was asking for a
+ * figure the email never reads. It cost Twyford its whole block.
+ */
+export function figuresToFill(deal: any): MissingFigure[] {
+  const out: MissingFigure[] = []
+  const loan: MissingFigure = {
+    key: 'loan', words: 'the loan amount', column: 'contract_loan_amount',
+    label: 'Loan amount',
+    why: 'There is nothing to tell the client they are borrowing.',
+  }
+
+  // A refinance owes the loan amount and nothing else: there is no price and no
+  // duty to ask for, and asking produced an answer of "missing" every time.
+  if (isRefinance(deal)) {
+    if (loanForEmail(deal) <= 0) out.push(loan)
+    return out
+  }
+
+  if (priceOf(deal) <= 0) {
+    out.push({
+      key: 'price', words: 'the purchase price', column: 'contract_price',
+      label: 'Purchase price',
+      why: 'Total cost and the contribution are both built on it.',
+    })
+  }
+  if (loanForEmail(deal) <= 0) out.push(loan)
+  if (!dutyIsRecorded(deal)) {
+    out.push({
+      key: 'duty', words: 'the stamp duty', column: 'contract_stamp_duty',
+      label: 'Stamp duty',
+      why: 'Not recorded is not $0. Left out, total cost and the contribution are ' +
+           'both short by the duty.',
+    })
+  }
+  return out
 }
