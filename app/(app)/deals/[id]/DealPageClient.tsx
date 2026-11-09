@@ -43,6 +43,7 @@ import { isLocked } from '@/lib/deal-lock'
 import { changeCountLine } from '@/lib/changed-since-lodgement'
 import { isWithLender } from '@/lib/deal-phase'
 import DocumentsBox from '@/components/DocumentsBox'
+import SomethingWrong from '@/components/SomethingWrong'
 import DealPrompts from '@/components/DealPrompts'
 import Outstanding from '@/components/Outstanding'
 import DealDocuments from '@/components/DealDocuments'
@@ -822,6 +823,12 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
             onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
           <DealLinks deal={dealData}
             onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+          {/* LAST, ON PURPOSE. Needs action and the documents are today's work;
+            * this is there when you want it and out of the way when you do not.
+            * One button on the deal rather than one beside every figure - see
+            * components/SomethingWrong.tsx. 17 Aug 2026. */}
+          <SomethingWrong deal={dealData} me={me}
+            whereNow={tabs.find(t => t.key === stage)?.label || stage} />
         </DealRail>}
       </div>
     </div>

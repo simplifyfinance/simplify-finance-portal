@@ -42,6 +42,10 @@ const NOT_TO_A_CLIENT: Record<string, string> = {
   // hears about it; what a SalesTrekker card wants is what the CLIENT was
   // told. 17 Aug 2026.
   'app/api/send-valuation/route.ts': 'the valuations bot; a plain-text order, never seen by a client',
+  // TELLS OUR OWN MANAGEMENT SOMETHING IN THE PORTAL IS WRONG. A fee out of
+  // date, a calculation light. The client is never on it and never hears
+  // about it. 17 Aug 2026, Alan's item 5.
+  'app/api/flag-raised/route.ts': 'tells management something in the portal is wrong; internal',
   // GOES TO A CLIENT, AND HAS NO DEAL BEHIND IT. Fabio, 22 Oct 2026: "on
   // templates folder only ones associated to deal as those are the one that
   // have bcc". The Templates page has no deal card, so there is no code to
