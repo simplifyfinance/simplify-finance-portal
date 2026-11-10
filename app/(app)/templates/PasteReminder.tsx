@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useBackdropClose } from '@/components/useBackdropClose'
 import { TONE } from '@/lib/tone'
 
 // A mail link cannot carry a formatted body, so the email is put on the clipboard
@@ -32,11 +33,16 @@ export default function PasteReminder({
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
+  // ABOVE THE EARLY RETURN, because it is a hook. Both ends of the click have
+  // to be on the backdrop - a selection dragged out of a box is not a click
+  // outside it. See components/useBackdropClose.ts.
+  const backdrop = useBackdropClose(onClose)
+
   if (!open) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-         style={{ background: 'rgba(34,31,27,.42)' }} onClick={onClose}>
+         style={{ background: 'rgba(34,31,27,.42)' }} {...backdrop}>
       <div className="bg-card rounded-2xl border w-full max-w-[420px] overflow-hidden"
            style={{ borderColor: TONE.line }} onClick={e => e.stopPropagation()}>
         <div className="px-6 pt-6 pb-5 text-center">

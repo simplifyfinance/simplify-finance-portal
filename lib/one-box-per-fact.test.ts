@@ -71,10 +71,21 @@ describe('THE TEMPLATE ANSWERS ITS OWN QUESTION', () => {
 
 describe('THE FORM ASKS EACH THING ONCE', () => {
   it('THE SUBURB BOX SAYS SUBURB, ON EVERY TEMPLATE', () => {
-    // It writes into `suburb` and always has. The ternary that made it say
-    // "State" on buying templates is the whole fault.
+    // 10 Nov 2026. The box is no longer one fixed string, because "Suburb" on a
+    // refinance and "Suburb" on a purchase are two different questions - and it
+    // is not drawn at all where ticked securities already carry the address.
+    // What has not changed, and is the whole point of this test, is that it
+    // never says State. See lib/duty-state.ts for what that cost.
     expect(BC).not.toContain("buysNothing(template) ? 'Suburb' : 'State'")
-    expect(BC).toContain('<Field label="Suburb"><input className={inputCls} value={suburb}')
+    // Written without the apostrophe, which is a \u2019 escape in the source and
+    // would have to be escaped twice over to be matched here.
+    for (const label of ["'Suburb of the property'", "re buying in'"]) {
+      expect(BC, `the suburb box no longer offers ${label}`).toContain(label)
+    }
+    // Both ends of the one ternary that is left begin with the word.
+    for (const m of BC.matchAll(/'(Suburb[^']*)'/g)) {
+      expect(m[1].startsWith('Suburb'), `${m[1]} does not begin with Suburb`).toBe(true)
+    }
   })
 
   it('and no box bound to the suburb is labelled State', () => {

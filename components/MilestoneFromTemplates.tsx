@@ -122,6 +122,13 @@ export default function MilestoneFromTemplates({ templateId, onClose }: {
     return () => { alive = false; clearTimeout(id) }
   }, [term])
 
+  // A DRAG THAT ENDS OUTSIDE IS NOT A CLICK OUTSIDE, and this is a hook, so it
+  // is called before the early return below. Both ends of the click have to be
+  // on the dark backdrop - selecting text in a box and letting go a few pixels
+  // past the edge of the panel used to shut the screen and throw away
+  // everything typed into it. See components/useBackdropClose.ts.
+  const backdrop = useBackdropClose(onClose)
+
   if (picked) {
     return (
       <SendScreen deal={picked} templateId={templateId}
@@ -148,14 +155,6 @@ export default function MilestoneFromTemplates({ templateId, onClose }: {
       return r !== 0 ? r : String(a.d.deal_name || '').localeCompare(String(b.d.deal_name || ''))
     })
     .slice(0, 60)
-
-  // A DRAG THAT ENDS OUTSIDE IS NOT A CLICK OUTSIDE.
-  //
-  // Both ends of the click have to be on the dark backdrop. Selecting text in
-  // a box and letting go a few pixels past the edge of the panel used to shut
-  // this screen and throw away everything typed into it - see
-  // components/useBackdropClose.ts for why the browser does that.
-  const backdrop = useBackdropClose(onClose)
 
   return (
     <div className="fixed inset-0 z-50 bg-black/30 flex items-start justify-center p-4 overflow-auto"

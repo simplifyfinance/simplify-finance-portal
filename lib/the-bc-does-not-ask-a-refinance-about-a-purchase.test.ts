@@ -66,8 +66,33 @@ describe('the box at the top of the card says what it is', () => {
   //
   // It writes into `suburb`. It is read as the suburb. It is the suburb box on
   // every template, and there is no longer a condition that can get it wrong.
-  it('it is the Suburb box, on every scenario', () => {
-    expect(FORM).toContain('<Field label="Suburb"><input className={inputCls} value={suburb}')
+  it('it is the Suburb box, on every scenario that still asks', () => {
+    // 10 Nov 2026. The box is no longer one fixed string, because "Suburb" on a
+    // refinance and "Suburb" on a purchase are two different questions - and it
+    // is not drawn at all where ticked securities already carry the address.
+    // What has not changed, and is the whole point of this test, is that it
+    // never says State. See lib/duty-state.ts for what that cost.
+    expect(FORM).not.toContain("buysNothing(template) ? 'Suburb' : 'State'")
+    // Written without the apostrophe, which is a \u2019 escape in the source and
+    // would have to be escaped twice over to be matched here.
+    for (const label of ["'Suburb of the property'", "re buying in'"]) {
+      expect(FORM, `the suburb box no longer offers ${label}`).toContain(label)
+    }
+    // Both ends of the one ternary that is left begin with the word.
+    for (const m of FORM.matchAll(/'(Suburb[^']*)'/g)) {
+      expect(m[1].startsWith('Suburb'), `${m[1]} does not begin with Suburb`).toBe(true)
+    }
+  })
+
+  // AND IT IS NOT ASKED WHERE THE DEAL ALREADY KNOWS.
+  //
+  // 10 Nov 2026. Fabio, on an Equity release + purchase whose ticked security
+  // reads "28 Jarvis St, Oura NSW 2650": "what is the point of the suburb
+  // question here really." None. The email heading has read the ticked
+  // addresses since 16 Oct and bc-ready stopped asking for it on 15 Oct - it
+  // was a box nobody read, sitting underneath the answer.
+  it('and it is not drawn once a security carries the address', () => {
+    expect(FORM).toContain('securityIdsOf({ template, securityIds }).length === 0')
   })
 
   it('and the ternary that made it say State is gone', () => {

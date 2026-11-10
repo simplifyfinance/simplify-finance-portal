@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { useBackdropClose } from '@/components/useBackdropClose'
 import { canUnlock, unlockNote, reasonIsEnough, TAB_LABEL } from '@/lib/deal-lock'
 import { addSystemNote } from '@/components/DealFile'
 import SomethingChanged from '@/components/SomethingChanged'
@@ -36,6 +37,11 @@ export default function TabLock({ locked, tab, dealId, deal, role, me, onUnlocke
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
+
+  // ABOVE THE EARLY RETURN, because it is a hook. Both ends of the click have
+  // to be on the backdrop - a selection dragged out of a box is not a click
+  // outside it. See components/useBackdropClose.ts.
+  const backdrop = useBackdropClose(() => setOpen(false))
 
   if (!locked) return <>{children}</>
 
@@ -94,7 +100,7 @@ export default function TabLock({ locked, tab, dealId, deal, role, me, onUnlocke
 
       {open && (
         <div className="fixed inset-0 bg-black/30 flex items-start justify-center z-50 p-6 overflow-y-auto"
-             onClick={() => setOpen(false)}>
+             {...backdrop}>
           <div className="bg-card border border-line rounded-2xl px-6 py-5 max-w-[460px] w-full mt-24 shadow-xl"
                onClick={e => e.stopPropagation()}>
             <p className="text-[14px] font-[640] text-ink m-0 mb-1">Unlock this deal</p>
