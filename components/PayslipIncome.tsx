@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import DropZone from '@/components/DropZone'
 import { assess, type PayLine, type PayKind } from '@/lib/annualise-income'
 import type { ReadPayslip, ReadLine } from '@/lib/payslip-lines'
+import { isTotal } from '@/lib/payslip-lines'
 import { toFactFind, unsettled, whatHappened, type Fields, type Column } from '@/lib/income-to-fact-find'
 import { assessCombined, annualFromRate, type BaseRate } from '@/lib/combined-ytd'
 
@@ -157,13 +158,22 @@ export default function PayslipIncome({
   // are listed because a lender asks to see two, not because they are summed.
   const latest = slips.length ? slips[slips.length - 1] : null
 
-  const lines: ReadLine[] = useMemo(() => (latest?.read.lines || []).map(l => {
-    const o = overrides[l.label]
-    if (!o) return l
-    if (o === 'oneOff') return { ...l, oneOff: true, notIncome: false, recognised: true }
-    if (o === 'notIncome') return { ...l, notIncome: true, recognised: true }
-    return { ...l, key: o, oneOff: false, notIncome: false, recognised: true }
-  }), [latest, overrides])
+  // A TOTAL NEVER BECOMES A LINE, INCLUDING ON A READING ALREADY SAVED.
+  //
+  // 10 Nov 2026. The route stopped letting "Taxable" through, but a payslip
+  // read before that is on the deal with the line still in it - and this screen
+  // draws the saved reading, so Kellie King's would have gone on offering
+  // $136,090 until somebody uploaded the payslip again. Asked here too, so a
+  // record written yesterday is cleaned the moment somebody looks at it.
+  const lines: ReadLine[] = useMemo(() => (latest?.read.lines || [])
+    .filter(l => !isTotal(String(l?.label || '')))
+    .map(l => {
+      const o = overrides[l.label]
+      if (!o) return l
+      if (o === 'oneOff') return { ...l, oneOff: true, notIncome: false, recognised: true }
+      if (o === 'notIncome') return { ...l, notIncome: true, recognised: true }
+      return { ...l, key: o, oneOff: false, notIncome: false, recognised: true }
+    }), [latest, overrides])
 
   const noBreakdown = Boolean(latest && !latest.read.linesHaveYtd)
   const noPeriodEnd = Boolean(latest && !latest.read.periodEnd)

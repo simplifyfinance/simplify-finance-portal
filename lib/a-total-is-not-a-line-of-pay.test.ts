@@ -18,6 +18,7 @@
 // Fabio: "where did it get 39K". That was the second fault in the same box.
 import { describe, it, expect } from 'vitest'
 import { isTotal } from './payslip-lines'
+import { readFileSync } from 'fs'
 import { assess, type PayLine } from './annualise-income'
 
 // Her payslip, as the portal read it, with "Taxable" still on it.
@@ -113,5 +114,18 @@ describe('year to date means earned', () => {
       expect(working, `${label} is no longer explained`).toContain(label)
     }
     expect(working).toContain('money handed back, not money earned')
+  })
+})
+
+describe('and a reading already saved is cleaned on sight', () => {
+  // The route stopped letting it through, but the deal still holds the line it
+  // read yesterday - and the screen draws the SAVED reading. Without this,
+  // Kellie King's deal would have gone on offering $136,090 until somebody
+  // uploaded the payslip a second time, which nobody would have known to do.
+  const SCREEN = readFileSync('components/PayslipIncome.tsx', 'utf8')
+
+  it('the screen drops totals out of what it was handed', () => {
+    expect(SCREEN).toContain("import { isTotal } from '@/lib/payslip-lines'")
+    expect(SCREEN).toMatch(/latest\?\.read\.lines \|\| \[\]\)\s*\n\s*\.filter\(l => !isTotal/)
   })
 })
