@@ -4,6 +4,8 @@ import { realDealsOnly, REAL_DEALS_OR } from '@/lib/test-deal'
 import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
 import TodayPlan from '@/components/TodayPlan'
+import ThisWeek from '@/components/ThisWeek'
+import DueToLodge from '@/components/DueToLodge'
 import { todayYmd } from '@/lib/periods'
 
 export const metadata = { title: 'Today' }
@@ -115,6 +117,11 @@ export default async function Dashboard() {
   return (
     <>
     <div className="px-6 pt-6">
+      {/* THE WEEK, ABOVE THE DAY. Alan's item 1 - see lib/lodging-when.ts and
+        * lib/the-week-so-far.ts. Both read the deals this page already has, so
+        * neither can disagree with the board about what lodged. */}
+      <ThisWeek deals={deals || []} />
+      <DueToLodge deals={deals || []} brokerNames={brokerNames} canSet={!!seesAll} />
       <TodayPlan
         deals={deals || []}
         officers={officers}
