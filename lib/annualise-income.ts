@@ -337,10 +337,17 @@ function workingOut(
   if (lines.length === 0) return []
   const pct = Math.round(rate * 100)
   const { days, yearDays } = coverage
-  const ytdTotal = lines.reduce((t, l) => t + l.ytd, 0)
+  // EARNED, NOT EVERY NUMBER ON THE PAGE.
+  //
+  // 10 Nov 2026. This added every line's year to date together - the pay, and
+  // then the tax, the net pay, the salary sacrifice and both super lines on
+  // top. On Kellie King's payslip it printed $39,188 for somebody who had
+  // earned $13,864.89. The lines underneath it each say "money handed back,
+  // not money earned"; the headline was counting them anyway.
+  const ytdTotal = lines.filter(l => !l.notIncome).reduce((t, l) => t + l.ytd, 0)
 
   const out: string[] = [
-    `Year to date ${exact2(ytdTotal)} to ${auDay(coverage.to)} — ${days} days of the financial year`
+    `Year to date ${exact2(ytdTotal)} earned to ${auDay(coverage.to)} — ${days} days of the financial year`
       + (coverage.countsFrom > coverage.fyStart ? `, counted from the day they started.` : '.'),
   ]
 

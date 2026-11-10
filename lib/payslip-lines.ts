@@ -98,9 +98,30 @@ const RULES: Rule[] = [
 
 const GROSS = /^(gross|total gross|gross earnings|total earnings|total pay|gross pay)\b/
 
+// TAXABLE IS A TOTAL TOO, AND IT COST US A DOUBLED INCOME.
+//
+// 10 Nov 2026. Kellie King's payslip. "Taxable 11,824.84" was read as a line
+// of pay, annualised to $73,154 and added on top of her Normal Pay - so the
+// screen offered $136,090 for somebody earning about $63,000, with a button
+// under it that writes the figure to the fact find.
+//
+// It slipped through because the not-income rule looks for the word "tax" on
+// its own and "taxable" does not match it. The line then fell through as
+// unrecognised, and an unrecognised line is counted on purpose so that an
+// oddly named ALLOWANCE is not quietly dropped. That reasoning is right for an
+// allowance and ruinous for a subtotal of the lines above it.
+//
+// MATCHED WHOLE, NEVER AS A PREFIX. "Taxable Allowance" and "Kilometers
+// Taxable" are lines of pay and must keep being counted; only the bare
+// subtotal is a total. That is why this is anchored at both ends and GROSS is
+// not - "Gross Pay YTD" is still gross, while "Taxable Car Allowance" is not a
+// total of anything.
+const TAXABLE_TOTAL = /^(taxable|taxable income|taxable earnings|taxable gross|total taxable)$/
+
 /** True where the label is a payslip TOTAL rather than a line of pay. */
 export function isTotal(label: string): boolean {
-  return GROSS.test(clean(label))
+  const s = clean(label)
+  return GROSS.test(s) || TAXABLE_TOTAL.test(s)
 }
 
 function clean(label: string): string {
