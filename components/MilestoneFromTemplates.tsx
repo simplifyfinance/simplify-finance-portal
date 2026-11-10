@@ -1,5 +1,6 @@
 'use client'
 import { REAL_DEALS_OR } from '@/lib/test-deal'
+import { useBackdropClose } from '@/components/useBackdropClose'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { SendScreen } from '@/components/MilestoneEmails'
@@ -148,9 +149,17 @@ export default function MilestoneFromTemplates({ templateId, onClose }: {
     })
     .slice(0, 60)
 
+  // A DRAG THAT ENDS OUTSIDE IS NOT A CLICK OUTSIDE.
+  //
+  // Both ends of the click have to be on the dark backdrop. Selecting text in
+  // a box and letting go a few pixels past the edge of the panel used to shut
+  // this screen and throw away everything typed into it - see
+  // components/useBackdropClose.ts for why the browser does that.
+  const backdrop = useBackdropClose(onClose)
+
   return (
     <div className="fixed inset-0 z-50 bg-black/30 flex items-start justify-center p-4 overflow-auto"
-         onClick={onClose}>
+         {...backdrop}>
       <div className="bg-card rounded-xl border border-[#E3E6E8] shadow-lg w-full max-w-[560px] mt-10"
            onClick={e => e.stopPropagation()}>
         <div className="border-b border-[#EEF0F2] bg-[#FAFAF8] px-4 py-3 rounded-t-xl flex items-baseline gap-2">

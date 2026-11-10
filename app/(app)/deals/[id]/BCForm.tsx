@@ -28,6 +28,7 @@ import { ffProperties, securitiesOf, securitiesWithPurchase, totalsOf, groupBySe
          orphanSplits, canBuyAndRefinance, purchaseLoanOf,
         BEING_PURCHASED, BEING_PURCHASED_LABEL,
          lvrOf, pct, legacyAddress } from '@/lib/securities'
+import { securityIdsOf } from '@/lib/securities'
 import { autoTagSplits, findPurchaseSplit } from '@/lib/split-security-tag'
 import { copyBeforeAsking } from '@/lib/send-again'
 import { isInterestOnly } from '@/lib/deal-structure'
@@ -2072,6 +2073,7 @@ Key assumptions: ${checklistText}`
           }] : []),
           {
             label: 'Send to client',
+            doneLabel: 'Sent to client',
             onClick: () => {
               if (!canSendToClient) return
               // Already answered once on the handover - never asked twice.
@@ -2844,7 +2846,25 @@ Key assumptions: ${checklistText}`
                       and it does not depend on the template.
                       Deals already written are repaired at read time, where it
                       is safe to do it - see lib/duty-state.ts. */}
-                  <Field label="Suburb"><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
+                  {/* AND ONLY WHERE THE DEAL DOES NOT ALREADY KNOW.
+                      10 Nov 2026. Fabio, on an Equity release + purchase whose
+                      ticked security reads "28 Jarvis St, Oura NSW 2650": "what
+                      is the point of the suburb question here really."
+                      None, on that screen. The email heading has read the ticked
+                      addresses since 16 Oct - one box cannot name two houses -
+                      and bc-ready stopped asking for it on 15 Oct. It was a box
+                      nobody read, sitting under the answer.
+                      It is still a real question where there is nothing ticked
+                      and no address: a pre-approval for somebody who has not
+                      found a house. So it is asked there and nowhere else, and
+                      it says which suburb it means, because "Suburb" on a
+                      refinance and "Suburb" on a purchase are two questions. */}
+                  {securityIdsOf({ template, securityIds }).length === 0 && (
+                    <Field label={buysNothing(template)
+                      ? 'Suburb of the property' : 'Suburb they\u2019re buying in'}>
+                      <input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} />
+                    </Field>
+                  )}
                   {/* ONLY WHERE THE TEMPLATE DOES NOT ALREADY KNOW.
                       29 Oct 2026, Fabio: "if I select Investment Purchase,
                       Property type preloads INV". It does, because an

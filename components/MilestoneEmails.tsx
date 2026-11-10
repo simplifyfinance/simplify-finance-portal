@@ -11,6 +11,7 @@ import { menuFor, menuToBrowse, lastSent, templateById, type MenuItem, type Temp
 import { useSender } from '@/app/(app)/templates/useSender'
 import { SenderPanel } from '@/app/(app)/templates/TemplateFields'
 import MissingFigures from '@/components/MissingFigures'
+import { useBackdropClose } from '@/components/useBackdropClose'
 
 // THE CLIENT EMAILS A DEAL CAN SEND.
 //
@@ -404,9 +405,17 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
   const blocks = preview?.blocks || []
   const isOn = (b: Block) => (b.key in overrides ? overrides[b.key] : b.on)
 
+  // A DRAG THAT ENDS OUTSIDE IS NOT A CLICK OUTSIDE.
+  //
+  // Both ends of the click have to be on the dark backdrop. Selecting text in
+  // a box and letting go a few pixels past the edge of the panel used to shut
+  // this screen and throw away everything typed into it - see
+  // components/useBackdropClose.ts for why the browser does that.
+  const backdrop = useBackdropClose(onClose)
+
   return (
     <div className="fixed inset-0 z-50 bg-black/30 flex items-start justify-center p-4 overflow-auto"
-         onClick={onClose}>
+         {...backdrop}>
       <div className="bg-card rounded-xl border border-[#E3E6E8] shadow-lg w-full max-w-[1180px] mt-6"
            onClick={e => e.stopPropagation()}>
 

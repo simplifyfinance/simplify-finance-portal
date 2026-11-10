@@ -35,6 +35,16 @@ export type Action = {
   primary?: boolean
   /** Already happened. Green, with whatever `since` says beside it. */
   done?: boolean
+  // WHAT IT SAYS ONCE IT HAS HAPPENED.
+  //
+  // 10 Nov 2026. Fabio: "it should read Sent to client not Send to client".
+  // A green tick beside the words "Send to client" is a button telling you to
+  // do the thing it has just told you is done. The tick carries the fact and
+  // the label carried the instruction, and the two disagreed.
+  //
+  // Optional: a label that already reads as a finished thing - "Done",
+  // "Client agreed" - needs nothing.
+  doneLabel?: string
   /** Not yet. Dashed and unpressable, never hidden - a button that comes and
    *  goes is how a screen loses people's trust. */
   waiting?: boolean
@@ -151,7 +161,7 @@ export default function WhatNow({
               : a.waiting ? 'bg-line-soft text-faint border-field-line border-dashed font-normal'
               : a.primary ? 'bg-ink text-page border-ink'
               : 'bg-card text-ink border-field-line hover:bg-page'}`}>
-            {a.done ? `✓ ${a.label}` : a.label}
+            {a.done ? `✓ ${a.doneLabel || a.label}` : a.label}
           </button>
           {a.since && <span className="text-[12px] text-faint">{a.since}</span>}
           {a.again && (

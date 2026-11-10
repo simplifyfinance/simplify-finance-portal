@@ -1,5 +1,6 @@
 // WHAT IS ON THE HANDOVER, AS DATA.
 import { dutyStateOf } from './duty-state'
+import { securityIdsOf } from './securities'
 import { incomeKind } from './income-kind'
 import { buysNothing } from './buying'
 import { loanPurpose } from './loan-purpose'
@@ -570,7 +571,11 @@ export function factFindSections(deal: any): ViewSection[] {
   // from a scenario this deal used to be. See lib/buying.ts.
   const buying = !buysNothing(bc.template)
   const scenario: ViewRow[] = kv([
-    ['Template', words(bc.template)], ['State', buying ? dutyStateOf(bc) : ''], ['Suburb', bc.suburb],
+    ['Template', words(bc.template)], ['State', buying ? dutyStateOf(bc) : ''],
+    // NOT OVER THE TOP OF THE SECURITIES. Once houses are ticked they carry
+    // their own addresses and the BC stops drawing this box, so whatever is
+    // left in it is a leftover from before. See BCForm. 10 Nov 2026.
+    ['Suburb', securityIdsOf(bc).length ? '' : bc.suburb],
     ['Property type', bc.propertyType], ['Loan term', bc.loanTerm ? `${bc.loanTerm} years` : ''],
   ])
   scenario.push(sub('Figures'))

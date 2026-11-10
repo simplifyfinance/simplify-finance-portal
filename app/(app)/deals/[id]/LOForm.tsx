@@ -2016,6 +2016,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           }] : []),
           {
             label: sending ? 'Copying...' : 'Send to client',
+            doneLabel: 'Sent to client',
             onClick: () => {
               if (!canSendToClient) return
               if (loCompletedAt) { sendEmail(); return }

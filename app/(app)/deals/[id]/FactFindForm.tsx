@@ -34,16 +34,10 @@ import { useKeepalive } from '@/components/useKeepalive'
 import { withDefaults } from '@/lib/record-defaults'
 import NoApplicants from '@/components/NoApplicants'
 import { useLiveColumn } from '@/components/useLiveColumn'
+import { financialYears, nextFY } from '@/lib/financial-years'
 import { householdsOf, householdOf, isOneHousehold, canAddHousehold, nextHouseholdId,
          suggestSecondHousehold, setDependants, HOUSEHOLD_IDS } from '@/lib/households'
 
-function incrementFY(fy: string): string {
-  const match = fy.match(/^(\d{4})\/(\d{2})$/)
-  if (!match) return fy
-  const startYear = parseInt(match[1], 10) + 1
-  const endYY = ((startYear + 1) % 100).toString().padStart(2, '0')
-  return `${startYear}/${endYY}`
-}
 
 type Address = {
   id: string
@@ -2065,9 +2059,15 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                           <span className="text-xs font-medium text-gray-600">Financial year 1</span>
                           <select className="text-xs border border-gray-200 rounded px-2 py-1" value={inc.seYear1FY} onChange={e => {
                             const newYear1 = e.target.value
-                            updateApplicant('income', applicant.income.map(i => i.id === inc.id ? { ...i, seYear1FY: newYear1, seYear2FY: incrementFY(newYear1) } : i))
+                            updateApplicant('income', applicant.income.map(i => i.id === inc.id ? { ...i, seYear1FY: newYear1, seYear2FY: nextFY(newYear1) } : i))
                           }}><option value="">— select —</option>
-                            <option>2021/22</option><option>2022/23</option><option>2023/24</option><option>2024/25</option>
+                            {/* WORKED OUT FROM TODAY, NOT TYPED. These were four
+                              * <option> tags, so every 1 July the newest financial
+                              * year stopped existing until somebody shipped. See
+                              * lib/financial-years.ts. */}
+                            {financialYears(new Date(), 5, [inc.seYear1FY]).map(fy => (
+                              <option key={fy}>{fy}</option>
+                            ))}
                           </select>
                         </div>
                         <div className="grid grid-cols-2 gap-3 mb-2">
@@ -2110,7 +2110,9 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                           <div className="flex justify-between items-center mb-2">
                             <span className="text-xs font-medium text-gray-600">Financial year 2</span>
                             <select className="text-xs border border-gray-200 rounded px-2 py-1" value={inc.seYear2FY} onChange={e => updateIncome(inc.id, 'seYear2FY', e.target.value)}><option value="">— select —</option>
-                              <option>2024/25</option><option>2023/24</option><option>2022/23</option><option>2021/22</option>
+                              {financialYears(new Date(), 5, [inc.seYear2FY]).reverse().map(fy => (
+                                <option key={fy}>{fy}</option>
+                              ))}
                             </select>
                           </div>
                           <div className="grid grid-cols-2 gap-3 mb-2">
