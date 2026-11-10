@@ -93,14 +93,40 @@ describe('the broker sees what is going out', () => {
     })
   }
 
-  it('unticking is held on the page and NEVER saved', () => {
-    // It says "not in this email", not "the answer is known". If it were known
-    // it would be on the fact find and the question would have gone on its own.
+  // THIS TEST SAID THE OPPOSITE UNTIL 10 NOV 2026.
+  //
+  // It held the unticked list on the page and never saved it, on the reasoning
+  // that unticking says "not in this email" rather than "the answer is known".
+  // The reasoning was sound; the behaviour was not. Fabio: "when I untick the
+  // box saying I don't need it it is taking off html which is great but when I
+  // refresh the deal card it comes back!"
+  //
+  // A broker who has just read the fact find knows things the portal cannot
+  // see. Making them say so again after every refresh taught them the list was
+  // noise, which is the one thing a list of gaps must never become.
+  it('unticking is kept until somebody ticks it back', () => {
     for (const src of [BC_FORM, LO_FORM]) {
-      expect(src).toContain('const [questionsDropped, setQuestionsDropped] = useState<string[]>([])')
-      expect(codeOnly(src), 'the unticked list is being written to the deal')
+      expect(src, 'the unticked list is page state again, so a refresh loses it')
+        .not.toContain('const [questionsDropped, setQuestionsDropped] = useState<string[]>([])')
+      expect(src, 'the unticked list is not read back off the deal')
+        .toContain('questionsDropped')
+      // It travels inside the tab's own record, through the one guarded save
+      // path, like everything else on these screens. A column of its own would
+      // be a second home for the same fact.
+      expect(codeOnly(src), 'the unticked list has grown a column of its own')
         .not.toContain('questions_dropped')
     }
+    expect(BC_FORM).toContain('Array.isArray(s.questionsDropped)')
+    expect(LO_FORM).toContain('questionsDropped: next')
+  })
+
+  // AND IT IS STILL ON THE SCREEN. Kept off an email is not the same as gone:
+  // the row stays, unticked, with its reason showing, so a gap nobody has
+  // filled can never go quiet.
+  it('and the row it hides is still drawn', () => {
+    const panel = readFileSync('components/WhatWeStillNeed.tsx', 'utf8')
+    expect(panel).toContain('tick it back')
+    expect(panel).not.toContain('it will come back on the next one')
   })
 })
 

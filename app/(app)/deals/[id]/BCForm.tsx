@@ -401,13 +401,23 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const ffLiabs: any[] = ff.liabilities || []
 
   const [activeTab, setActiveTab] = useState<'form' | 'preview'>('form')
-  // UNTICKED FOR THIS EMAIL ONLY, AND NEVER SAVED.
+  // UNTICKED UNTIL SOMEBODY TICKS IT BACK.
   //
-  // Dropping a question says "not in this one", not "the answer is known". If
-  // it were known it would be on the fact find and the question would have gone
-  // on its own - so this is deliberately state that dies with the page, and the
-  // next email asks again. See components/WhatWeStillNeed.tsx.
-  const [questionsDropped, setQuestionsDropped] = useState<string[]>([])
+  // 10 Nov 2026. Fabio: "when I untick the box saying I don't need it it is
+  // taking off html which is great but when I refresh the deal card it comes
+  // back!" It did. This was state that died with the page, on purpose -
+  // dropping a question said "not in this one", not "the answer is known".
+  //
+  // The reasoning was sound and the behaviour was not. A broker who has just
+  // read the fact find knows things the portal cannot see, and making them say
+  // so again after every refresh taught them the list was noise. It is saved
+  // with everything else on the tab now.
+  //
+  // THE ROW DOES NOT DISAPPEAR. It stays on the list, unticked, with its reason
+  // showing - so a gap nobody has filled is never invisible, and putting it
+  // back is one click. See components/WhatWeStillNeed.tsx.
+  const [questionsDropped, setQuestionsDropped] = useState<string[]>(
+    Array.isArray(s.questionsDropped) ? s.questionsDropped : [])
   const [template, setTemplate] = useState(s.template || 'oo_purchase')
   const [splits, setSplits] = useState<Split[]>(s.splits || TEMPLATE_DEFAULTS['oo_purchase'].splits)
   const firstName = ffApp.firstName || deal.clients?.first_name || ''
@@ -1242,6 +1252,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const BC_SETTERS: Record<string, (v: any) => void> = {
     template: setTemplate, splits: setSplits, incomeOther: setIncomeOther, incomeRental: setIncomeRental,
     suburb: setSuburb, propertyType: setPropertyType,
+    questionsDropped: setQuestionsDropped,
     purchasePropertySubtype: setPurchasePropertySubtype, purchasePrice: setPurchasePrice,
     deposit: setDeposit, stampDuty: setStampDuty, dutyState: setDutyState, lvr: setLvr,
     lvrCustom: setLvrCustom, lmiApplicable: setLmiApplicable, lmiTreatment: setLmiTreatment, loanTerm: setLoanTerm,
@@ -1443,13 +1454,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     // pending stays in pendingSave and is written by the effect above when the
     // form actually leaves.
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, emailQuestions, emailResetFrom, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, securityLmiApplicable, securityLmi, securityLmiTreatment, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, repaymentAnalysis, analysisYearsRemaining, analysisCurrentRepayment, analysisCurrentRate, compareOptions, optionLabel, altScenarios, brand])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, emailQuestions, emailResetFrom, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, securityLmiApplicable, securityLmi, securityLmiTreatment, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, repaymentAnalysis, analysisYearsRemaining, analysisCurrentRepayment, analysisCurrentRate, compareOptions, optionLabel, altScenarios, brand, questionsDropped])
 
   // Single source of truth for BC form fields. Used by BOTH the autosave and the
   // email payload, so a new field reaches the database and the client email together.
   // These were previously two hand-written lists, and they drifted apart.
   function buildBcData() {
-    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, emailQuestions, emailResetFrom, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, securityLmiApplicable, securityLmi, securityLmiTreatment, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, repaymentAnalysis, analysisYearsRemaining, analysisCurrentRepayment, analysisCurrentRate, compareOptions, optionLabel, altScenarios, brand }
+    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, emailQuestions, emailResetFrom, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, securityLmiApplicable, securityLmi, securityLmiTreatment, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, repaymentAnalysis, analysisYearsRemaining, analysisCurrentRepayment, analysisCurrentRate, compareOptions, optionLabel, altScenarios, brand, questionsDropped }
   }
 
   // Does the saved email still match the scenario the deal is on? Read in three

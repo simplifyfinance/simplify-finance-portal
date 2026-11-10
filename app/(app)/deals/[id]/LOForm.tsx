@@ -423,7 +423,16 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // UNTICKED FOR THIS EMAIL ONLY, AND NEVER SAVED. Dropping a question says
   // "not in this one", not "the answer is known" - see BCForm.tsx, where the
   // same state lives for the same reason.
-  const [questionsDropped, setQuestionsDropped] = useState<string[]>([])
+  // KEPT, THE SAME AS THE BC'S. See the note in BCForm.tsx - a broker who has
+  // just unticked something must not be asked again by a page refresh. Held
+  // inside lo_data so it travels the one guarded save path like everything
+  // else on this tab.
+  const [questionsDropped, setQuestionsDropped] = useState<string[]>(
+    Array.isArray((deal.lo_data || {}).questionsDropped) ? (deal.lo_data || {}).questionsDropped : [])
+  const keepDropped = (next: string[]) => {
+    setQuestionsDropped(next)
+    setD((cur: any) => ({ ...cur, questionsDropped: next }))
+  }
   // THE SAVE LINE beside the deal name. What it says, and when it is allowed to
   // say it, lives in components/useSaveIndicator.ts - shared, so BC cannot end up
   // telling Kylie a different story from the Fact Find.
@@ -2078,7 +2087,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           answered after the BC is shown closed here rather than hidden - it is
           the only way anybody will trust the list. */}
       <WhatWeStillNeed deal={deal} me={me} dropped={questionsDropped}
-        onDropped={setQuestionsDropped} onChanged={() => window.location.reload()} />
+        onDropped={keepDropped} onChanged={() => window.location.reload()} />
 
       {sendingBack && (
         <SendItBack deal={deal} stage="lo" byName={d.brokerSig || deal.assigned_broker || 'Broker'}

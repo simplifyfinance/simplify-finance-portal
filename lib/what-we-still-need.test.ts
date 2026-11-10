@@ -205,6 +205,25 @@ describe('an asset nobody mentioned', () => {
     expect(q.why).toBe('A car is recorded, but not its make, model and year.')
   })
 
+  // 10 Nov 2026. Fabio: "we have vehicles in the asset position on Fact Find
+  // and is still asking for vehicle details." The gap was real - no make, no
+  // model, no year - but the question asked what cars he had and what they
+  // were worth, both already on the fact find. The client answered what we
+  // knew, nothing closed, and the next email asked again.
+  it('and it asks for the part that is missing, not the part we have', () => {
+    const vague = JSON.parse(JSON.stringify(DEAL))
+    vague.fact_find_data.assets.push({ assetType: 'Vehicle', description: 'the ute', value: '22000' })
+    const q = find(vague, 'asset:vehicle')
+    expect(q.ask).toBe('What is the make, model and year of each car?')
+    expect(q.ask).not.toContain('what is each worth')
+  })
+
+  // And where there is no car at all, the original question is the right one.
+  it('still asks what cars there are when none is recorded', () => {
+    expect(find(DEAL, 'asset:vehicle').ask)
+      .toBe('What cars do you have, and roughly what is each worth?')
+  })
+
   it('and a car described properly is not', () => {
     const full = JSON.parse(JSON.stringify(DEAL))
     full.fact_find_data.assets.push({ assetType: 'Vehicle', make: 'Toyota', model: 'HiLux',

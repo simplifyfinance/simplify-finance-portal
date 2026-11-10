@@ -124,7 +124,8 @@ export default function WhatWeStillNeed({ deal, me, dropped, onDropped, onChange
       </div>
       <p className="text-[11.5px] text-muted mt-0 mb-2.5 leading-relaxed max-w-[720px]">
         Every one of these is here because the fact find has a gap. Fill the gap and it disappears.
-        Unticking takes it off this email only — it will come back on the next one.
+        Unticking keeps it off until you tick it back. The row stays here with its reason,
+        so nothing a client has not answered ever goes quiet.
       </p>
 
       <div className="flex flex-col gap-1.5">

@@ -311,16 +311,30 @@ function dependantQuestions(deal: any): Question[] {
 //
 // Saying "we have none" closes the question, with who said so and when. That IS
 // the record. There is no separate nil box to keep in step with it.
-type AssetGap = { kind: GapKind; type: string; ask: string; help: string; why: string }
+type AssetGap = { kind: GapKind; type: string; ask: string; help: string; why: string
+  // Where the row exists but says too little, the question has to ask for the
+  // part that is missing, or answering it changes nothing.
+  askWhenVague?: string; helpWhenVague?: string }
 
 const ASSET_GAPS: AssetGap[] = [
   { kind: 'home_contents', type: 'Home Contents',
     ask: 'Roughly what are your home contents worth?',
     help: 'Furniture, white goods, the usual. A round number is fine — nobody itemises this.',
     why: 'No home contents recorded, and nobody has said there are none.' },
+  // TWO QUESTIONS, BECAUSE THERE ARE TWO GAPS.
+  //
+  // 10 Nov 2026. Fabio: "we have vehicles in the asset position on Fact Find
+  // and is still asking for vehicle details." The portal was right that
+  // something was missing - the make, model and year - and then asked for the
+  // car and its value, both of which were already on the fact find. So the
+  // client answered what we knew, the gap stayed open, and the next email
+  // asked again. A question that cannot close itself is worse than no
+  // question: it teaches people the list is noise.
   { kind: 'vehicle', type: 'Vehicle',
     ask: 'What cars do you have, and roughly what is each worth?',
     help: 'Make, model and year for each one.',
+    askWhenVague: 'What is the make, model and year of each car?',
+    helpWhenVague: 'We have the car and what it is worth — just not which car it is.',
     why: 'No vehicle recorded, and nobody has said there is none.' },
   { kind: 'super', type: 'Super',
     ask: 'What is your superannuation balance, and who is it with?',
@@ -369,8 +383,8 @@ function assetQuestions(deal: any): Question[] {
       key: `asset:${g.kind}`,
       kind: g.kind,
       who: '',
-      ask: g.ask,
-      help: g.help,
+      ask: vague && g.askWhenVague ? g.askWhenVague : g.ask,
+      help: vague && g.helpWhenVague ? g.helpWhenVague : g.help,
       why: vague ? 'A car is recorded, but not its make, model and year.' : g.why,
       closesItself: true,
     }]
