@@ -44,6 +44,8 @@ import { changeCountLine } from '@/lib/changed-since-lodgement'
 import { isWithLender } from '@/lib/deal-phase'
 import DocumentsBox from '@/components/DocumentsBox'
 import SomethingWrong from '@/components/SomethingWrong'
+import MarkUrgent from '@/components/MarkUrgent'
+import CreditCannotAction from '@/components/CreditCannotAction'
 import DealPrompts from '@/components/DealPrompts'
 import Outstanding from '@/components/Outstanding'
 import DealDocuments from '@/components/DealDocuments'
@@ -827,6 +829,14 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
             * this is there when you want it and out of the way when you do not.
             * One button on the deal rather than one beside every figure - see
             * components/SomethingWrong.tsx. 17 Aug 2026. */}
+          {/* URGENT, WITH THE REASON THAT MAKES IT MEAN ANYTHING, and - for
+            * whoever in credit is holding this deal - the way to hand it back
+            * when it cannot be worked. Alan's item 3, 11 Nov 2026. See
+            * lib/my-work.ts. */}
+          <MarkUrgent deal={dealData} me={me}
+            onSaved={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+          <CreditCannotAction deal={dealData} me={me}
+            onDone={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
           <SomethingWrong deal={dealData} me={me}
             whereNow={tabs.find(t => t.key === stage)?.label || stage} />
         </DealRail>}

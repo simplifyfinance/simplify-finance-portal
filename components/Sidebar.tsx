@@ -3,7 +3,7 @@ import { SETTINGS_PANES } from '@/lib/settings-panes'
 import { LENDER_PANES } from '@/lib/lender-panes'
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut, BarChart3, Percent, TrendingUp, CalendarCheck, Mail, BookOpen, Contact } from "lucide-react"
+import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut, BarChart3, Percent, TrendingUp, CalendarCheck, Mail, BookOpen, Contact, ListChecks } from "lucide-react"
 import { useEffect, useState } from "react"
 import { createSupabaseBrowser } from "@/lib/supabase-browser"
 import { can, roleLabel as formatRoleLabel } from '@/lib/permissions'
@@ -18,6 +18,9 @@ const nav = [
   // unchanged - every link and bookmark in the portal still works.
   { label: "Today", href: "/dashboard", icon: LayoutDashboard },
   { label: "Deals", href: "/deals", icon: Briefcase },
+  // A CREDIT OFFICER'S OWN LIST, in the order they work it. Alan's item 3,
+  // 11 Nov 2026. Deals is every deal; this is what is waiting on you.
+  { label: "My work", href: "/my-work", icon: ListChecks },
   { label: "Pipeline", href: "/pipeline", icon: TrendingUp },
   { label: "Settlements", href: "/settlements", icon: CalendarCheck, settlementsOnly: true },
   { label: "Clients", href: "/clients", icon: Users },
