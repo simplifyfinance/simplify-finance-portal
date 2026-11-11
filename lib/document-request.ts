@@ -172,7 +172,11 @@ export async function requestDocuments(supabase: any, opts: {
   // Applied to what the deal holds at the moment of writing, not to the copy
   // read at the top of this call - every tick lives in this one column.
   const { next, problem } = await patchDealColumn(supabase, dealId, 'document_progress',
-    (cur: any) => withRequest(progressOf({ document_progress: cur }), askedFor, by, nowIso),
+    // WHO IT WENT TO, kept on the round. Not the client - these go to
+    // whoever raises document requests, and writing a client's address
+    // here would be a lie that reads like a fact. 11 Nov 2026.
+    (cur: any) => withRequest(progressOf({ document_progress: cur }), askedFor, by, nowIso,
+      toName || toEmail || ''),
     progress)
   if (problem) {
     return { ok: false, status: 500, sent: 0, awaitingAnswer, covered: coveredHere,

@@ -52,6 +52,9 @@ const NOT_TO_A_CLIENT: Record<string, string> = {
   // CREDIT TELLING A BROKER WHY A FILE HAS COME BACK. Two of us, about our own
   // work. The client is never on it. 11 Nov 2026, Alan's item 3.
   'app/api/cannot-action/route.ts': 'tells the broker credit could not action it; internal',
+  // ASKS OUR OWN REQUESTING TEAM TO CHASE WHAT IS STILL OUT. It goes where the
+  // original request went, which is one of us, never the client. 11 Nov 2026.
+  'app/api/chase-documents/route.ts': 'asks our requesting team to chase; the client is never on it',
   // GOES TO A CLIENT, AND HAS NO DEAL BEHIND IT. Fabio, 22 Oct 2026: "on
   // templates folder only ones associated to deal as those are the one that
   // have bcc". The Templates page has no deal card, so there is no code to

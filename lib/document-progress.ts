@@ -30,12 +30,33 @@ export type AddedDoc = {
 // One press of the request button. Append-only: a deal that had two rounds of
 // requests keeps both, because "what did we ask this client for, and when" is a
 // question somebody will ask in three months.
-export type RequestRound = { at: string; by: string; keys: string[] }
+// WHO IT WENT TO, AS WELL AS WHO SENT IT.
+//
+// 11 Nov 2026. A round recorded the date, the person who pressed it and the
+// documents - and nothing about where it went. The box could say "asked for on
+// 9 Nov by Mellissa Sedin" and not answer the one question a client's "nobody
+// asked me for that" actually raises.
+//
+// NOT THE CLIENT'S ADDRESS. These requests go to whoever is set to raise
+// document requests, who asks the client - see docs_request_notification_user_id
+// in lib/document-request.ts. Writing the client's address here would be a lie
+// that reads like a fact. Optional, because every round recorded before today
+// has no answer and inventing one would be worse.
+export type RequestRound = { at: string; by: string; keys: string[]; to?: string }
+
+// A CHASE IS NOT A SECOND REQUEST.
+//
+// Pressing request again would send the same list to the same person as though
+// nobody had replied. A chase says what is STILL missing and how long it has
+// been, and it never marks anything as newly asked for - the documents were
+// asked for once, on the day they were asked for.
+export type Chase = { at: string; by: string; keys: string[]; to?: string }
 
 export type DocProgress = {
   decisions?: Record<string, Decision>
   added?: AddedDoc[]
   requests?: RequestRound[]
+  chases?: Chase[]
   // Rows somebody chose not to ask for YET, which come back on their own later.
   // Only the discharge uses this today. Keyed the same way as everything else.
   deferred?: Record<string, { at: string; by: string }>
@@ -192,13 +213,35 @@ export function withAdded(progress: DocProgress, label: string, forWhat: DocFor,
 }
 
 // A round of requests, recorded. Append-only - see RequestRound.
-export function withRequest(progress: DocProgress, keys: string[], by: string, at?: string): DocProgress {
+export function withRequest(
+  progress: DocProgress, keys: string[], by: string, at?: string, to?: string,
+): DocProgress {
   const clean = [...new Set(keys.filter(Boolean))]
   if (clean.length === 0) return progress
-  return {
-    ...progress,
-    requests: [...(progress.requests || []), { at: at || now(), by, keys: clean }],
-  }
+  const round: RequestRound = { at: at || now(), by, keys: clean }
+  if (String(to || '').trim()) round.to = String(to).trim()
+  return { ...progress, requests: [...(progress.requests || []), round] }
+}
+
+/** Recorded the same way, and deliberately not as a request. */
+export function withChase(
+  progress: DocProgress, keys: string[], by: string, at?: string, to?: string,
+): DocProgress {
+  const clean = [...new Set(keys.filter(Boolean))]
+  if (clean.length === 0) return progress
+  const chase: Chase = { at: at || now(), by, keys: clean }
+  if (String(to || '').trim()) chase.to = String(to).trim()
+  return { ...progress, chases: [...(progress.chases || []), chase] }
+}
+
+export function chases(progress: DocProgress): Chase[] {
+  return progress?.chases || []
+}
+
+/** The last time anybody chased, or null - which is the usual answer. */
+export function lastChase(progress: DocProgress): Chase | null {
+  const all = chases(progress)
+  return all.length ? all[all.length - 1] : null
 }
 
 // "Not yet." The row disappears and comes back at formal approval, ticked.

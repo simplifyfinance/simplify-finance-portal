@@ -1,13 +1,14 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { whyNotRequestable, whyOnTheList, timeWords, agoWords } from '@/lib/documents-say-why'
 import { patchDealColumn } from '@/lib/patch-deal-column'
 import { dayMonth } from '@/lib/same-date-everywhere'
 import { documentsFor, documentsDue, groupedDocuments, type DocRound } from '@/lib/document-rules'
 import { rowsFor, tickedCount, toRequest, withTick, withAdded, withoutAdded, withDeferred,
   withReceived, withUnreceived,
          progressOf, requestRounds, COMMON_EXTRAS, extrasNotAlreadyListed,
-         type DocProgress, type DocRow } from '@/lib/document-progress'
+         type DocProgress, type DocRow, lastChase } from '@/lib/document-progress'
 import { formallyApproved } from '@/lib/document-rules'
 import { nowRowsOf, laterRowsOf , stillOut, cameIn, daysWaiting, isLate, SHOUT_AFTER_DAYS } from '@/lib/documents-outstanding'
 import { requestDocuments } from '@/lib/request-documents'
@@ -122,6 +123,32 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
   const out = stillOut(nowRows)
   const late = out.filter(r => isLate(r))
   const rounds = requestRounds(progress)
+  const [showRounds, setShowRounds] = useState(false)
+  const [chasing, setChasing] = useState(false)
+  const [chaseMsg, setChaseMsg] = useState('')
+
+  // A CHASE IS NOT A SECOND REQUEST. Pressing request again would send the same
+  // list to the same person as though nobody had replied. This says what is
+  // still missing and how long it has been. See app/api/chase-documents.
+  async function chaseThem() {
+    setChasing(true); setChaseMsg(''); setErr('')
+    try {
+      const res = await fetch('/api/chase-documents', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId: deal.id, by: who }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data?.ok) {
+        setErr(data?.error || 'The chase could not be sent.')
+      } else {
+        setChaseMsg(`${data.sent} still out — ${data.to || 'the requesting team'} has been asked to chase.`)
+        await reload()
+      }
+    } catch (e: any) {
+      setErr(e?.message || 'The chase could not be sent.')
+    }
+    setChasing(false)
+  }
 
   // Rebuilt server-side before anything is sent, so this is a request, not an
   // instruction - a stale browser cannot email a client for a liability that
@@ -271,6 +298,16 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
             bg-info-bg text-info border border-info-edge hover:opacity-90 disabled:opacity-40">
           {sending ? 'Sending…' : 'Request from client'}
         </button>
+        {/* AND IT SAYS WHY IT IS OFF.
+          * 11 Nov 2026. Fabio, on Ian Davies: "why I can't click docs to
+          * request???" The button was right - everything had been asked for on
+          * the 9th and two rows had been unticked by hand - and it said nothing
+          * at all. See lib/documents-say-why.ts. */}
+        {pending.length === 0 && (
+          <p className="text-[11.5px] text-muted leading-[1.5] mt-2 mb-0">
+            {whyNotRequestable(nowRows, new Set(covered.keys()))}
+          </p>
+        )}
         <p className="text-[11px] text-faint mt-2 mb-0">
           {nowRows.length} on the list{covered.size > 0 ? ` · ${covered.size} covered by statements` : ''}
         </p>
@@ -345,11 +382,73 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
             </div>
           )}
 
+          {/* WHAT WENT, WHEN, AND WHO SENT IT.
+            * 11 Nov 2026. This was one line - a date and a name - which does
+            * not answer the only question it is ever asked: "nobody asked me
+            * for that." Each round keeps the list it sent, so that is four
+            * seconds rather than a phone call.
+            * FOLDED, because it is read to settle an argument and not on a
+            * normal morning. */}
           {rounds.length > 0 && (
-            <p className="m-4 mb-0 text-[12px] text-faint">
-              {rounds.length === 1 ? 'Asked for' : `Asked for over ${rounds.length} rounds, most recently`}
-              {' '}{whenAsked(rounds[rounds.length - 1].at)} by {rounds[rounds.length - 1].by}.
-            </p>
+            <div className="m-4 mb-0">
+              <div className="flex items-baseline gap-2">
+                <span className="text-[12px] font-bold text-ink">Asked for</span>
+                <button onClick={() => setShowRounds(v => !v)}
+                  className="ml-auto text-[11.5px] font-semibold text-brand-ink">
+                  {showRounds ? 'Hide' : rounds.length === 1 ? 'The round' : `All ${rounds.length} rounds`} ›
+                </button>
+              </div>
+              <p className="text-[11.5px] text-muted leading-[1.5] m-0 mt-1">
+                Last on <b className="text-ink">{timeWords(rounds[rounds.length - 1].at)}</b>
+                {rounds[rounds.length - 1].by ? <> by <b className="text-ink">{rounds[rounds.length - 1].by}</b></> : null}
+                {' — '}{asked} asked for, {inNow.length} back.{' '}
+                {lastChase(progress)
+                  ? `Last chased ${agoWords(lastChase(progress)!.at)}.`
+                  : 'Never chased.'}
+              </p>
+
+              {/* ITS OWN BUTTON, AND NOT BESIDE REQUEST. Two different actions
+                * side by side is an invitation to press the wrong one. */}
+              {out.length > 0 && (
+                <button onClick={chaseThem} disabled={chasing}
+                  className="w-full mt-2 rounded-lg px-3 py-2 text-[12.5px] font-semibold
+                    bg-info-bg text-info border border-info-edge hover:opacity-90
+                    disabled:opacity-40">
+                  {chasing ? 'Sending…' : `Chase the ${out.length} still out`}
+                </button>
+              )}
+              {chaseMsg && (
+                <p className="text-[11.5px] text-done leading-[1.5] m-0 mt-1.5">{chaseMsg}</p>
+              )}
+
+              {showRounds && rounds.slice().reverse().map((r, i) => (
+                <div key={r.at + i}
+                  className="border border-card-line bg-page rounded-[10px] px-3 py-2.5 mt-2">
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="text-[12px] font-bold text-ink">{timeWords(r.at)}</span>
+                    <span className="ml-auto text-[11px] text-faint">{agoWords(r.at)}</span>
+                  </div>
+                  <p className="text-[11.5px] text-muted leading-[1.5] m-0 mt-0.5">
+                    By <b className="text-ink">{r.by || 'somebody'}</b>
+                    {(r as any).to ? <>, to <b className="text-ink">{(r as any).to}</b></> : null}
+                  </p>
+                  <div className="flex gap-1 flex-wrap mt-1.5">
+                    {(r.keys || []).map(k => {
+                      const row = nowRows.find(x => x.key === k)
+                      const back = !!row?.receivedAt
+                      return (
+                        <span key={k}
+                          className={`text-[10px] rounded-full px-2 py-0.5 border ${back
+                            ? 'bg-done-bg border-done-edge text-done font-semibold'
+                            : 'bg-info-bg border-info-edge text-brand-ink'}`}>
+                          {row?.label || k}
+                        </span>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
 
           {gaps.map(g => (
@@ -394,7 +493,7 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
                       {r.label}
                       {r.detail && <span className="font-normal text-faint"> — {r.detail}</span>}
                     </div>
-                    {(r.why || r.decidedBy || r.requestedAt || covered.has(r.key)) && (
+                    {(whyOnTheList(r) || r.decidedBy || r.requestedAt || covered.has(r.key)) && (
                       <div className="text-[11.5px] text-faint mt-[1px]">
                         {r.requestedAt ? (
                           r.receivedAt
@@ -410,7 +509,7 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
                                 ? <span className="text-chase">, but only {covered.get(r.key)!.days} days of them</span>
                                 : `, ${covered.get(r.key)!.days} days`}
                             </span>
-                          ) : r.why}
+                          ) : whyOnTheList(r)}
                         {!r.requestedAt && r.decidedBy && <span>{r.why ? ' · ' : ''}{r.ticked ? 'Added back' : 'Unticked'} by {r.decidedBy}</span>}
                       </div>
                     )}
