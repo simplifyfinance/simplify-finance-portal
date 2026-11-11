@@ -6,8 +6,11 @@ import { money } from '@/lib/money'
 import { todayYmd, fyEndYear } from '@/lib/periods'
 import { mondayOf, ymd, tabCounts } from '@/lib/lodging-when'
 import {
-  byReferral, byBroker, totals, dayWords, lenderOf, termsWords, type Line2,
+  byReferral, byBroker, totals, dayWords, lenderOf, termsWords, happened, type Line2,
 } from '@/lib/who-brought-us-this'
+import {
+  viewFor, dealsFor, showsMoney, showsReferral, showsBrokers, mayEmail, VIEW_NOTE,
+} from '@/lib/who-sees-the-numbers'
 
 // WHAT WE LODGED AND SETTLED, AND WHO BROUGHT IT.
 //
@@ -42,10 +45,18 @@ function spanFor(kind: Kind, now: Date): { from: string; to: string; label: stri
   return { from: `${end - 1}-07-01`, to, label: `FY${String(end).slice(2)}` }
 }
 
-export default function Lodgements({ deals, brokerNames }: {
+export default function Lodgements({ deals: everything, brokerNames, role, brokerKey, meName }: {
   deals: any[]
   brokerNames?: Record<string, string>
+  role?: string
+  brokerKey?: string
+  meName?: string
 }) {
+  // WHOSE NUMBERS, AND WHICH COLUMNS. See lib/who-sees-the-numbers.ts - a
+  // broker sees their own deals, everybody else below admin sees the team's
+  // work without the money. 11 Nov 2026.
+  const view = viewFor(role)
+  const deals = dealsFor(view, everything, brokerKey)
   const now = useMemo(() => new Date(), [])
   const [kind, setKind] = useState<Kind>('week')
   const [open, setOpen] = useState<string>('')
@@ -93,7 +104,7 @@ export default function Lodgements({ deals, brokerNames }: {
       </div>
       <p className="text-[12px] text-faint m-0 mb-4 max-w-[720px]">
         Read off the day each deal was marked lodged and the day it settled. Nothing here is typed
-        in, so it cannot disagree with the board.
+        in, so it cannot disagree with the board. {VIEW_NOTE[view]}
       </p>
 
       <span className="inline-flex gap-0.5 bg-line-soft rounded-[9px] p-[3px] mb-4">
@@ -107,61 +118,45 @@ export default function Lodgements({ deals, brokerNames }: {
         ))}
       </span>
 
-      <div className="grid grid-cols-2 gap-3 max-[900px]:grid-cols-1">
-        <Side title="By who brought it" blurb="The commission split chosen on the fact find."
-          head="Referral" rows={referral} terms open={open} setOpen={setOpen} prefix="ref:" />
-        <Side title="By broker" blurb="Whose deal it is on the card."
-          head="Broker" rows={brokers} open={open} setOpen={setOpen} prefix="br:" />
-      </div>
-
-      {opened && (
-        <div className={CARD + ' mt-3'}>
-          <p className="text-[13.5px] font-bold text-ink m-0 mb-0.5">
-            {opened.name} — {opened.lodged.length} lodged, {opened.settled.length} settled
-          </p>
-          <p className="text-[11.5px] text-faint m-0 mb-2.5">
-            Every number opens into the deals behind it. Nothing here is a total you cannot check.
-          </p>
-          <table className="w-full border-collapse">
-            <thead><tr>
-              <th className={TH}>Deal</th><th className={TH}>Lender</th>
-              <th className={TH}>Referral</th><th className={TH}>What</th>
-              <th className={TH}>Day</th><th className={TH + ' text-right'}>Amount</th>
-            </tr></thead>
-            <tbody>
-              {[...opened.lodged.map(d => ({ d, what: 'Lodged' as const })),
-                ...opened.settled.map(d => ({ d, what: 'Settled' as const }))].map(({ d, what }, i) => (
-                <tr key={d.id + what + i}>
-                  <td className={TD}>
-                    <Link href={`/deals/${d.id}`} className="font-semibold text-ink hover:text-brand-ink">
-                      {d.deal_name || 'Untitled deal'}
-                    </Link>
-                  </td>
-                  <td className={TD}>{lenderOf(d) || '—'}</td>
-                  <td className={TD + ' text-faint'}>{termsWords(d) || '—'}</td>
-                  <td className={TD}>
-                    <span className={`text-[10.5px] font-bold rounded-md px-2 py-0.5 border ${
-                      what === 'Settled'
-                        ? 'bg-done-bg text-done border-done-edge'
-                        : 'bg-info-bg text-brand-ink border-info-edge'}`}>{what}</span>
-                  </td>
-                  <td className={TD + ' text-faint'}>
-                    {dayWords(d, what === 'Settled' ? 'settled' : 'lodged')}
-                  </td>
-                  <td className={TD + ' text-right font-semibold text-ink tabular-nums'}>
-                    {money((d.settled_total ?? d.lodged_total ?? d.loan_amount) || 0) || '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {(showsReferral(view) || showsBrokers(view)) && (
+        <div className="grid grid-cols-2 gap-3 max-[900px]:grid-cols-1">
+          {showsReferral(view) && (
+            <Side title="By who brought it" blurb="The commission split chosen on the fact find."
+              head="Referral" rows={referral} terms money open={open} setOpen={setOpen} prefix="ref:" />
+          )}
+          {showsBrokers(view) && (
+            <Side title="By broker" blurb="Whose deal it is on the card."
+              head="Broker" rows={brokers} money open={open} setOpen={setOpen} prefix="br:" />
+          )}
         </div>
+      )}
+
+      {/* THE LIST IS THE REPORT. Fabio: "what about list of deals you are
+        * missing the point." A broker and the rest of the team do not get a
+        * table of other people to click into, so their list is simply drawn. */}
+      {view !== 'everything' && (
+        <Deals
+          rows={[...happened(deals, 'lodged', span).map(d => ({ d, what: 'Lodged' as const })),
+                 ...happened(deals, 'settled', span).map(d => ({ d, what: 'Settled' as const }))]}
+          title={view === 'mine'
+            ? `Your ${span.label.toLowerCase()} — ${sum.lodged} lodged, ${sum.settled} settled`
+            : `${span.label} — ${sum.lodged} lodged, ${sum.settled} settled`}
+          blurb={VIEW_NOTE[view]} money={showsMoney(view)} referral={showsReferral(view)} />
+      )}
+
+      {opened && showsBrokers(view) && (
+        <Deals
+          rows={[...opened.lodged.map(d => ({ d, what: 'Lodged' as const })),
+                 ...opened.settled.map(d => ({ d, what: 'Settled' as const }))]}
+          title={`${opened.name} — ${opened.lodged.length} lodged, ${opened.settled.length} settled`}
+          blurb="Every number opens into the deals behind it. Nothing here is a total you cannot check."
+          money referral />
       )}
 
       {/* THE FRIDAY EMAIL. One for management, one per referral partner who had
         * something this week - and nothing at all for a partner who had
         * nothing. See lib/the-friday-email.ts. */}
-      {kind === 'week' && (
+      {kind === 'week' && mayEmail(view) && (
         <div className={CARD + ' mt-4'}>
           <p className="text-[13.5px] font-bold text-ink m-0 mb-0.5">The Friday email</p>
           <p className="text-[11.5px] text-faint m-0 mb-2.5 leading-[1.45]">
@@ -209,8 +204,9 @@ export default function Lodgements({ deals, brokerNames }: {
         * picture - the deals with no week set are what decides next week. */}
       <p className="text-[12.5px] text-muted leading-[1.6] mt-4">
         <b className="text-ink">{sum.lodged}</b> lodged and <b className="text-ink">{sum.settled}</b>{' '}
-        settled in {span.label.toLowerCase()} — {money(sum.lodgedAmount)} and{' '}
-        {money(sum.settledAmount)}. Due to lodge next week:{' '}
+        settled in {span.label.toLowerCase()}
+        {showsMoney(view) ? ` — ${money(sum.lodgedAmount)} and ${money(sum.settledAmount)}` : ''}.{' '}
+        Due to lodge next week:{' '}
         <b className="text-ink">{ahead.next_week}</b> · still with no week set:{' '}
         <b className="text-ink">{ahead.no_week}</b>.{' '}
         <Link href="/dashboard" className="font-semibold text-brand-ink no-underline">
@@ -221,8 +217,8 @@ export default function Lodgements({ deals, brokerNames }: {
   )
 }
 
-function Side({ title, blurb, head, rows, terms, open, setOpen, prefix }: {
-  title: string; blurb: string; head: string; rows: Line2[]; terms?: boolean
+function Side({ title, blurb, head, rows, terms, money: withMoney, open, setOpen, prefix }: {
+  title: string; blurb: string; head: string; rows: Line2[]; terms?: boolean; money?: boolean
   open: string; setOpen: (v: string) => void; prefix: string
 }) {
   const TH2 = TH
@@ -239,7 +235,7 @@ function Side({ title, blurb, head, rows, terms, open, setOpen, prefix }: {
             {terms && <th className={TH2}>Terms</th>}
             <th className={TH2 + ' text-right'}>Lodged</th>
             <th className={TH2 + ' text-right'}>Settled</th>
-            <th className={TH2 + ' text-right'}>Lodged $</th>
+            {withMoney && <th className={TH2 + ' text-right'}>Lodged $</th>}
           </tr></thead>
           <tbody>
             {rows.map(r => {
@@ -251,12 +247,74 @@ function Side({ title, blurb, head, rows, terms, open, setOpen, prefix }: {
                   {terms && <td className={TD + ' text-faint'}>{r.terms || '—'}</td>}
                   <td className={TD + ' text-right font-bold text-ink tabular-nums'}>{r.lodged.length}</td>
                   <td className={TD + ' text-right font-bold text-ink tabular-nums'}>{r.settled.length}</td>
-                  <td className={TD + ' text-right font-bold text-ink tabular-nums'}>
-                    {money(r.lodgedAmount) || '—'}
-                  </td>
+                  {withMoney && (
+                    <td className={TD + ' text-right font-bold text-ink tabular-nums'}>
+                      {money(r.lodgedAmount) || '—'}
+                    </td>
+                  )}
                 </tr>
               )
             })}
+          </tbody>
+        </table>
+      )}
+    </div>
+  )
+}
+
+// THE LIST OF DEALS, WHICH IS THE REPORT.
+//
+// The same table for all three views. An admin opens it by clicking a row; a
+// broker and the rest of the team simply get theirs. What changes is the
+// columns: money is held back below broker, and the referral column is admin
+// only - that is commission information.
+function Deals({ rows, title, blurb, money: withMoney, referral }: {
+  rows: Array<{ d: any; what: 'Lodged' | 'Settled' }>
+  title: string
+  blurb: string
+  money?: boolean
+  referral?: boolean
+}) {
+  return (
+    <div className={CARD + ' mt-3'}>
+      <p className="text-[13.5px] font-bold text-ink m-0 mb-0.5">{title}</p>
+      <p className="text-[11.5px] text-faint m-0 mb-2.5 leading-[1.45]">{blurb}</p>
+      {rows.length === 0 ? (
+        <p className="text-[12.5px] text-faint m-0">Nothing in this period.</p>
+      ) : (
+        <table className="w-full border-collapse">
+          <thead><tr>
+            <th className={TH}>Deal</th><th className={TH}>Lender</th>
+            {referral && <th className={TH}>Referral</th>}
+            <th className={TH}>What</th><th className={TH}>Day</th>
+            {withMoney && <th className={TH + ' text-right'}>Amount</th>}
+          </tr></thead>
+          <tbody>
+            {rows.map(({ d, what }, i) => (
+              <tr key={d.id + what + i}>
+                <td className={TD}>
+                  <Link href={`/deals/${d.id}`} className="font-semibold text-ink hover:text-brand-ink">
+                    {d.deal_name || 'Untitled deal'}
+                  </Link>
+                </td>
+                <td className={TD}>{lenderOf(d) || '—'}</td>
+                {referral && <td className={TD + ' text-faint'}>{termsWords(d) || '—'}</td>}
+                <td className={TD}>
+                  <span className={`text-[10.5px] font-bold rounded-md px-2 py-0.5 border ${
+                    what === 'Settled'
+                      ? 'bg-done-bg text-done border-done-edge'
+                      : 'bg-info-bg text-brand-ink border-info-edge'}`}>{what}</span>
+                </td>
+                <td className={TD + ' text-faint'}>
+                  {dayWords(d, what === 'Settled' ? 'settled' : 'lodged')}
+                </td>
+                {withMoney && (
+                  <td className={TD + ' text-right font-semibold text-ink tabular-nums'}>
+                    {money((d.settled_total ?? d.lodged_total ?? d.loan_amount) || 0) || '—'}
+                  </td>
+                )}
+              </tr>
+            ))}
           </tbody>
         </table>
       )}

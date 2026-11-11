@@ -120,7 +120,7 @@ export default async function Dashboard() {
       {/* THE WEEK, ABOVE THE DAY. Alan's item 1 - see lib/lodging-when.ts and
         * lib/the-week-so-far.ts. Both read the deals this page already has, so
         * neither can disagree with the board about what lodged. */}
-      <ThisWeek deals={deals || []} />
+      <ThisWeek deals={deals || []} role={profile?.role || ''} />
       <DueToLodge deals={deals || []} brokerNames={brokerNames} canSet={!!seesAll} />
       <TodayPlan
         deals={deals || []}

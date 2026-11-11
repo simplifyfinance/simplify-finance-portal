@@ -18,6 +18,12 @@ export default async function LodgementsPage() {
     .from('deals').select('*').or(REAL_DEALS_OR)
     .order('created_at', { ascending: false }).order('id').range(from, to))
 
+  // WHO IS LOOKING. The role already on their login decides what the page
+  // draws - see lib/who-sees-the-numbers.ts. Read on the server, so it cannot
+  // be changed by anybody's browser.
+  const { data: profile } = await supabase.from('user_profiles')
+    .select('role, broker_key, full_name').eq('id', user.id).maybeSingle()
+
   const { data: brokerRows } = await supabase.from('brokers').select('broker_key, name')
   const brokerNames: Record<string, string> = {}
   for (const b of (brokerRows || []) as any[]) {
@@ -26,5 +32,13 @@ export default async function LodgementsPage() {
     if (k && n) brokerNames[k] = n
   }
 
-  return <Lodgements deals={realDealsOnly(rows as any[])} brokerNames={brokerNames} />
+  return (
+    <Lodgements
+      deals={realDealsOnly(rows as any[])}
+      brokerNames={brokerNames}
+      role={(profile as any)?.role || ''}
+      brokerKey={(profile as any)?.broker_key || ''}
+      meName={(profile as any)?.full_name || ''}
+    />
+  )
 }
