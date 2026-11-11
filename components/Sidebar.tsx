@@ -3,7 +3,7 @@ import { SETTINGS_PANES } from '@/lib/settings-panes'
 import { LENDER_PANES } from '@/lib/lender-panes'
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut, BarChart3, Percent, TrendingUp, CalendarCheck, Mail, BookOpen, Contact, ListChecks } from "lucide-react"
+import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut, BarChart3, Percent, TrendingUp, CalendarCheck, Mail, BookOpen, Contact, ListChecks, ClipboardList } from "lucide-react"
 import { useEffect, useState } from "react"
 import { createSupabaseBrowser } from "@/lib/supabase-browser"
 import { can, roleLabel as formatRoleLabel } from '@/lib/permissions'
@@ -22,6 +22,9 @@ const nav = [
   // 11 Nov 2026. Deals is every deal; this is what is waiting on you.
   { label: "My work", href: "/my-work", icon: ListChecks },
   { label: "Pipeline", href: "/pipeline", icon: TrendingUp },
+  // WHAT WE LODGED AND SETTLED, AND WHO BROUGHT IT. 11 Nov 2026 - the
+  // Teams channel, except nobody types in it. See lib/who-brought-us-this.ts.
+  { label: "Lodged and settled", href: "/lodgements", icon: ClipboardList },
   { label: "Settlements", href: "/settlements", icon: CalendarCheck, settlementsOnly: true },
   { label: "Clients", href: "/clients", icon: Users },
   { label: "Lender library", href: "/lenders", icon: Building2 },

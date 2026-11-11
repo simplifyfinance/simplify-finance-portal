@@ -1,5 +1,8 @@
 'use client'
+import Link from 'next/link'
 import { doneThisWeek, sittingNow } from '@/lib/the-week-so-far'
+import { mondayOf, ymd } from '@/lib/lodging-when'
+import { byReferral } from '@/lib/who-brought-us-this'
 
 // THIS WEEK, BOTH HALVES.
 //
@@ -24,6 +27,12 @@ export default function ThisWeek({ deals, now }: { deals: any[]; now?: Date }) {
   const when = now || new Date()
   const done = doneThisWeek(deals, when)
   const sitting = sittingNow(deals, when)
+  // WHO BROUGHT THIS WEEK'S WORK. 11 Nov 2026, Fabio: "I want the reports to
+  // be able to break it down and say, this is how many deals we did on this
+  // referral split." Off the commission split chosen on the fact find, so it
+  // is the same answer the deal itself gives. See lib/who-brought-us-this.ts.
+  const span = { from: mondayOf(when), to: ymd(when) }
+  const came = byReferral(deals, span).filter(r => r.lodged.length > 0).slice(0, 4)
 
   return (
     <div className="bg-page border border-card-line rounded-2xl px-4 py-3.5 mb-4">
@@ -31,7 +40,7 @@ export default function ThisWeek({ deals, now }: { deals: any[]; now?: Date }) {
         This week
       </p>
 
-      <div className="grid grid-cols-2 gap-3 max-[760px]:grid-cols-1">
+      <div className="grid grid-cols-3 gap-3 max-[1100px]:grid-cols-2 max-[760px]:grid-cols-1">
         <div className={CARD}>
           <p className="text-[13.5px] font-bold text-ink m-0 mb-0.5">What we got done</p>
           <p className="text-[11.5px] text-faint m-0 mb-2.5 leading-[1.45]">
@@ -74,6 +83,28 @@ export default function ThisWeek({ deals, now }: { deals: any[]; now?: Date }) {
               </div>
             )
           })}
+        </div>
+        <div className={CARD + ' border-info-edge'}>
+          <p className="text-[13.5px] font-bold text-ink m-0 mb-0.5">Where it came from</p>
+          <p className="text-[11.5px] text-faint m-0 mb-2.5 leading-[1.45]">
+            This week&rsquo;s {done.find(l => l.key === 'lodged')?.count || 0} lodged, by who
+            brought it.
+          </p>
+          {came.length === 0 ? (
+            <p className="text-[12.5px] text-faint m-0">Nothing lodged yet this week.</p>
+          ) : came.map(r => (
+            <div key={r.key} className={ROW}>
+              <span className={N}>{r.lodged.length}</span>
+              <span className="text-[13px] text-body">{r.name}</span>
+              <span className="ml-auto text-[11.5px] text-faint text-right leading-[1.4]">
+                {r.terms || '—'}
+              </span>
+            </div>
+          ))}
+          <Link href="/lodgements"
+            className="block text-[11.5px] font-semibold text-brand-ink mt-2.5 no-underline">
+            The week&rsquo;s report →
+          </Link>
         </div>
       </div>
 
