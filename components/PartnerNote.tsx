@@ -126,7 +126,7 @@ export default function PartnerNote({ deals, splits, brands, meName, today }: {
       .filter(x => t.includes(x) || x === k))
   }
 
-  async function copy(what: 'html' | 'text' | 'subject') {
+  async function copy(what: 'html' | 'subject') {
     if (!built || !partner) return
     try {
       if (what === 'html' && typeof ClipboardItem !== 'undefined') {
@@ -135,9 +135,10 @@ export default function PartnerNote({ deals, splits, brands, meName, today }: {
           'text/plain': new Blob([built.text], { type: 'text/plain' }),
         })])
       } else {
+        // NO ClipboardItem IN THIS BROWSER. Writing built.html would paste the
+        // source, tags and all, so the plain-text version goes instead.
         await navigator.clipboard.writeText(
-          what === 'subject' ? built.subject
-          : what === 'text' ? built.text : built.html)
+          what === 'subject' ? built.subject : built.text)
       }
       setCopied(what)
       setTimeout(() => setCopied(''), 2500)
@@ -348,10 +349,6 @@ export default function PartnerNote({ deals, splits, brands, meName, today }: {
               <span className="text-[11.5px] text-faint">
                 Paste straight into Outlook or Gmail — it keeps all of this.
               </span>
-              <button onClick={() => void copy('text')}
-                className="ml-auto text-[11.5px] font-semibold text-brand-ink">
-                {copied === 'text' ? 'Copied' : 'Copy as plain text instead'}
-              </button>
             </div>
 
             <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-t border-line-soft
