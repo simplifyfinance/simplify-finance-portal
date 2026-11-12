@@ -24,14 +24,28 @@
 
 import { phaseOf, phaseSince } from './deal-phase'
 import { bucketOf } from './a-stage-is-a-fact'
+import { toAuDate } from './periods'
 import { mondayOf, ymd, tabOf } from './lodging-when'
 
 const txt = (v: any) => String(v ?? '').trim()
 const DAY = 86_400_000
 
-function day(s: any): string {
-  const t = txt(s)
-  return /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0, 10) : ''
+// THE SYDNEY DAY, NOT THE UTC ONE.
+//
+// 12 Nov 2026. Fabio: "we more than 1 deal this week." There were three, and
+// the report showed one.
+//
+// A lodgement is recorded as a DATE and stored as Sydney midnight, which is
+// 13:00 the day before in UTC. So slicing the first ten characters off the
+// stored string gives yesterday - for every lodgement, not just the morning
+// ones. Two of Mark's lodged on Monday 9 November were stored as 8 November
+// and fell out of the week entirely.
+//
+// This codebase has paid for this twice already: lib/rate-notice.ts on 9 Oct
+// and the day's plan on the dashboard. toAuDate() in lib/periods.ts is the
+// answer and it was sitting there the whole time.
+function day(v: any): string {
+  return toAuDate(txt(v) || null)
 }
 
 function isReal(deal: any): boolean {

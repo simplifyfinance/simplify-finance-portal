@@ -5,7 +5,7 @@
 // is lodged." This is that, read off the dates the board already writes.
 import { describe, it, expect } from 'vitest'
 import {
-  happened, byReferral, byBroker, totals, forReferrer, referralName, termsWords,
+  happened, byReferral, byBroker, totals, forReferrer, referralName, termsWords, dayWords,
   OURS, UNANSWERED, referralKey,
 } from './who-brought-us-this'
 import {
@@ -180,5 +180,41 @@ describe('the Friday email', () => {
     expect(modeOf('nonsense')).toBe('off')
     expect(modeOf('to_us')).toBe('to_us')
     expect(modeOf('direct')).toBe('direct')
+  })
+})
+
+describe('the Sydney day, not the UTC one', () => {
+  // 12 Nov 2026. Fabio: "we more than 1 deal this week." There were three and
+  // the report showed one.
+  //
+  // A lodgement is recorded as a DATE and stored as Sydney midnight, which is
+  // 13:00 the day before in UTC. Two of Mark's lodged on Monday 9 November
+  // were stored as 2026-11-08T13:00:00+00 and fell out of the week entirely -
+  // and the SQL written to check it had the same flaw, so it agreed.
+  const MON = '2026-11-08T13:00:00+00:00'   // Monday 9 Nov, Sydney
+  const FRI = '2026-11-13T12:59:00+00:00'   // Friday 13 Nov, late in the day
+
+  it('counts a Monday lodgement that UTC calls Sunday', () => {
+    expect(happened([{ id: 'a', lodged_at: MON }], 'lodged', WEEK)).toHaveLength(1)
+  })
+
+  it('and the last minute of Friday is still that week', () => {
+    expect(happened([{ id: 'b', lodged_at: FRI }], 'lodged', WEEK)).toHaveLength(1)
+  })
+
+  it('and the week really did hold three', () => {
+    const deals = [
+      { id: 'a', lodged_at: MON, assigned_broker: 'mark' },
+      { id: 'b', lodged_at: MON, assigned_broker: 'mark' },
+      { id: 'c', lodged_at: '2026-11-10T13:00:00+00:00', assigned_broker: 'fabio' },
+    ]
+    expect(totals(deals, WEEK).lodged).toBe(3)
+    expect(byBroker(deals, WEEK).find(r => r.name === 'mark')!.lodged).toHaveLength(2)
+  })
+
+  // "Lodged Tuesday" on a deal stored as Sydney midnight read as Monday
+  // anywhere the clock was not set to Sydney.
+  it('names the weekday in Sydney too', () => {
+    expect(dayWords({ lodged_at: MON }, 'lodged')).toBe('Monday')
   })
 })
