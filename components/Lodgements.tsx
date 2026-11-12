@@ -10,6 +10,7 @@ import {
   referralName, UNANSWERED, type Line2,
 } from '@/lib/who-brought-us-this'
 import { viewFor, dealsFor, mayEmail, VIEW_NOTE } from '@/lib/who-sees-the-numbers'
+import LodgementSummary from '@/components/LodgementSummary'
 
 // WHAT WE LODGED AND SETTLED, GROUPED BY BROKER.
 //
@@ -50,9 +51,15 @@ function spanFor(kind: Kind, now: Date): { from: string; to: string; label: stri
   return { from: `${end - 1}-07-01`, to, label: `FY${String(end).slice(2)}` }
 }
 
-export default function Lodgements({ deals: everything, brokerNames, role, brokerKey }: {
+export default function Lodgements({
+  deals: everything, brokerNames, brokerRows, brands, role, brokerKey,
+}: {
   deals: any[]
   brokerNames?: Record<string, string>
+  /** public.brokers, carrying brand_ids - which business each broker writes under. */
+  brokerRows?: any[]
+  /** settings.brands. */
+  brands?: { id: string; name: string }[]
   role?: string
   brokerKey?: string
   meName?: string
@@ -112,6 +119,13 @@ export default function Lodgements({ deals: everything, brokerNames, role, broke
           </button>
         ))}
       </span>
+
+      {/* THE THREE VIEWS, above the tables. Tiles, the list, and on the FY tab
+        * the year grid. See components/LodgementSummary.tsx. */}
+      {brokers.length > 0 && (
+        <LodgementSummary lines={brokers} brokerRows={brokerRows} brands={brands}
+          kind={kind} label={span.label} />
+      )}
 
       {brokers.length === 0 ? (
         <div className="bg-card border border-dashed border-card-line rounded-xl py-8 text-center
