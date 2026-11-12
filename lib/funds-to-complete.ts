@@ -3,7 +3,7 @@ import { contractPrice, contractLoan, contractStampDuty } from './contract-figur
 import { isLandPurchase, landLoanPayout, dutyApplies } from './construction'
 import { buildsSomething, purchasePriceOf } from './sale-build'
 import { buysNothing } from './buying'
-import { refinancesNothing } from './a-scenario-keeps-its-own-figures'
+import { securityComesFromTheFactFind } from './a-scenario-keeps-its-own-figures'
 import { securitiesWithPurchase, totalsOf, canBuyAndRefinance,
          BEING_PURCHASED, purchaseLoanOf } from './securities'
 import { isTopUp, cashReleased, isDollarForDollar } from './top-up'
@@ -507,7 +507,13 @@ export function securityValue(deal: any): SecurityValue {
   // clone brings the fact find across with the old loan still marked to be
   // refinanced; a purchase refinances nothing, so there is no property being
   // paid out to find. See lib/a-scenario-keeps-its-own-figures.ts.
-  for (const p of refinancesNothing(bc?.template) ? [] : (deal?.fact_find_data?.properties || [])) {
+  // A HOUSE BEING SOLD IS NOT SECURITY FOR THE HOUSE BEING BOUGHT.
+  //
+  // 13 Nov 2026, the Le-Vo deal: $1,950,000 of "security" was the purchase plus
+  // the home they were selling, and the LVR came out at 47.2% on a submission
+  // to a lender. See sellsSomething() for the whole of why.
+  const fromFactFind = securityComesFromTheFactFind(bc?.template)
+  for (const p of fromFactFind ? (deal?.fact_find_data?.properties || []) : []) {
     // THE PROPERTY DROPDOWN SAYS Refinance, NOT "To be refinanced".
     // 3 Nov 2026 - see isBeingDischarged in lib/security-figures.ts.
     const involved = (p?.loans || []).some((l: any) => isBeingDischarged(l?.status))
@@ -521,7 +527,7 @@ export function securityValue(deal: any): SecurityValue {
   // and $538,085 went on being the denominator of the LVR. A purchase is worth
   // what is being paid for it; if that is not recorded then nothing is, which
   // is what the next two lines say.
-  if (values.length === 0 && !refinancesNothing(bc?.template) && has(bc.propertyValue)) {
+  if (values.length === 0 && fromFactFind && has(bc.propertyValue)) {
     values.push(num(bc.propertyValue))
   }
 

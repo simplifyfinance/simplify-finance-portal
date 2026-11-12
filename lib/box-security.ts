@@ -12,7 +12,7 @@ import { andList } from './and-list'
 import type { Gap } from './box-one'
 import { buysNothing } from './buying'
 import { securityIdsOf } from './securities'
-import { refinancesNothing } from './a-scenario-keeps-its-own-figures'
+import { securityComesFromTheFactFind } from './a-scenario-keeps-its-own-figures'
 import { withArticle } from './article'
 
 // BOX NINE — SECURITY.
@@ -150,9 +150,14 @@ export function securitiesOf(deal: any): Security[] {
   // be refinanced is security - and Glenfield Park's loan still said so,
   // because the fact find came across with the clone too. A purchase pays out
   // nothing, so there is no property being refinanced to find.
-  const nothingToPayOut = refinancesNothing(bc?.template)
+  // AND NOT ON A SCENARIO THAT SELLS. 13 Nov 2026, the Le-Vo deal: the house
+  // being sold was listed here as security for the house being bought, and the
+  // same wrong figure reached the compliance pack and the lender's submission
+  // by two routes. One rule answers it for both now - see
+  // securityComesFromTheFactFind().
+  const fromFactFind = securityComesFromTheFactFind(bc?.template)
 
-  for (const p of nothingToPayOut ? [] : (deal?.fact_find_data?.properties || [])) {
+  for (const p of fromFactFind ? (deal?.fact_find_data?.properties || []) : []) {
     const loan = (p?.loans || []).find((l: any) => isBeingDischarged(l?.status))
     // Ticked and carrying no refinancing loan is still security - a property put
     // up purely to support the lend has no loan on it to mark.

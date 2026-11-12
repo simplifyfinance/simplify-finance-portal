@@ -178,3 +178,62 @@ export function refinancesNothing(template: unknown): boolean {
   if (!scenarioHasItsOwnBoxes(t)) return false
   return !boxesForScenario(t, { template: t }).includes('existingLoanBal')
 }
+
+// DOES THIS SCENARIO SELL A HOUSE?
+//
+// 13 Nov 2026, the Le-Vo deal. The Broker Submission Notes printed PROPERTY
+// VALUE $1,950,000 and LVR 47.2% on a $920,000 loan. The property being bought
+// is worth less than that: the figure was the new purchase PLUS the house they
+// were selling, added together.
+//
+// WHY THE SOLD HOUSE GOT IN. The security total takes the house being bought
+// and then adds any property on the fact find whose loan is marked to be
+// discharged. On a buy and sell the old loan IS discharged - out of the sale
+// proceeds - so it is marked exactly that way, and its value was counted as
+// though it still stood behind the new lending.
+//
+// It does not. It is gone at settlement. The only security is what is being
+// bought.
+//
+// refinancesNothing() cannot answer this: a buy and sell HAS an existing loan
+// balance box, because there is a loan on the house being sold. The question
+// that separates them is whether the scenario sells - and a scenario that
+// sells is one that asks for a sale price, which is the same list every other
+// rule here is asked of.
+//
+// AN UNDERSTATED LVR IS THE DANGEROUS DIRECTION. It goes to a lender on a
+// submission, and it is the number that decides whether LMI applies.
+export function sellsSomething(template: unknown): boolean {
+  const t = txt(template)
+  if (!scenarioHasItsOwnBoxes(t)) return false
+  return boxesForScenario(t, { template: t }).includes('salePrice')
+}
+
+/**
+ * DO WE TAKE SECURITY FROM THE FACT FIND AT ALL?
+ *
+ * 13 Nov 2026, and this is the shape of the Le-Vo fault rather than the fault
+ * itself.
+ *
+ * TWO FILES DECIDED THIS INDEPENDENTLY. lib/funds-to-complete.ts built the
+ * security total for the deal strip, the LVR and the Broker Submission Notes;
+ * lib/box-security.ts built the security list for the compliance pack. Both
+ * asked refinancesNothing(). Neither asked whether the scenario SELLS - so the
+ * house being sold was counted as security in both, and the same wrong LVR
+ * reached a lender's submission and a regulated document by two separate
+ * routes.
+ *
+ * Fixing one would have left the other. So the question is asked once, here,
+ * and both call it. lib/one-security-rule.test.ts fails if either one goes
+ * back to working it out for itself.
+ *
+ * TWO REASONS NOT TO LOOK:
+ *   the scenario refinances nothing   a purchase pays nothing out, so a loan
+ *                                     still flagged on a cloned fact find is
+ *                                     stale rather than true
+ *   the scenario sells                the loan IS discharged, out of the sale -
+ *                                     and the house goes with it
+ */
+export function securityComesFromTheFactFind(template: unknown): boolean {
+  return !refinancesNothing(template) && !sellsSomething(template)
+}

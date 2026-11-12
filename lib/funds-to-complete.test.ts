@@ -389,3 +389,63 @@ describe('an existing balance on a purchase is not refinanced debt', () => {
     }
   })
 })
+
+// A HOUSE BEING SOLD IS NOT SECURITY FOR THE HOUSE BEING BOUGHT.
+//
+// 13 Nov 2026, the Le-Vo deal. Invented figures, real shape: a buy and sell
+// where the Broker Submission Notes printed the purchase plus the home being
+// sold as one security total, and an LVR a lender would have acted on.
+describe('a buy and sell', () => {
+  const sold = {
+    id: 'p1', address: '12 Old Street', value: '1030000',
+    loans: [{ status: 'To be paid out', balance: '420000' }],
+  }
+  const buySell = (over: any = {}) => ({
+    bc_data: {
+      template: 'buy_sell',
+      purchasePrice: '920000',
+      salePrice: '1030000',
+      existingLoanBal: '420000',
+      splits: [{ amount: '920000' }],
+      ...over,
+    },
+    fact_find_data: { properties: [sold] },
+  })
+
+  it('counts only the house being bought', () => {
+    const out = securityValue(buySell())
+    expect(out.total).toBe(920_000)
+  })
+
+  it('so the LVR is the real one, not half of it', () => {
+    // 920,000 against 1,950,000 of "security" reads 47.2%. Against the house
+    // actually being bought it is 100%, which is a conversation to have.
+    expect(securityValue(buySell()).lvr).toBe(100)
+  })
+
+  it('and does not fall back to the old property value box either', () => {
+    const out = securityValue({
+      bc_data: {
+        template: 'buy_sell', salePrice: '1030000', existingLoanBal: '420000',
+        propertyValue: '1030000', splits: [{ amount: '920000' }],
+      },
+      fact_find_data: { properties: [sold] },
+    })
+    expect(out.total).toBe(0)
+    expect(out.lvr).toBe(null)
+  })
+
+  // AND A REAL REFINANCE IS UNTOUCHED. The house stays, the loan moves, and it
+  // is security - which is the case this rule must not break.
+  it('leaves a refinance counting the house it refinances', () => {
+    const out = securityValue({
+      bc_data: { template: 'refinance_only', splits: [{ amount: '500000' }] },
+      fact_find_data: {
+        properties: [{ id: 'p9', value: '1000000',
+          loans: [{ status: 'Refinance', balance: '480000' }] }],
+      },
+    })
+    expect(out.total).toBe(1_000_000)
+    expect(out.lvr).toBe(50)
+  })
+})

@@ -7,6 +7,7 @@
 // number that looks plausible.
 
 import { securitiesWithPurchase, totalsOf } from './securities'
+import { sellsSomething } from './a-scenario-keeps-its-own-figures'
 
 export type CommissionRate = {
   lender?: string | null
@@ -157,7 +158,16 @@ export function lvrOf(deal: any): number | null {
   const t = totalsOf(securitiesWithPurchase(bc, deal?.fact_find_data, deal?.purchase_address))
   if (loan && t.value > 0) return Math.round((loan / t.value) * 1000) / 10
 
-  const value = n(bc.propertyValue) ?? n(bc.purchasePrice)
+  // AND ON A SCENARIO THAT SELLS, THE PURCHASE PRICE WINS.
+  //
+  // 13 Nov 2026, after the Le-Vo deal. propertyValue is not a box a buy and
+  // sell draws, so it is only ever there because a clone carried it - and on a
+  // buy and sell what it carried is the value of the house being SOLD. Dividing
+  // the new lending by that understates the LVR, and this figure picks the
+  // commission band. See securityComesFromTheFactFind().
+  const value = sellsSomething(bc?.template)
+    ? (n(bc.purchasePrice) ?? n(bc.propertyValue))
+    : (n(bc.propertyValue) ?? n(bc.purchasePrice))
   if (loan && value && value > 0) return Math.round((loan / value) * 1000) / 10
   const stated = n(bc.lvrCustom) ?? n(bc.lvr)
   return stated ?? null
