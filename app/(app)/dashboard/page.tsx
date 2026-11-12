@@ -152,6 +152,25 @@ export default async function Dashboard() {
     }
   })
 
+  // ONE ASSESSOR CARRYING FAR MORE THAN THE REST, or nobody.
+  //
+  // Half again the team average is the same threshold the round robin uses
+  // when it decides somebody is too loaded to take another file - see
+  // lib/allocate-officer.ts. One rule, so the screen and the allocation cannot
+  // disagree about who is buried.
+  const loads = creditToday.map(t => t.open)
+  const average = loads.length
+    ? Math.round((loads.reduce((a, b) => a + b, 0) / loads.length) * 10) / 10 : 0
+  const worst = creditToday.slice().sort((a, b) => b.open - a.open)[0]
+  const overloaded = worst && average > 0 && worst.open > average * 1.5
+    ? {
+      name: worst.name,
+      open: worst.open,
+      average,
+      unplanned: !worst.informedAt,
+    }
+    : null
+
   // THIS WEEK'S SETTLEMENTS, by the date the settlements team confirmed, and
   // only the ones that have not already settled.
   const weekStart = new Date(today + 'T00:00:00')
@@ -229,6 +248,7 @@ export default async function Dashboard() {
           todayWords={todayWords}
           team={creditToday}
           settling={settlingThisWeek}
+          overloaded={overloaded}
         />
       ) : (
       <TodayPlan

@@ -253,10 +253,12 @@ describe('a broker with nothing on the list', () => {
     expect(runs[1].deals).toEqual([])
   })
 
-  it('never sits above somebody who has work', () => {
+  // THE SAME TABLE, THE SAME ORDER, EVERY WEEK. A name that moves about
+  // depending on who was busy is a name people lose.
+  it('stays in the order of the register, busy or not', () => {
     const runs = runThrough([deal({ assigned_broker: 'Mark' })], 'nobody',
       names, team, NOW, ['kylie', 'mark'])
-    expect(runs[0].key).toBe('mark')
+    expect(runs.map(r => r.key)).toEqual(['kylie', 'mark'])
   })
 })
 
@@ -346,5 +348,25 @@ describe('what was promised at an earlier meeting', () => {
 
   it('says nothing once it has lodged', () => {
     expect(carriedOver(said('this', { lodged_at: ago(1) }), NOW)).toBe(null)
+  })
+})
+
+// "Kylie always last one within that box."
+describe('the name that sits at the end', () => {
+  const names = (k: string) => k
+  const team = () => 'Simplify Finance'
+
+  it('goes last whatever she is carrying', () => {
+    const runs = runThrough(
+      [deal({ assigned_broker: 'Kylie' }), deal({ assigned_broker: 'Mark' })],
+      'nobody', names, team, NOW, ['kylie', 'mark'], ['kylie'])
+    expect(runs.map(r => r.key)).toEqual(['mark', 'kylie'])
+  })
+
+  it('and still appears when she has nothing', () => {
+    const runs = runThrough([deal({ assigned_broker: 'Mark' })],
+      'nobody', names, team, NOW, ['kylie', 'mark'], ['kylie'])
+    expect(runs.map(r => r.key)).toEqual(['mark', 'kylie'])
+    expect(runs[1].total).toBe(0)
   })
 })

@@ -5,9 +5,9 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { useSayTheWeek } from '@/lib/use-say-the-week'
 import { ANSWERS, answerOf, type AnswerKey } from '@/lib/lodging-when'
 import {
-  CARRIED_WORDS, SEATS, SEAT_LABEL, SHOW_AT_ONCE, bySection, carriedOver, isSlipping,
-  matches, readTarget,
-  runThrough, seatCounts, unansweredDays, weekSoFar, worthOf, type BrokerRun, type Seat,
+  CARRIED_WORDS, SEATS, SEAT_LABEL, SHOW_AT_ONCE, STAGE_TONE, carriedOver, inTeam, isSlipping,
+  matches, notInTeam, readTarget, runThrough, seatCounts, theirOwnBook, unansweredDays,
+  weekSoFar, whereItIs, worthOf, type BrokerRun, type Seat,
 } from '@/lib/the-run-through'
 import { shareOf } from '@/lib/who-gets-paid-on-this'
 import { NO_TEAM_NAME } from '@/lib/which-team'
@@ -32,13 +32,17 @@ const CAP = 'text-[10.5px] font-bold tracking-[0.08em] uppercase text-muted'
 
 export default function RunThrough({
   deals, brokerNames, brokerRows, secondTeam = 'Simplify Finance Brokers',
-  target: savedTarget, canSetTarget = false, team = [], settling = [], meName = '',
+  target: savedTarget, canSetTarget = false, firstTeam = 'Simplify Finance',
+  team = [], settling = [], overloaded = null,
+  meName = '',
   todayWords = '', now,
 }: {
   deals: any[]
   brokerNames: Record<string, string>
   /** The register, for each broker's group. See lib/which-team.ts. */
-  brokerRows: Array<{ broker_key?: any; name?: any; team?: any }>
+  brokerRows: Array<{ broker_key?: any; name?: any; team?: any; last_in_list?: any }>
+  /** The group whose deals fill the main box. */
+  firstTeam?: string
   /** The group that gets its own section at the bottom. */
   secondTeam?: string
   /** What the business is aiming at this week. Editable on the bar. */
@@ -49,6 +53,8 @@ export default function RunThrough({
                  open?: number }>
   /** What is settling this week, for the box under it. */
   settling?: Array<{ id: string; name: string; day: string; amount: number }>
+  /** Named only when one assessor is carrying far more than the rest. */
+  overloaded?: { name: string; open: number; average: number; unplanned: boolean } | null
   meName?: string
   todayWords?: string
   now?: Date
@@ -77,6 +83,13 @@ export default function RunThrough({
   // THE NAMES THAT APPEAR WHETHER THEY HAVE ANYTHING OR NOT - the brokers who
   // run the business between them. Kylie is on this list with nothing under
   // her today, on purpose.
+  // Fabio, 13 Nov 2026: "Kylie always last one within that box."
+  const lastBrokers = useMemo(() => (brokerRows || [])
+    .filter(b => String(b?.last_in_list ?? '') === 'true'
+      || String(b?.name || '').toLowerCase().startsWith('kylie'))
+    .map(b => String(b?.broker_key || '').toLowerCase())
+    .filter(Boolean), [brokerRows])
+
   const ourBrokers = useMemo(() => (brokerRows || [])
     .filter(b => String(b?.team || '').trim() !== secondTeam)
     .map(b => String(b?.broker_key || '').toLowerCase())
@@ -86,30 +99,39 @@ export default function RunThrough({
   const [editing, setEditing] = useState(false)
 
   const counts = useMemo(() => seatCounts(all, when), [all])
-  const week = useMemo(() => weekSoFar(all, when, target), [all, target])
 
-  // WHOSE LOAD, OFF THE DEAL'S OWN SPLIT - never off whose name is on it.
+  // WHOSE LOAD THE WEEK'S TARGET COUNTS, off the deal's own split.
   //
-  // Fabio, 12 Nov 2026: "there are splits that we do 50-50 between Keanen and
-  // us and Justin and us. That sits on our admin load, not theirs. The only
-  // ones that sit on theirs are the ones that they get paid 80-20."
+  // 13 Nov 2026. Fabio: "the 50/50 is ours, remember, sits on our load." So a
+  // deal Justin writes on a 50/50 arrangement counts towards the ten to twelve
+  // Mark, Fabio and Kylie are measured on; one he takes 80 of does not. It is
+  // read off the deal's own copy of the terms, so it stays right when a split
+  // is renegotiated later - see lib/who-gets-paid-on-this.ts.
   //
-  // The deal keeps its own copy of the terms - see lib/who-shares-this-deal.ts
-  // - so this reads the arrangement as it stood on that deal, not as the split
-  // reads today.
+  // THIS DECIDES THE COUNT, NOT THE BOX. Which section a broker's name appears
+  // in is their group and nothing else.
   const shareFor = (d: any) => {
     const who = names(String(d?.assigned_broker || ''))
-    const line = shareOf({ lines: d?.commission_split_lines }, who)
-    return line?.upfront ?? null
+    return shareOf({ lines: d?.commission_split_lines }, who)?.upfront ?? null
   }
+  const ourLoad = useMemo(
+    () => all.filter(d => !theirOwnBook(shareFor(d))), [all, brokerNames])
+  const week = useMemo(() => weekSoFar(ourLoad, when, target), [ourLoad, target])
 
-  const split = useMemo(() => bySection(all, shareFor), [all, brokerNames])
-  const mine = useMemo(
-    () => runThrough(split.ours, seat, names, teamOf, when, ourBrokers),
-    [split.ours, seat, teamOf, ourBrokers])
-  const theirs = useMemo(
-    () => runThrough(split.theirs, seat, names, teamOf, when),
-    [split.theirs, seat, teamOf])
+  // WHICH BOX A BROKER'S DEALS SIT IN IS THE BROKER'S GROUP. FULL STOP.
+  //
+  // 13 Nov 2026. Fabio: "Justin and Keanen NEED TO BE ON THEIR OWN BOX under
+  // label Simplify Brokers, NOT with me and Mark - the data comes FROM THEM."
+  //
+  // I had used the 80/20-versus-50/50 split to decide the box. That rule says
+  // whose LOAD a deal counts against for the week's target; it was never about
+  // which section a broker's name appears in. A broker is in one box, the one
+  // their record says - see lib/which-team.ts.
+  const everyone = useMemo(
+    () => runThrough(all, seat, names, teamOf, when, ourBrokers, lastBrokers),
+    [all, seat, teamOf, ourBrokers, lastBrokers])
+  const mine = useMemo(() => notInTeam(everyone, secondTeam), [everyone, secondTeam])
+  const theirs = useMemo(() => inTeam(everyone, secondTeam), [everyone, secondTeam])
 
   const [savingTarget, setSavingTarget] = useState(false)
 
@@ -131,6 +153,7 @@ export default function RunThrough({
     const slipping = isSlipping(d, when)
     // Promised at an earlier meeting, so worth asking about twice.
     const carried = carriedOver(d, when)
+    const where = whereItIs(d)
     const days = unansweredDays(d, when)
     const amount = Number(d?.loan_amount ?? d?.amount) || 0
     return (
@@ -155,17 +178,33 @@ export default function RunThrough({
             rounded-full px-2 py-[1px] whitespace-nowrap">
             {days} days, nobody has said
           </span>
-        ) : (
-          <span className="text-[11px] text-faint whitespace-nowrap">
-            {[d.lender, seat === 'lodged' ? 'lodged' : null].filter(Boolean).join(' · ')}
+        ) : null}
+
+        {/* WHERE IT IS: one blue, three depths, darker is closer to lodging.
+          * See STAGE_TONE in lib/the-run-through.ts for why it is not a status
+          * colour. */}
+        {where && (
+          <span className={`text-[10.5px] font-bold rounded-full px-2.5 py-[2px] border
+            whitespace-nowrap ${STAGE_TONE[where] || 'border-line text-muted'}`}>
+            {where.charAt(0).toUpperCase() + where.slice(1)}
           </span>
         )}
 
-        {amount > 0 && (
-          <span className="text-[13px] font-bold tabular-nums whitespace-nowrap">
-            {money(amount)}
-          </span>
+        {d.lender && (
+          <span className="text-[11px] text-faint whitespace-nowrap">{d.lender}</span>
         )}
+
+
+        {/* A BLANK AMOUNT IS A GAP, NOT A ZERO.
+          * 13 Nov 2026, Fabio: "why Makeham is there if there's not even a
+          * loan amount?" Because the list is chosen by stage, not by amount -
+          * and a deal at compliance with no amount recorded is somebody's
+          * oversight, which is worth saying out loud rather than leaving as an
+          * empty column. */}
+        <span className={`text-[13px] whitespace-nowrap ${amount > 0
+          ? 'font-bold tabular-nums' : 'text-[11px] text-faint italic'}`}>
+          {amount > 0 ? money(amount) : 'no amount yet'}
+        </span>
 
         {seat !== 'lodged' && (
           <span className="flex gap-1 flex-none">
@@ -188,24 +227,15 @@ export default function RunThrough({
     )
   }
 
-  // TEN AT A TIME. Fabio, 12 Nov 2026: "why don't you just highlight the first
-  // ten, make sure you can scroll up and down, make sure we can search."
-  // A SEARCH BESIDE EACH BROKER'S NAME.
+  // TEN DEEP, AND IT SCROLLS.
   //
-  // Fabio, 12 Nov 2026: "there is a search bar within Mark, there is a search
-  // bar within Fabio... so we can find deals that are not there, highlight
-  // them and mark them this week, next week."
-  //
-  // NOT on the Simplify Finance Brokers section - those deals come from the
-  // broker themselves on their own Monday, so there is nothing for us to go
-  // hunting for.
+  // 13 Nov 2026. Fabio: "roll the list up and down for Mark and Fabio". The
+  // first version put the rest behind a "17 more" button, which is a click
+  // between a meeting and the deal it is looking for.
   const section = (list: BrokerRun[], canSearch: boolean) => list.map(r => {
     const q = look[r.key] || ''
     const found = q.trim().length >= 2 ? r.all.filter(d => matches(d, q)) : null
     const deals = found ?? r.deals
-    const all = showAll[r.key] || !!found
-    const shown = all ? deals : deals.slice(0, SHOW_AT_ONCE)
-    const hidden = deals.length - shown.length
     return (
       <div key={r.key}>
         <div className="flex items-baseline gap-2 pt-3 pb-1 flex-wrap">
@@ -225,22 +255,15 @@ export default function RunThrough({
             {worthOf(deals) > 0 ? ` · ${money(worthOf(deals))}` : ''}
           </span>
         </div>
-        {deals.length === 0
-          ? (
-            <div className="text-[12px] text-faint pb-1">
-              {found ? 'Nothing of theirs matches that.' : 'Nothing on this list.'}
-            </div>
-          ) : (
-            <div className={deals.length > SHOW_AT_ONCE
-              ? 'max-h-[430px] overflow-y-auto pr-1' : ''}>
-              {shown.map(row)}
-            </div>
-          )}
-        {hidden > 0 && (
-          <button onClick={() => setShowAll(x => ({ ...x, [r.key]: true }))}
-            className="text-[11.5px] font-semibold text-brand-ink mt-1.5">
-            {hidden} more waiting &mdash; show {r.name.split(' ')[0]}&rsquo;s whole list
-          </button>
+        {deals.length === 0 ? (
+          <div className="text-[12px] text-faint pb-1">
+            {found ? 'Nothing of theirs matches that.' : 'Nothing on this list.'}
+          </div>
+        ) : (
+          <div className={deals.length > SHOW_AT_ONCE
+            ? 'max-h-[430px] overflow-y-auto pr-1 border-y border-line-soft' : ''}>
+            {deals.map(row)}
+          </div>
         )}
       </div>
     )
@@ -339,10 +362,14 @@ export default function RunThrough({
       <div className="flex gap-4 items-start flex-wrap lg:flex-nowrap">
       <div className="flex-1 min-w-[420px]">
       <div className="bg-card border border-card-line rounded-xl px-4 py-3.5 mb-3">
+        {/* THE BOX IS NAMED FOR THE GROUP IT HOLDS. 13 Nov 2026, Fabio: "the
+          * box needs to read Simplify Finance, the bottom box Simplify Finance
+          * Brokers." The meeting is what the screen is; the group is whose
+          * deals are in it, and that is the heading. */}
         <div className={`${CAP} mb-3 flex items-center gap-2`}>
-          The run-through &mdash; what are we lodging this week
+          {firstTeam}
           <span className="ml-auto text-faint tracking-[0.06em] normal-case font-semibold
-            text-[10.5px]">go down the list, broker by broker</span>
+            text-[10.5px]">what are we lodging this week</span>
         </div>
 
         <div className="flex gap-1.5 flex-wrap mb-3">
@@ -367,6 +394,31 @@ export default function RunThrough({
           </div>
         ) : section(mine, true)}
       </div>
+      {/* ONE RED LINE, AND ONLY WHEN SOMEBODY IS GENUINELY OVER.
+        *
+        * Fabio, 12 Nov 2026: "the one thing out of shape, he sits there in red
+        * if he needs to be there." The detail lives on Credit team workload;
+        * this is the exception, and on a week where nobody is carrying far
+        * more than the rest it is not on the page at all. */}
+      {overloaded && (
+        <div className="bg-chase-bg border border-chase-edge rounded-xl px-4 py-3.5 mb-3">
+          <div className={`${CAP} mb-2 text-chase`}>One thing is out of shape</div>
+          <div className="bg-card border-l-4 border-chase rounded-lg px-3 py-2.5 flex
+            items-center gap-3 flex-wrap">
+            <span className="text-[13px] font-bold w-[74px] flex-none">{overloaded.name}</span>
+            <span className="text-[11.5px] text-muted leading-snug">
+              <b className="text-ink">{overloaded.open} files open</b>, against a team average
+              of {overloaded.average}.
+              {overloaded.unplanned ? <><br />None of them are on a plan today.</> : null}
+            </span>
+            <Link href="/credit-team-workload"
+              className="ml-auto text-[11px] font-semibold text-brand-ink border border-info-edge
+                bg-info-bg rounded-lg px-2.5 py-[3px] whitespace-nowrap">
+              Move some off {overloaded.name.split(' ')[0]}
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* THE OTHER GROUP, AT THE BOTTOM AND ON ITS OWN.
         *
@@ -374,14 +426,18 @@ export default function RunThrough({
         * any way to have a section for simplify brokers... just a section at
         * the bottom?" It is the group on the broker's own record - see
         * lib/which-team.ts - not a brand, and not a guess from the name. */}
-      {theirs.length > 0 && (
+      {(
         <div className="bg-card border border-card-line rounded-xl px-4 py-3.5 mb-3">
           <div className={`${CAP} mb-1 flex items-center gap-2`}>
             {secondTeam}
             <span className="ml-auto text-faint tracking-[0.06em] normal-case font-semibold
               text-[10.5px]">what they think is coming</span>
           </div>
-          {section(theirs, false)}
+          {theirs.length === 0
+            ? <div className="text-[12px] text-faint pt-2">
+                Nothing from them on this list.
+              </div>
+            : section(theirs, false)}
         </div>
       )}
       </div>
@@ -389,7 +445,12 @@ export default function RunThrough({
       {/* THE TEAM, BESIDE THE MEETING. The box Fabio kept from the old page:
         * who has told management their day, and what is settling. */}
       <div className="w-full lg:w-[316px] lg:flex-none">
-        {team.length > 0 && (
+        {/* ALWAYS ON THE PAGE. 13 Nov 2026, Fabio: "settling this week box??
+          * WHERE IS THIS box - if no deal, no deals, but box is there." An
+          * empty box tells you nothing is settling, which is worth knowing. A
+          * missing box tells you nothing at all, and makes the page move
+          * around week to week. */}
+        {(
           <div className="bg-card border border-card-line rounded-xl px-4 py-3.5 mb-3">
             <div className={`${CAP} mb-3 flex items-center gap-2`}>
               The credit team this morning
@@ -398,7 +459,9 @@ export default function RunThrough({
                 {team.filter(t => t.informedAt).length} of {team.length}
               </span>
             </div>
-            {team.map(t => (
+            {team.length === 0 ? (
+              <div className="text-[12px] text-faint">No credit assessors set up.</div>
+            ) : team.map(t => (
               <div key={t.name}
                 className={`rounded-lg px-3 py-2.5 mb-1.5 last:mb-0 border-l-4 ${
                   t.informedAt ? 'bg-done-bg border-done' : 'bg-chase-bg border-chase'}`}>
@@ -422,10 +485,12 @@ export default function RunThrough({
           </div>
         )}
 
-        {settling.length > 0 && (
+        {(
           <div className="bg-card border border-card-line rounded-xl px-4 py-3.5">
             <div className={`${CAP} mb-2`}>Settling this week</div>
-            {settling.map(x => (
+            {settling.length === 0 ? (
+              <div className="text-[12px] text-faint">Nothing is booked to settle this week.</div>
+            ) : settling.map(x => (
               <div key={x.id}
                 className="flex items-center gap-2.5 py-2 border-b border-line-soft last:border-b-0">
                 <Link href={`/deals/${x.id}`}

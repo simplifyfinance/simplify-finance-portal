@@ -325,6 +325,8 @@ export function runThrough(
    * is a broker nobody asks.
    */
   always: string[] = [],
+  /** Brokers who sit at the end of the list whatever they are carrying. */
+  last: string[] = [],
 ): BrokerRun[] {
   const by = new Map<string, any[]>()
   // Everything of each broker's that could lodge, on any seat - the search
@@ -364,13 +366,28 @@ export function runThrough(
       total: list.length,
     })
   }
-  // Most to decide first - the meeting spends its time where the answers are
-  // missing, not in alphabetical order. A broker with nothing goes last, where
-  // the table can see the name and move on.
-  return out.sort((a, b) =>
-    (b.total > 0 ? 1 : 0) - (a.total > 0 ? 1 : 0)
-    || b.toDecide - a.toDecide || b.total - a.total
-    || a.name.localeCompare(b.name))
+  // THE ORDER OF THE ROOM, NOT A LEAGUE TABLE.
+  //
+  // 13 Nov 2026. Fabio, on Kylie being pushed under everybody because she had
+  // nothing on the list that morning: "Kylie is AGAIN with Fabio AND MARK,
+  // she's at the bottom - this is NOT WHAT YOU MOCKED."
+  //
+  // He is right. The meeting goes round the same table in the same order every
+  // week, and a name that moves about depending on who was busy is a name
+  // people lose. So brokers appear in the order of `always` - the register -
+  // and anybody not on that list follows, busiest first.
+  //
+  // AND ONE NAME SITS AT THE END OF IT. Fabio, 13 Nov 2026: "Kylie always last
+  // one within that box." `last` is the brokers who go after everybody else
+  // whatever they are carrying, because that is the order the room runs in.
+  const rank = new Map(always.map((k, i) => [txt(k).toLowerCase(), i]))
+  for (const k of last) rank.set(txt(k).toLowerCase(), 900)
+  return out.sort((a, b) => {
+    const ra = rank.has(a.key) ? rank.get(a.key)! : 1_000
+    const rb = rank.has(b.key) ? rank.get(b.key)! : 1_000
+    if (ra !== rb) return ra - rb
+    return b.toDecide - a.toDecide || b.total - a.total || a.name.localeCompare(b.name)
+  })
 }
 
 /**
@@ -398,6 +415,41 @@ export function matches(deal: any, look: any): boolean {
     deal?.lender,
   ].map(txt).join(' ').toLowerCase()
   return hay.includes(q)
+}
+
+/**
+ * WHERE THIS DEAL IS, IN THE WORDS THE MEETING USES.
+ *
+ * 13 Nov 2026. Fabio: "I want to say if it is sitting in LO, BC, Compliance
+ * next to the [lender]." The mock had it and the first build dropped it, so a
+ * row read as a name and a number with nothing saying why it was on the list.
+ */
+export function whereItIs(deal: any): string {
+  const p = phaseOf(deal)
+  if (p === 'compliance_sent') return 'compliance issued'
+  if (p === 'lo') return 'lending options'
+  if (p === 'bc') return 'BC with the client'
+  if (hasLodged(deal)) return 'lodged'
+  return ''
+}
+
+/**
+ * THE COLOUR OF A STAGE: ONE BLUE, THREE DEPTHS.
+ *
+ * 13 Nov 2026. Fabio wanted BC, LO and Compliance to read as colour rather
+ * than grey text, and chose the pale/bright/deep ramp.
+ *
+ * NOT A STATUS COLOUR. Green means done and purple means waiting on somebody,
+ * everywhere in this portal - a stage is neither, and borrowing one of those
+ * is how the Deals by broker bars ended up saying two things at once on
+ * 6 Oct 2026. Darker simply means closer to lodging, which is the same thing
+ * those bars have meant ever since.
+ */
+export const STAGE_TONE: Record<string, string> = {
+  'compliance issued': 'bg-brand-ink border-brand-ink text-page',
+  'lending options': 'bg-info-bg border-brand text-brand-ink',
+  'BC with the client': 'bg-info-bg border-info-edge text-brand-ink',
+  lodged: 'bg-done-bg border-done-edge text-done',
 }
 
 /** What one broker's section is worth, for the line beside their name. */
