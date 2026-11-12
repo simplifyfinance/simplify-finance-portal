@@ -84,7 +84,7 @@ export default async function Dashboard() {
   const today = todayYmd()
   const [{ data: officerRows }, { data: planRows }] = await Promise.all([
     supabase.from('credit_officers').select('id, name').eq('active', true).order('name'),
-    supabase.from('daily_plans').select('officer_id, broker_key, deal_ids, confirmed_at, notes, on_it_now').eq('plan_date', today),
+    supabase.from('daily_plans').select('officer_id, broker_key, deal_ids, confirmed_at, notes, on_it_now, yesterday_ok_at, informed_at, yesterday_added, yesterday_removed').eq('plan_date', today),
   ])
   const officers = (officerRows || []).map((o: any) => ({ id: o.id, name: o.name }))
   const byOfficer = new Map((planRows || []).map((p: any) => [p.officer_id, p]))
@@ -101,6 +101,10 @@ export default async function Dashboard() {
       dealIds: (p.deal_ids || []) as string[],
       notes: (p.notes || {}) as Record<string, string>,
       onItNow: p.on_it_now || null,
+      yesterdayOkAt: p.yesterday_ok_at || null,
+      informedAt: p.informed_at || null,
+      yesterdayAdded: (p.yesterday_added || []) as any[],
+      yesterdayRemoved: (p.yesterday_removed || []) as string[],
     }))
 
   const plans = officers.map(o => ({
@@ -112,6 +116,10 @@ export default async function Dashboard() {
     })),
     notes: (byOfficer.get(o.id)?.notes || {}) as Record<string, string>,
     onItNow: byOfficer.get(o.id)?.on_it_now || null,
+    yesterdayOkAt: byOfficer.get(o.id)?.yesterday_ok_at || null,
+    informedAt: byOfficer.get(o.id)?.informed_at || null,
+    yesterdayAdded: (byOfficer.get(o.id)?.yesterday_added || []) as any[],
+    yesterdayRemoved: (byOfficer.get(o.id)?.yesterday_removed || []) as string[],
   }))
 
   return (

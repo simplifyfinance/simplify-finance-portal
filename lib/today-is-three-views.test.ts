@@ -224,7 +224,18 @@ describe('what a person can write and mark', () => {
 
 describe('the plan table is asked for all of it', () => {
   it('the day, the notes and the one they are on', () => {
-    expect(dash).toContain("select('officer_id, broker_key, deal_ids, confirmed_at, notes, on_it_now')")
+    for (const col of ['officer_id', 'broker_key', 'deal_ids', 'confirmed_at', 'notes', 'on_it_now']) {
+      expect(dash, `the plan row is read without ${col}`).toContain(col)
+    }
+  })
+
+  // THE MORNING IS THREE PRESSES - 12 Nov 2026. A row read without these comes
+  // back looking like somebody who has confirmed nothing, every morning, for
+  // ever. See lib/the-morning-three.ts.
+  it('and what she confirmed, and whether management has been told', () => {
+    for (const col of ['yesterday_ok_at', 'informed_at', 'yesterday_added', 'yesterday_removed']) {
+      expect(dash, `the plan row is read without ${col}`).toContain(col)
+    }
   })
 
   it('and the columns exist to put them in', () => {

@@ -71,6 +71,17 @@ export type Plan = {
   notes?: Record<string, string>
   /** The one deal they are on right now, so nobody rings about that one. */
   onItNow?: string | null
+  // THE OTHER TWO OF THE THREE - 12 Nov 2026. confirmedAt means "this is my
+  // day", which is now a different moment from telling management about it.
+  // See lib/the-morning-three.ts.
+  /** When they agreed what they finished the day before. */
+  yesterdayOkAt?: string | null
+  /** When it went to management. Null while the morning is half done. */
+  informedAt?: string | null
+  /** Stages they added by hand because the portal did not see them move. */
+  yesterdayAdded?: Array<{ id: string; name: string; what: string }>
+  /** "dealId|Stage" for each row they pressed Not me on. */
+  yesterdayRemoved?: string[]
 }
 
 const t = (v: any) => (v ? new Date(v).getTime() : 0)

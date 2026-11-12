@@ -42,7 +42,8 @@ export type DayDeal = PlanDeal & {
 }
 
 export default function MyDay({
-  deals, order, setOrder, notes, setNote, onItNow, setOnItNow, saved, busy, onConfirm, canEdit = true,
+  deals, order, setOrder, notes, setNote, onItNow, setOnItNow, saved, busy, onConfirm,
+  canEdit = true, heading = 'Today, in this order',
 }: {
   /** Everything sitting with this person, drafted. Keyed by id below. */
   deals: DayDeal[]
@@ -57,6 +58,9 @@ export default function MyDay({
   busy: boolean
   onConfirm: () => void
   canEdit?: boolean
+  /** "2 — Today, in this order" for a credit assessor, who presses three
+    * buttons in order. See lib/the-morning-three.ts. */
+  heading?: string
 }) {
   const [drag, setDrag] = useState<string | null>(null)
   const [writing, setWriting] = useState<string | null>(null)
@@ -179,7 +183,7 @@ export default function MyDay({
   return (
     <div className={`bg-card rounded-xl px-5 py-4 mb-3 ${saved ? 'border border-card-line' : 'border-2 border-ink'}`}>
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-[10.5px] font-bold tracking-[0.08em] uppercase text-muted">Today, in this order</span>
+        <span className="text-[10.5px] font-bold tracking-[0.08em] uppercase text-muted">{heading}</span>
         <span className="flex-1" />
         <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-faint">
           {today.length} on today &middot; {queue.length} in the queue

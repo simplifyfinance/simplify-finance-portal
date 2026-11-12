@@ -11,6 +11,10 @@ import { isFinished } from '@/lib/deal-phase'
 // See scripts/check-broker-keys.sh, which failed this file on the first run.
 import { sameBroker } from '@/lib/broker-key'
 import { whyNoPlan, lastWorkdayBefore } from '@/lib/the-week'
+import YesterdayDid from '@/components/YesterdayDid'
+import {
+  stillOwed, whereSheIsUpTo, yesterdayShown, type Added as DoneAdded,
+} from '@/lib/the-morning-three'
 import {
   draftDay, finishedOn, finishedAcross, planBoard, notTold, stageWaitingOn, creditHasIt,
   reworkWaiting, askWaiting, stageOpenedAt,
@@ -59,6 +63,10 @@ type Officer = { id: string; name: string }
 /** A broker's own plan row. Same table as credit's, keyed by broker instead. */
 export type BrokerPlan = {
   brokerKey: string
+  yesterdayOkAt?: string | null
+  informedAt?: string | null
+  yesterdayAdded?: Array<{ id: string; name: string; what: string }>
+  yesterdayRemoved?: string[]
   confirmedAt: string | null
   dealIds: string[]
   notes?: Record<string, string>
@@ -122,9 +130,16 @@ export default function TodayPlan({
   const supabase = createSupabaseBrowser()
   const view: 'credit' | 'admin' | 'broker' = meOfficerId ? 'credit' : seesAll ? 'admin' : 'broker'
   const myPlan = brokerKey ? brokerPlans.find(p => p.brokerKey === brokerKey) : undefined
+  // THE ROW THAT IS THEIRS, whichever table it came from.
+  const myRow: any = meOfficerId ? plans.find(p => p.officerId === meOfficerId) : myPlan
 
   const [saved, setSaved] = useState<string | null>(
     (meOfficerId ? plans.find(p => p.officerId === meOfficerId)?.confirmedAt : myPlan?.confirmedAt) || null)
+  // THE OTHER TWO OF THE THREE. See lib/the-morning-three.ts.
+  const [yOk, setYOk] = useState<string | null>(myRow?.yesterdayOkAt || null)
+  const [informed, setInformed] = useState<string | null>(myRow?.informedAt || null)
+  const [yAdded, setYAdded] = useState<DoneAdded[]>(myRow?.yesterdayAdded || [])
+  const [yRemoved, setYRemoved] = useState<string[]>(myRow?.yesterdayRemoved || [])
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const now = new Date()
@@ -276,19 +291,16 @@ export default function TodayPlan({
     return Math.round(((now.getTime() - t) / 86_400_000) * 10) / 10
   }
 
-  async function confirm() {
-    if (busy || (!meOfficerId && !brokerKey)) return
+  // ONE WRITE, THREE REASONS TO MAKE IT.
+  //
+  // 12 Nov 2026. The morning is three presses now, and all three land on the
+  // same daily_plans row - so they go through one function rather than three
+  // that each have their own idea of what the key is. See
+  // lib/the-morning-three.ts for why they are separate at all.
+  async function save(patch: Record<string, any>): Promise<boolean> {
+    if (busy || (!meOfficerId && !brokerKey)) return false
     setBusy(true); setErr('')
-    const when = new Date().toISOString()
-    const row: Record<string, any> = {
-      plan_date: today,
-      // ABOVE THE LINE ONLY. What is below it is the queue, not the day, and
-      // saving the queue as the plan is how a day became a book in the first
-      // place. See splitAtLine() in lib/the-days-plan.ts.
-      deal_ids: todayIds,
-      notes, on_it_now: onItNow,
-      confirmed_at: when, updated_at: when,
-    }
+    const row: Record<string, any> = { plan_date: today, updated_at: new Date().toISOString(), ...patch }
     if (meOfficerId) row.officer_id = meOfficerId
     else row.broker_key = brokerKey
     // A blocked policy returns no rows and no error, so the row is the proof.
@@ -298,9 +310,37 @@ export default function TodayPlan({
     setBusy(false)
     if (error || !data?.length) {
       setErr(error?.message || 'That was not saved — nothing reached the database.')
-      return
+      return false
     }
-    setSaved(when)
+    return true
+  }
+
+  // 1 - WHAT SHE DID YESTERDAY. Her corrections are stored AS corrections,
+  // never written over what the portal saw, so the two can be compared.
+  async function confirmYesterday() {
+    const when = new Date().toISOString()
+    if (await save({
+      yesterday_ok_at: when, yesterday_added: yAdded, yesterday_removed: yRemoved,
+    })) setYOk(when)
+  }
+
+  // 3 - AND MANAGEMENT HEARS ABOUT IT. Not the brokers: Fabio, 12 Nov 2026,
+  // "I never say tell the brokers, it's inform management."
+  async function inform() {
+    const when = new Date().toISOString()
+    if (await save({ informed_at: when })) setInformed(when)
+  }
+
+  // 2 - AND THIS IS MY DAY.
+  //
+  // ABOVE THE LINE ONLY. What is below it is the queue, not the day, and
+  // saving the queue as the plan is how a day became a book in the first
+  // place. See splitAtLine() in lib/the-days-plan.ts.
+  async function confirm() {
+    const when = new Date().toISOString()
+    if (await save({ deal_ids: todayIds, notes, on_it_now: onItNow, confirmed_at: when })) {
+      setSaved(when)
+    }
   }
 
   // NOTHING ON A SATURDAY, AND NOTHING ON A PUBLIC HOLIDAY.
@@ -325,6 +365,7 @@ export default function TodayPlan({
       saved={saved}
       busy={busy}
       onConfirm={confirm}
+      heading={view === 'credit' ? '2 — Today, in this order' : 'Today, in this order'}
     />
   )
 
@@ -359,21 +400,55 @@ export default function TodayPlan({
   // The board of who has and has not told the brokers is a management view and
   // it stays on the admin screen. What an assessor needs here is whether SHE
   // has, and the button that does it is on the left.
+  const where = whereSheIsUpTo({
+    yesterdayOkAt: yOk, daySavedAt: saved, sentAt: informed,
+  })
+  const owed = stillOwed(where)
+
+  // THREE - AND IT NEVER INVITES A PRESS IT WOULD REFUSE.
+  //
+  // 12 Nov 2026. Fabio: "there should be something on the right-hand side that
+  // says to remind them to share their day with management... make it fucking
+  // intuitive." The reminder is not a sentence telling her off - it is a list
+  // of what is still owed and a button that says, truthfully, that nothing has
+  // gone anywhere yet.
   const tellBox = (
     <Card>
-      <div className={CAP}>Your day, shared</div>
-      {saved ? (
-        <div className="text-[13px] text-done bg-done-bg border border-done-edge rounded-lg px-3 py-2.5 leading-relaxed">
-          &#10003; Shared at {new Date(saved).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}
-          {' '}&mdash; {todayIds.length} {todayIds.length === 1 ? 'deal' : 'deals'}.
-          <div className="text-muted mt-1">Change the list and press the button again.</div>
+      <div className={CAP}>3 &mdash; Inform management</div>
+      {[
+        { n: '1', label: 'Yesterday', done: where.yesterday, at: yOk },
+        { n: '2', label: 'Today', done: where.today, at: saved },
+      ].map(step => (
+        <div key={step.n}
+          className="flex items-center gap-2.5 py-2.5 border-b border-line-soft last:border-b-0">
+          <span className={`w-5 h-5 rounded-full text-[11px] font-bold leading-5 text-center
+            flex-none ${step.done ? 'bg-done text-white' : 'bg-line-soft text-faint'}`}>
+            {step.done ? '\u2713' : step.n}
+          </span>
+          <span className="text-[12.5px] text-muted">
+            <b className="text-ink font-semibold">{step.label}</b>
+            {step.done && step.at
+              ? ` — confirmed ${new Date(step.at).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}`
+              : ' — not confirmed'}
+          </span>
+        </div>
+      ))}
+      {where.sent ? (
+        <div className="mt-3 text-[13px] text-done bg-done-bg border border-done-edge rounded-[10px]
+          px-3 py-2.5 text-center font-semibold">
+          &#10003; {where.label} &mdash;{' '}
+          {new Date(informed!).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}
         </div>
       ) : (
-        <div className="text-[13px] text-body bg-info-bg border border-info-edge rounded-lg px-3 py-2.5 leading-relaxed">
-          The brokers and management have not seen your day yet.
-          <div className="text-muted mt-1">
-            Pull up the ones you are doing, then press <b>Yes &mdash; this is my day</b>.
-          </div>
+        <button onClick={() => void inform()} disabled={!where.ready || busy}
+          className={`mt-3 w-full text-[13.5px] font-bold rounded-[10px] px-3 py-2.5 ${
+            where.ready ? 'bg-ink text-page' : 'bg-line-soft text-faint border border-line'}`}>
+          {busy ? 'Sending...' : where.label}
+        </button>
+      )}
+      {owed.length > 0 && (
+        <div className="mt-2 text-[11.5px] text-faint leading-relaxed">
+          Still to do: {owed.join(', ').toLowerCase()}.
         </div>
       )}
     </Card>
@@ -419,21 +494,21 @@ export default function TodayPlan({
       <div className="flex gap-4 items-start flex-wrap lg:flex-nowrap">
         <div className="flex-1 min-w-[420px]">
 
-          {view === 'credit' && dayCard}
           {view === 'credit' && (
-            <Card>
-              <div className={CAP}>Yesterday you finished &mdash; written from what moved</div>
-              {yesterday.length === 0
-                ? <div className={SOFT}>Nothing closed on {dayMonth(yesterdayDate)}.</div>
-                : yesterday.map((y, i) => (
-                  <Row key={i}>
-                    <span className="text-done">&#10003;</span>
-                    <Link href={`/deals/${y.id}`} className="flex-1 font-semibold hover:underline">{y.name}</Link>
-                    <span className={SOFT}>{y.what}{y.days !== null ? ` · ${y.days} days on you` : ''}</span>
-                  </Row>
-                ))}
-            </Card>
+            <YesterdayDid
+              found={yesterday as any}
+              deals={deals.map(d => ({ id: d.id, deal_name: d.deal_name }))}
+              added={yAdded}
+              removed={yRemoved}
+              setAdded={setYAdded}
+              setRemoved={setYRemoved}
+              savedAt={yOk}
+              busy={busy}
+              onConfirm={() => void confirmYesterday()}
+              dayWords={dayMonth(yesterdayDate)}
+            />
           )}
+          {view === 'credit' && dayCard}
 
           {view === 'broker' && dayCard}
           {view === 'broker' && (
