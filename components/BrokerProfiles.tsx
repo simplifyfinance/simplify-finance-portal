@@ -5,6 +5,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import BrokerTargets from '@/components/BrokerTargets'
 import { SWATCHES, normHex, tooPaleForWhiteText } from '@/lib/board-settings'
 import { brokerColour } from '@/lib/deal-labels'
+import { teamsInUse } from '@/lib/which-team'
 import { useBusyWhile } from '@/components/useBusy'
 import Loading from '@/components/Loading'
 
@@ -15,6 +16,7 @@ type Broker = {
   crn: string | null
   calendly: string | null
   brand_ids: string[]
+  team: string | null
   active: boolean
   user_id: string | null
   colour: string | null
@@ -112,8 +114,8 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
   const field = 'w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand'
   const label = 'text-[11px] font-semibold text-faint block mb-1'
   // Which broker has opened the second-brand line. Nobody writes under two
-  // today, so it stays shut until somebody says otherwise.
-  const [alsoOpen, setAlsoOpen] = useState<Record<string, boolean>>({})
+  // Which broker has the "name a new group" box open.
+  const [naming, setNaming] = useState<Record<string, boolean>>({})
 
   // The bar at the top of the page says this screen is fetching. The shape
 
@@ -241,83 +243,110 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
               </div>
             )}
 
-            {/* WHICH BUSINESS DOES THIS BROKER WRITE UNDER?
+            {/* WHICH BRANDS THIS BROKER MAY WRITE UNDER.
               *
-              * 12 Nov 2026. Fabio: "I have nowhere in settings to say on each
-              * broker profile under which brand they sit, add a dropdown to
-              * each broker as that dictates where they sit."
+              * A LICENCE, AND NOTHING TO DO WITH THE GROUP BELOW. Fabio,
+              * 12 Nov 2026: "Mark, Fabio and Justin now use Simplify or
+              * Navigate; Keanen and Kylie only Simplify - then each broker can
+              * sit under a particular group."
               *
-              * It was here the whole time - a row of pill buttons, one per
-              * brand. With one brand set up it drew ONE pill, already dark,
-              * which reads as a label rather than a control. He was right that
-              * there was nowhere to set it: there was, and it was invisible.
+              * Two questions, two answers. This one decides whose ACL number
+              * can go on a client's email, so a broker may hold several and
+              * the deal picks one. See lib/the-brand-follows-the-broker.ts.
               *
-              * A dropdown says "pick one", which is the truth - Mark, Fabio
-              * and Kylie under Simplify Finance, Keanen and Justin under
-              * Simplify Finance Brokers. It writes the same brand_ids array
-              * the pills did, so every report, email footer and licence number
-              * is untouched.
+              * TICKS, NOT A DROPDOWN, because holding two is the normal case
+              * here and a dropdown would make the second one feel like an
+              * exception. */}
+            <div className="mt-3">
+              <label className={label + ' mb-2'}>
+                Which brands may {r.name.split(' ')[0] || 'this broker'} write under?
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {brands.map(brand => {
+                  const list: string[] = val(r, 'brand_ids') || []
+                  const has = list.includes(brand.id)
+                  return (
+                    <button key={brand.id}
+                      onClick={() => edit(r.broker_key, {
+                        brand_ids: has
+                          ? list.filter(x => x !== brand.id)
+                          : [...list, brand.id],
+                      })}
+                      className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border
+                        transition-colors ${has
+                          ? 'bg-ink border-ink text-page'
+                          : 'border-line text-muted hover:bg-page hover:text-ink'}`}>
+                      {brand.name}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-[11.5px] text-faint m-0 mt-1.5">
+                The licence on a client&rsquo;s email. Not the same thing as the group below.
+              </p>
+            </div>
+
+            {/* WHICH GROUP IS THIS BROKER IN?
               *
-              * THE SECOND BRAND IS A LINK, NOT A SECOND CONTROL. Nobody writes
-              * under two today. The tick boxes only appear for somebody who
-              * already does, or who presses the line. */}
+              * 12 Nov 2026. Fabio, having said it several times: "Simplify
+              * Brokers is NOT another brand, it is a sub-aggregation. I am
+              * telling you, add a drop box on each BROKER."
+              *
+              * I had built it on brand_ids, which is a CREDIT LICENCE. To split
+              * a report, somebody would have had to create a second licence,
+              * which the portal would then offer on client emails with an ACL
+              * number nobody had set. That is a dangerous way to be wrong.
+              *
+              * A group is how the book is added up and it touches nothing else
+              * - no client, no email footer, no licence. Its own column, its
+              * own dropdown. See lib/which-team.ts.
+              *
+              * THE NAME IS THE KEY. There is no register of groups to keep in
+              * step with this; type a new one and it exists. */}
             {(() => {
-              const list: string[] = val(r, 'brand_ids') || []
-              const many = list.length > 1 || !!alsoOpen[r.broker_key]
+              const mine = String(val(r, 'team') || '')
+              const used = teamsInUse(rows as any[])
+              const list = mine && !used.includes(mine) ? [...used, mine].sort() : used
               const first = r.name.split(' ')[0] || 'this broker'
               return (
                 <div className="mt-3">
-                  <label className={label + ' mb-1.5'}>
-                    Which business does {first} write under?
-                  </label>
+                  <label className={label + ' mb-1.5'}>Which group is {first} in?</label>
                   <select
-                    value={list[0] || ''}
+                    value={naming[r.broker_key] ? '__new__' : mine}
                     onChange={e => {
                       const picked = e.target.value
-                      // Keeps any extra brands, swaps only the main one.
-                      const rest = list.filter(x => x !== picked).slice(1)
-                      edit(r.broker_key, { brand_ids: picked ? [picked, ...rest] : rest })
+                      if (picked === '__new__') {
+                        setNaming(a => ({ ...a, [r.broker_key]: true }))
+                        return
+                      }
+                      setNaming(a => ({ ...a, [r.broker_key]: false }))
+                      edit(r.broker_key, { team: picked || null })
                     }}
                     className="text-[13px] font-semibold border border-line rounded-lg px-3 py-2
                       bg-card text-ink focus:outline-none focus:border-brand min-w-[268px]">
                     <option value="">Nobody has said</option>
-                    {brands.map(brand => (
-                      <option key={brand.id} value={brand.id}>{brand.name}</option>
-                    ))}
+                    {list.map(t => <option key={t} value={t}>{t}</option>)}
+                    <option value="__new__">+ A new group…</option>
                   </select>
-                  <p className="text-[11.5px] text-faint m-0 mt-1.5">
-                    This is what puts {first}&rsquo;s deals under the right heading on every report.
-                  </p>
 
-                  {many ? (
-                    <div className="mt-2.5">
-                      <label className={label + ' mb-1.5'}>Also writes under</label>
-                      <div className="flex flex-wrap gap-2">
-                        {brands.filter(b => b.id !== list[0]).map(brand => {
-                          const has = list.includes(brand.id)
-                          return (
-                            <button key={brand.id}
-                              onClick={() => edit(r.broker_key, {
-                                brand_ids: has
-                                  ? list.filter(x => x !== brand.id)
-                                  : [...list, brand.id],
-                              })}
-                              className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border
-                                transition-colors ${has
-                                  ? 'bg-ink border-ink text-page'
-                                  : 'border-line text-muted hover:bg-page hover:text-ink'}`}>
-                              {brand.name}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  ) : (
-                    <button onClick={() => setAlsoOpen(o => ({ ...o, [r.broker_key]: true }))}
-                      className="text-[11.5px] font-semibold text-brand-ink mt-2 hover:underline">
-                      + {first} also writes under another brand
-                    </button>
+                  {naming[r.broker_key] && (
+                    <input autoFocus
+                      className="block mt-2 text-[13px] border border-line rounded-lg px-3 py-2
+                        bg-card text-ink focus:outline-none focus:border-brand min-w-[268px]"
+                      placeholder="Name the group, e.g. Simplify Finance Brokers"
+                      defaultValue={mine}
+                      onBlur={e => {
+                        const v = e.target.value.trim()
+                        setNaming(a => ({ ...a, [r.broker_key]: false }))
+                        if (v) edit(r.broker_key, { team: v })
+                      }}
+                      onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} />
                   )}
+
+                  <p className="text-[11.5px] text-faint m-0 mt-1.5">
+                    Only how the reports add {first} up. It is not a brand and it never reaches
+                    a client.
+                  </p>
                 </div>
               )
             })()}

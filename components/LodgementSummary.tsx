@@ -3,16 +3,19 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { money } from '@/lib/money'
 import { todayYmd } from '@/lib/periods'
+// A GROUP IS NOT A BRAND. Fabio, 12 Nov 2026: "Simplify Brokers is NOT
+// another brand, it is a sub-aggregation." The headings came off brand_ids,
+// which is a credit licence - so splitting a report meant creating a second
+// licence. They come off brokers.team now. See lib/which-team.ts.
 import {
-  NOT_SAID, acrossAll, businessesOf, type Business,
-} from '@/lib/which-business'
+  NO_TEAM, acrossTeams, teamsOf, type Team,
+} from '@/lib/which-team'
 import {
   busiestCell, gridFor, monthsOfFY, shadeOf, totalRow,
 } from '@/lib/the-year-so-far'
 import {
   dayWords, lenderOf, referralInside, referralName, UNANSWERED, type Line2,
 } from '@/lib/who-brought-us-this'
-import type { Brand } from '@/lib/the-brand-follows-the-broker'
 
 // LODGED, A LINE, THEN SETTLED.
 //
@@ -46,19 +49,18 @@ const TH = 'text-[9px] font-bold tracking-[.08em] uppercase text-faint text-left
 const TD = 'text-[12px] text-body px-4 py-1.5 border-b border-line-soft'
 
 export default function LodgementSummary({
-  lines, brokerRows, brands, kind, label, now,
+  lines, brokerRows, kind, label, now,
 }: {
   lines: Line2[]
+  /** public.brokers, carrying team - which group each broker is in. */
   brokerRows?: any[]
-  brands?: Brand[]
   kind: Kind
   label: string
   now?: string
 }) {
   const businesses = useMemo(
-    () => businessesOf(lines, brokerRows || [], brands || []),
-    [lines, brokerRows, brands])
-  const all = useMemo(() => acrossAll(businesses), [businesses])
+    () => teamsOf(lines, brokerRows || []), [lines, brokerRows])
+  const all = useMemo(() => acrossTeams(businesses), [businesses])
 
   // WHICH BROKER IS OPEN, PER SECTION. Keyed so the same person can be open
   // under Lodged and shut under Settled - they are different questions.
@@ -86,8 +88,8 @@ export default function LodgementSummary({
 
 function Half({ half, businesses, all, label, open, toggle }: {
   half: Half
-  businesses: Business[]
-  all: ReturnType<typeof acrossAll>
+  businesses: Team[]
+  all: ReturnType<typeof acrossTeams>
   label: string
   open: Record<string, boolean>
   toggle: (k: string) => void
@@ -123,8 +125,8 @@ function Half({ half, businesses, all, label, open, toggle }: {
         * screen: the section heading, the brand heading, and this bar. Fabio:
         * "so you just remove the fucking top. Why are we making this so hard?"
         *
-        * He is right and the levels are his: a BRAND adds up its brokers, and
-        * this bar adds up the brands. The section heading was a third copy of
+        * He is right and the levels are his: a GROUP adds up its brokers, and
+        * this bar adds up the groups. The section heading was a third copy of
         * whichever of those happened to be the whole book, so it is gone.
         *
         * Near-black bar, light blue figures, and it is the SAME in
@@ -136,7 +138,7 @@ function Half({ half, businesses, all, label, open, toggle }: {
       {shown.length > 0 && (
         <div className="flex items-baseline gap-2.5 px-4 py-2.5 rounded-xl bg-[#17140F]">
           <span className="text-[17px] font-bold tabular-nums text-[#6FD3FF]">{count}</span>
-          <span className="text-[12.5px] text-[#A09A91] flex-1">{word}, all brands</span>
+          <span className="text-[12.5px] text-[#A09A91] flex-1">{word}, all groups</span>
           <span className="text-[12.5px] font-semibold tabular-nums text-[#6FD3FF]">
             {money(amount) || '$0'}
           </span>
@@ -149,7 +151,7 @@ function Half({ half, businesses, all, label, open, toggle }: {
 /* -------------------------------------------------------- one business, open */
 
 function Group({ half, b, open, toggle }: {
-  half: Half; b: Business; open: Record<string, boolean>; toggle: (k: string) => void
+  half: Half; b: Team; open: Record<string, boolean>; toggle: (k: string) => void
 }) {
   const count = half === 'lodged' ? b.lodged : b.settled
   const amount = half === 'lodged' ? b.lodgedAmount : b.settledAmount
@@ -164,7 +166,7 @@ function Group({ half, b, open, toggle }: {
     <div className={CARD}>
       <div className="flex items-baseline gap-2.5 px-4 py-2.5 bg-[#FCFBF9] dark:bg-panel
         border-b border-line-soft">
-        <span className={`text-[13px] font-bold ${b.id === NOT_SAID ? 'text-muted' : 'text-ink'}`}>
+        <span className={`text-[13px] font-bold ${b.id === NO_TEAM ? 'text-muted' : 'text-ink'}`}>
           {b.name}
         </span>
         <span className="text-[11px] text-faint">

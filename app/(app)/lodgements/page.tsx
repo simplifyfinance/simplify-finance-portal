@@ -24,11 +24,11 @@ export default async function LodgementsPage() {
   const { data: profile } = await supabase.from('user_profiles')
     .select('role, broker_key, full_name').eq('id', user.id).maybeSingle()
 
-  // brand_ids comes with the names: the reports group Simplify Finance and
-  // Simplify Finance Brokers off the ticks in Settings -> Broker profiles, and
-  // nothing else is stored for it. See lib/which-business.ts.
+  // `team` comes with the names: the reports add Simplify Finance and Simplify
+  // Finance Brokers up off the group dropdown in Settings -> Broker profiles.
+  // It is NOT a brand - a brand is a credit licence. See lib/which-team.ts.
   const { data: brokerRows } = await supabase.from('brokers')
-    .select('broker_key, name, brand_ids, active')
+    .select('broker_key, name, team, active')
   const brokerNames: Record<string, string> = {}
   for (const b of (brokerRows || []) as any[]) {
     const k = String(b.broker_key || '').toLowerCase()
@@ -36,15 +36,11 @@ export default async function LodgementsPage() {
     if (k && n) brokerNames[k] = n
   }
 
-  const { data: settings } = await supabase.from('settings')
-    .select('brands').eq('id', 'singleton').maybeSingle()
-
   return (
     <Lodgements
       deals={realDealsOnly(rows as any[])}
       brokerNames={brokerNames}
       brokerRows={(brokerRows || []) as any[]}
-      brands={((settings as any)?.brands || []) as any[]}
       role={(profile as any)?.role || ''}
       brokerKey={(profile as any)?.broker_key || ''}
       meName={(profile as any)?.full_name || ''}

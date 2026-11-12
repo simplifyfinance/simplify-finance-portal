@@ -51,14 +51,12 @@ function spanFor(kind: Kind, now: Date): { from: string; to: string; label: stri
 }
 
 export default function Lodgements({
-  deals: everything, brokerNames, brokerRows, brands, role, brokerKey,
+  deals: everything, brokerNames, brokerRows, role, brokerKey,
 }: {
   deals: any[]
   brokerNames?: Record<string, string>
-  /** public.brokers, carrying brand_ids - which business each broker writes under. */
+  /** public.brokers, carrying team - which group each broker is in. */
   brokerRows?: any[]
-  /** settings.brands. */
-  brands?: { id: string; name: string }[]
   role?: string
   brokerKey?: string
   meName?: string
@@ -128,7 +126,7 @@ export default function Lodgements({
           Nothing lodged or settled in {span.label.toLowerCase()}.
         </div>
       ) : (
-        <LodgementSummary lines={brokers} brokerRows={brokerRows} brands={brands}
+        <LodgementSummary lines={brokers} brokerRows={brokerRows}
           kind={kind} label={span.label} />
       )}
 
