@@ -538,65 +538,22 @@ export default function TodayPlan({
             </Card>
           )}
 
-          {view === 'admin' && (
-            <Card>
-              <div className={CAP}>Where the book is this morning</div>
-              <div className="flex gap-6 flex-wrap">
-                {[['With us', book.us, 'text-info'],
-                  ['With the client', book.client, 'text-waiting'],
-                  ['With the lender', book.lender, 'text-faint'],
-                  ['Nobody has planned', book.unplanned.length, 'text-chase']].map(([label, n, tone]) => (
-                  <div key={String(label)} className="min-w-[120px]">
-                    <div className="text-[12.5px] text-body font-semibold">{label}</div>
-                    <div className={`text-[21px] font-bold ${tone}`}>{n as number}</div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {view === 'admin' && (
-            <Card live>
-              <div className={CAP}>With us and on nobody&rsquo;s plan today &mdash; {book.unplanned.length}</div>
-              {book.unplanned.length === 0
-                ? <div className={SOFT}>Everything with us is in somebody&rsquo;s day.</div>
-                : longest.map(({ d }) => {
-                  const credit = creditHasIt(d)
-                  return (
-                    <Row key={d.id}>
-                      <Link href={`/deals/${d.id}`} className="flex-1 font-semibold hover:underline">{d.deal_name}</Link>
-                      <span className={SOFT}>{credit ? credit.name : `${named(d.assigned_broker)} — broker`}</span>
-                      <span className={SOFT}>{stageWaitingOn(d)}
-                        {daysSince(d.credit_assigned_at || d.created_at) !== null
-                          ? ` · ${daysSince(d.credit_assigned_at || d.created_at)} days` : ''}</span>
-                      <span className={PILL_NOT}>Not planned</span>
-                    </Row>
-                  )
-                })}
-              {book.unplanned.length > longest.length && (
-                <div className={`${SOFT} mt-2`}>oldest first &mdash; and {book.unplanned.length - longest.length} more</div>
-              )}
-            </Card>
-          )}
-
-          {view === 'admin' && (
-            <Card>
-              <div className={CAP}>By broker &mdash; what is with us right now</div>
-              {byBroker.length === 0 ? <div className={SOFT}>Nothing is with us.</div> : byBroker.map(b => (
-                <Row key={b.name}>
-                  <span className="flex-1 font-semibold">{b.name}</span>
-                  <span className={SOFT}>
-                    {['Fact Find', 'BC', 'LO', 'Compliance']
-                      .filter(k => b.stages[k])
-                      .map(k => `${k} ${b.stages[k]}`)
-                      .join(' \u00b7 ')}
-                  </span>
-                  <span className={PILL_US}>{b.total} with us</span>
-                </Row>
-              ))}
-            </Card>
-          )}
-
+          {/* THREE ADMIN PANELS WENT FROM HERE ON 12 Nov 2026.
+            *
+            * Where the book is this morning, With us and on nobody's plan, and
+            * By broker. Fabio, looking at his own Today page: "all these data,
+            * I don't know if I like it. It's just a data overload... Live
+            * deals 130, fact find 13. It's just a waste of time."
+            *
+            * He is right, and the reason is sharper than taste: none of the
+            * three was a thing you could do anything about at 9am. Counting
+            * the book is what Pipeline is for; counting what lodged is what
+            * Lodged and settled is for. Today is for running today - the
+            * meeting, the target, and the team. See components/RunThrough.tsx.
+            *
+            * The one number worth acting on is still here: somebody carrying
+            * far more than the team average, which shows as one line and only
+            * when it is true. */}
           {(view === 'admin' || view === 'broker') && (
             <Card>
               <div className={CAP}>

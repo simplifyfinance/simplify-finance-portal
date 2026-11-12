@@ -4,6 +4,7 @@ import { realDealsOnly, REAL_DEALS_OR } from '@/lib/test-deal'
 import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
 import TodayPlan from '@/components/TodayPlan'
+import RunThrough from '@/components/RunThrough'
 import ThisWeek from '@/components/ThisWeek'
 import DueToLodge from '@/components/DueToLodge'
 import { todayYmd } from '@/lib/periods'
@@ -140,6 +141,20 @@ export default async function Dashboard() {
       {!creditOfficerId && <ThisWeek deals={deals || []} />}
       {!creditOfficerId && (
         <DueToLodge deals={deals || []} brokerNames={brokerNames} canSet={!!seesAll} />
+      )}
+      {/* THE MONDAY MEETING. Fabio, 12 Nov 2026, on what Today is for from an
+        * admin seat: "we go one by one on the deals sitting there... Right now
+        * is an Excel spreadsheet. I want that gone."
+        *
+        * Admin only, which is the same test that decides the admin view below
+        * - whoever sees all deals. A broker runs their own deals from their
+        * own day, and credit never sees it at all. */}
+      {!!seesAll && (
+        <RunThrough
+          deals={deals || []}
+          brokerNames={brokerNames}
+          brokerRows={(brokerRows || []) as any[]}
+        />
       )}
       <TodayPlan
         deals={deals || []}

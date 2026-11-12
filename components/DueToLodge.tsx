@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { checkedWrite } from '@/lib/checked-write'
+import { useSayTheWeek } from '@/lib/use-say-the-week'
 import { phaseOf, phaseSince, PHASE_LABEL } from '@/lib/deal-phase'
 import {
   ANSWERS, TAB_LABEL, answerOf, daysOver, onTab, patchForAnswer, standingOf,
@@ -54,29 +54,12 @@ export default function DueToLodge({ deals, brokerNames, canSet, now }: {
   now?: Date
 }) {
   const when = now || new Date()
-  const supabase = createSupabaseBrowser()
   const [tab, setTab] = useState<Tab>('this_week')
-  const [patched, setPatched] = useState<Record<string, any>>({})
-  const [busy, setBusy] = useState('')
-  const [problem, setProblem] = useState('')
+  const { say: setWeekFor, busy, problem, setProblem, withAnswers } = useSayTheWeek(when)
 
-  const all = (deals || []).map(d => (patched[d.id] ? { ...d, ...patched[d.id] } : d))
+  const all = withAnswers(deals || [])
   const counts = tabCounts(all, when)
   const rows = onTab(all, tab, when)
-
-  async function setWeek(deal: any, key: AnswerKey) {
-    const patch = patchForAnswer(key, when)
-    setBusy(deal.id); setProblem('')
-    const err = await checkedWrite(
-      supabase.from('deals').update({
-        ...patch,
-        lodgement_week_at: new Date().toISOString(),
-      }).eq('id', deal.id),
-      'The lodgement week')
-    setBusy('')
-    if (err) { setProblem(err); return }
-    setPatched(p => ({ ...p, [deal.id]: patch }))
-  }
 
   return (
     <div className="bg-page border border-card-line rounded-2xl px-4 py-3.5 mb-4">
@@ -150,7 +133,7 @@ export default function DueToLodge({ deals, brokerNames, canSet, now }: {
                       {canSet ? (
                         <span className="inline-flex gap-1 flex-wrap">
                           {ANSWERS.map(a => (
-                            <button key={a.key} onClick={() => void setWeek(d, a.key)}
+                            <button key={a.key} onClick={() => void setWeekFor(d.id, a.key)}
                               disabled={busy === d.id}
                               className={`text-[11.5px] rounded-lg px-2.5 py-1 border transition ${
                                 lit === a.key
