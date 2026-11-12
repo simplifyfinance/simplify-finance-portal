@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { money } from '@/lib/money'
 import { todayYmd } from '@/lib/periods'
 import {
-  NOT_SAID, acrossAll, businessesOf, oneBusinessOnly, type Business,
+  NOT_SAID, acrossAll, businessesOf, type Business,
 } from '@/lib/which-business'
 import {
   busiestCell, gridFor, monthsOfFY, shadeOf, totalRow,
@@ -59,7 +59,6 @@ export default function LodgementSummary({
     () => businessesOf(lines, brokerRows || [], brands || []),
     [lines, brokerRows, brands])
   const all = useMemo(() => acrossAll(businesses), [businesses])
-  const alone = oneBusinessOnly(businesses)
 
   // WHICH BROKER IS OPEN, PER SECTION. Keyed so the same person can be open
   // under Lodged and shut under Settled - they are different questions.
@@ -70,12 +69,12 @@ export default function LodgementSummary({
 
   return (
     <>
-      <Half half="lodged" businesses={businesses} all={all} alone={alone}
+      <Half half="lodged" businesses={businesses} all={all}
         label={label} open={open} toggle={toggle} />
 
       <div className="h-px bg-line my-5" />
 
-      <Half half="settled" businesses={businesses} all={all} alone={alone}
+      <Half half="settled" businesses={businesses} all={all}
         label={label} open={open} toggle={toggle} />
 
       {kind === 'fy' && <Year lines={lines} now={now} />}
@@ -85,11 +84,10 @@ export default function LodgementSummary({
 
 /* ------------------------------------------------------- one of the two halves */
 
-function Half({ half, businesses, all, alone, label, open, toggle }: {
+function Half({ half, businesses, all, label, open, toggle }: {
   half: Half
   businesses: Business[]
   all: ReturnType<typeof acrossAll>
-  alone: boolean
   label: string
   open: Record<string, boolean>
   toggle: (k: string) => void
@@ -109,10 +107,6 @@ function Half({ half, businesses, all, alone, label, open, toggle }: {
           {half === 'lodged' ? 'Lodged' : 'Settled'}
         </h2>
         <span className="text-[11.5px] text-faint">{label}</span>
-        <span className="ml-auto text-[13px] font-bold text-ink tabular-nums">
-          {count} <span className="font-semibold text-muted text-[11.5px]">
-            {count === 1 ? 'deal' : 'deals'}</span> · {money(amount) || '$0'}
-        </span>
       </div>
 
       {shown.length === 0 ? (
@@ -123,7 +117,17 @@ function Half({ half, businesses, all, alone, label, open, toggle }: {
         <Group key={half + b.id} half={half} b={b} open={open} toggle={toggle} />
       ))}
 
-      {/* THE TOTAL. Near-black bar, light blue figures, and it is the SAME in
+      {/* THE TOTAL, AND THE ONLY PLACE THE GRAND TOTAL APPEARS.
+        *
+        * 12 Nov 2026. "6 deals - $3,184,000" was printed three times on one
+        * screen: the section heading, the brand heading, and this bar. Fabio:
+        * "so you just remove the fucking top. Why are we making this so hard?"
+        *
+        * He is right and the levels are his: a BRAND adds up its brokers, and
+        * this bar adds up the brands. The section heading was a third copy of
+        * whichever of those happened to be the whole book, so it is gone.
+        *
+        * Near-black bar, light blue figures, and it is the SAME in
         * light and dark - Fabio, 12 Nov 2026, having looked at nine versions.
         * It used to wear the ink token, which flips to near-white in dark mode
         * and put a glaring white bar across a charcoal page. Fixed hex on
@@ -132,9 +136,7 @@ function Half({ half, businesses, all, alone, label, open, toggle }: {
       {shown.length > 0 && (
         <div className="flex items-baseline gap-2.5 px-4 py-2.5 rounded-xl bg-[#17140F]">
           <span className="text-[17px] font-bold tabular-nums text-[#6FD3FF]">{count}</span>
-          <span className="text-[12.5px] text-[#A09A91] flex-1">
-            {word}{alone ? '' : ' across both businesses'}
-          </span>
+          <span className="text-[12.5px] text-[#A09A91] flex-1">{word}, all brands</span>
           <span className="text-[12.5px] font-semibold tabular-nums text-[#6FD3FF]">
             {money(amount) || '$0'}
           </span>
