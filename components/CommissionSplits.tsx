@@ -104,6 +104,7 @@ export default function CommissionSplits() {
       lines: r.lines.filter(l => l.who.trim() || l.upfront !== null || l.trail !== null)
         .map(l => ({ who: l.who.trim(), upfront: l.upfront, trail: l.trail })),
       notes: r.notes.trim() || null, active: r.active,
+      weekly_email: r.weeklyEmail,
       updated_at: new Date().toISOString(),
     }
     // A blocked policy returns no rows and no error, so the row is the proof.
@@ -270,6 +271,44 @@ export default function CommissionSplits() {
             <div className="flex gap-2 items-center flex-wrap mt-2">
               <input className={`${INP} flex-1 min-w-[160px]`} value={r.notes}
                 onChange={e => edit(r.id, { notes: e.target.value })} placeholder="Notes" />
+            </div>
+
+            {/* THE FRIDAY EMAIL, ONE PARTNER AT A TIME.
+              *
+              * 11 Nov 2026. Fabio: "the email that I want to be able to send to
+              * our referral partners on a weekly basis if we choose to." So it
+              * is off until somebody turns it on, and the middle answer is the
+              * default one to reach for - written to them, sent to us, nothing
+              * leaving the building unread.
+              *
+              * A partner with nothing that week gets nothing at all. See
+              * lib/the-friday-email.ts. */}
+            <div className="mt-2.5 border border-line-soft rounded-[10px] px-3 py-2.5 bg-page">
+              <p className="text-[11px] font-semibold text-faint m-0 mb-1.5">
+                The Friday email
+              </p>
+              <div className="flex gap-1.5 flex-wrap">
+                {([['off', 'Not on it'],
+                   ['to_us', 'To us, to forward'],
+                   ['direct', 'Straight to them']] as const).map(([k, label]) => (
+                  <button key={k} onClick={() => edit(r.id, { weeklyEmail: k })}
+                    className={`text-[11.5px] rounded-full px-3 py-1 border transition ${
+                      r.weeklyEmail === k
+                        ? 'bg-ink border-ink text-page font-semibold'
+                        : 'bg-card border-card-line text-muted hover:border-brand'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-faint m-0 mt-1.5 leading-[1.5]">
+                {r.weeklyEmail === 'off'
+                  ? 'Nothing is sent about this one.'
+                  : r.weeklyEmail === 'direct'
+                    ? (r.contactEmail.trim()
+                        ? `Goes straight to ${r.contactEmail.trim()} every Friday they had something.`
+                        : 'Needs an email address above, or nothing can go.')
+                    : 'Written to them, sent to whoever gets the weekly report — ready to forward.'}
+              </p>
             </div>
 
             <div className="flex gap-2 items-center flex-wrap mt-2.5">

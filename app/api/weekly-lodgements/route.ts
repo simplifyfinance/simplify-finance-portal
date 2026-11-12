@@ -10,6 +10,7 @@ import {
   modeOf, referrerSubject, referrerBody, managementSubject, managementBody,
   weekEndingWords, FORWARD_NOTE,
 } from '@/lib/the-friday-email'
+import { viewFor, mayEmail } from '@/lib/who-sees-the-numbers'
 
 // THE FRIDAY SEND.
 //
@@ -50,16 +51,43 @@ async function send(to: string[], subject: string, text: string): Promise<string
   return (detail as any)?.message || `The mail service refused the send (${res.status}).`
 }
 
+// THE SCHEDULE CALLS WITH GET, BECAUSE VERCEL'S CRON ONLY DOES THAT.
+//
+// It carries "Authorization: Bearer <CRON_SECRET>". A person pressing the
+// button on the page calls POST with their own session. Both end up in run(),
+// and the only thing the scheduled one does differently is read the book with
+// the service key, because it has no session to read it with.
+//
+// FRIDAY IS CHECKED HERE AS WELL AS IN THE SCHEDULE. A schedule edited by
+// somebody in a hurry must not start sending referral partners a Tuesday
+// summary. Sydney's day, not the server's - the same fault lib/rate-notice.ts
+// had on 9 Oct, and todayYmd() in lib/periods.ts exists because of it.
+//
+// THE CHECKS ARE THE FIRST TWO LINES OF EACH HANDLER, on purpose. A guard
+// twenty lines into the work has let twenty lines of work happen - see
+// lib/every-door-is-locked.test.ts, which fails the ship over it.
+export async function GET(req: NextRequest) {
+  if (!carriesTheSecret(req)) return NextResponse.json({ error: 'Not for you.' }, { status: 401 })
+  if (!fridayInSydney()) return NextResponse.json({ ok: false, skipped: 'Not Friday in Sydney.' })
+  return run(true, false)
+}
+
 export async function POST(req: NextRequest) {
   let body: any = {}
   try { body = await req.json() } catch { /* a scheduled call sends nothing */ }
-  const preview = body?.preview === true
+  return run(false, body?.preview === true)
+}
 
-  // SIGNED IN, OR CARRYING THE SECRET. A scheduled call has no session, so it
-  // reads the book with the service key - and that is the only thing it may do
-  // differently. 11 Nov 2026.
-  const secret = String(req.headers.get('x-cron-secret') || '')
-  const scheduled = Boolean(process.env.CRON_SECRET) && secret === process.env.CRON_SECRET
+function carriesTheSecret(req: NextRequest): boolean {
+  const want = String(process.env.CRON_SECRET || '')
+  return want !== '' && String(req.headers.get('authorization') || '') === `Bearer ${want}`
+}
+
+function fridayInSydney(now: Date = new Date()): boolean {
+  return new Date(now.toLocaleString('en-US', { timeZone: 'Australia/Sydney' })).getDay() === 5
+}
+
+async function run(scheduled: boolean, preview: boolean) {
 
   const supabase = scheduled
     ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
@@ -68,6 +96,14 @@ export async function POST(req: NextRequest) {
   if (!scheduled) {
     const { data: auth } = await (supabase as any).auth.getUser()
     if (!auth?.user) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
+    // ADMIN ONLY, THE SAME AS THE PAGE. A route that sends a referral partner
+    // their figures must ask the question the screen asks, or the gate is a
+    // decoration anybody with a browser console can step round. 11 Nov 2026.
+    const { data: profile } = await (supabase as any).from('user_profiles')
+      .select('role').eq('id', auth.user.id).maybeSingle()
+    if (!mayEmail(viewFor((profile as any)?.role))) {
+      return NextResponse.json({ error: 'Only an admin can send these.' }, { status: 403 })
+    }
   }
 
   const now = new Date()

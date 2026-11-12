@@ -95,6 +95,9 @@ export type Split = {
   lines: Line[]
   notes: string
   active: boolean
+  // ON THE FRIDAY EMAIL, OR NOT. Off unless somebody turned it on, and direct
+  // only if somebody chose it. See lib/the-friday-email.ts. 11 Nov 2026.
+  weeklyEmail: 'off' | 'to_us' | 'direct'
 }
 
 export function readPct(v: any): number | null {
@@ -133,6 +136,8 @@ export function splitFromRow(r: any): Split {
     upfront, trail, lines,
     notes: txt(r?.notes),
     active: r?.active !== false,
+    weeklyEmail: txt(r?.weekly_email) === 'direct' ? 'direct'
+      : txt(r?.weekly_email) === 'to_us' ? 'to_us' : 'off',
   }
 }
 

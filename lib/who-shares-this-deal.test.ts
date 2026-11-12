@@ -334,3 +334,25 @@ describe('when the arrangement is renegotiated afterwards', () => {
     expect(termsHaveMoved(chooseSplitPatch(null, 'Mark', new Date()), ROWS)).toBe('')
   })
 })
+
+describe('the Friday email switch', () => {
+  // 11 Nov 2026. Fabio: "the email that I want to be able to send to our
+  // referral partners on a weekly basis IF WE CHOOSE TO." So off is the answer
+  // until somebody says otherwise, including on every arrangement that already
+  // existed when the column arrived.
+  it('is off on a row that has never been asked', () => {
+    expect(splitFromRow({ name: 'Justin Cornock' }).weeklyEmail).toBe('off')
+    expect(splitFromRow({ weekly_email: null }).weeklyEmail).toBe('off')
+  })
+
+  it('reads the two answers somebody can give', () => {
+    expect(splitFromRow({ weekly_email: 'to_us' }).weeklyEmail).toBe('to_us')
+    expect(splitFromRow({ weekly_email: 'direct' }).weeklyEmail).toBe('direct')
+  })
+
+  // Anything else is off, not a guess. A partner must never be emailed because
+  // a column held a word nobody recognised.
+  it('and treats anything else as off', () => {
+    expect(splitFromRow({ weekly_email: 'weekly' }).weeklyEmail).toBe('off')
+  })
+})
