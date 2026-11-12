@@ -1,4 +1,5 @@
 import { everyRow } from '@/lib/the-whole-book'
+import { linkApplicants } from '@/lib/every-applicant-has-a-record'
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { notifyEllieCreateCard, notifyCrisMoveCard } from '@/lib/salestrekker-notify'
@@ -513,8 +514,35 @@ export async function POST(req: NextRequest) {
       // It now records that compliance WAS SENT. The deal stays on the board, keeps
       // ageing, and keeps someone to chase. A deal is finished when it settles or
       // when it dies, and emailing a PDF is neither.
+      // AND EVERY APPLICANT GETS A CLIENT RECORD, for the same reason the
+      // lodged button does it. Compliance going out is the other moment a
+      // deal stops being an enquiry - Fabio, 12 Nov 2026: "link everything
+      // that is from compliance issued or lodged... anything before that, it
+      // could just be an inquiry."
+      //
+      // It cannot stop the stage being recorded: the documents have already
+      // gone to the client by this point. See lib/every-applicant-has-a-record.ts.
+      const sentPatch: any = { compliance_sent_at: new Date().toISOString() }
+      try {
+        const { data: full } = await supabase.from('deals')
+          .select('fact_find_data, compliance_sent_at, lodged_at').eq('id', dealId).maybeSingle()
+        const linked = await linkApplicants(
+          { ...(full || {}), compliance_sent_at: sentPatch.compliance_sent_at },
+          async row => {
+            const { data } = await supabase.from('clients').insert([row]).select('id').single()
+            return (data as any)?.id || null
+          })
+        if (linked) {
+          sentPatch.fact_find_data = {
+            ...((full as any)?.fact_find_data || {}), applicants: linked.applicants,
+          }
+        }
+      } catch (e) {
+        console.error('[compliance] applicants were not linked', e)
+      }
+
       const { data: wrote, error: sentErr } = await supabase.from('deals')
-        .update({ compliance_sent_at: new Date().toISOString() })
+        .update(sentPatch)
         .eq('id', dealId).select('id')
       if (sentErr || !wrote || wrote.length === 0) {
         return NextResponse.json({

@@ -1,4 +1,5 @@
 'use client'
+import { linkApplicants } from '@/lib/every-applicant-has-a-record'
 import { useEffect, useState } from 'react'
 import { dayMonthYear, dayMonth, longDate } from '@/lib/same-date-everywhere'
 import { supabase } from '@/lib/supabase'
@@ -274,6 +275,27 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
         recorded_by: sess?.user?.id || null,
       }, { onConflict: 'deal_id,stage' })
       if (se) { setSaving(false); setErr('NOT SAVED - ' + se.message); return }
+    }
+
+    // EVERY APPLICANT ON A REAL DEAL GETS A CLIENT RECORD.
+    //
+    // 12 Nov 2026. Marking a deal settled said "nothing to record against - no
+    // applicant on it is linked to a client record, so there is nowhere to
+    // write what they own." 174 deals in the book were like that, almost all
+    // of them the SECOND person on a joint deal.
+    //
+    // Lodging is the moment the names stop being guesses, so the records are
+    // made here. It runs BEFORE the stage write and folds into the same patch,
+    // so one save either way. See lib/every-applicant-has-a-record.ts.
+    //
+    // IT CANNOT STOP THE STAGE CHANGE. A deal reaching lodged must not fail
+    // because a client record would not write.
+    const linked = await linkApplicants({ ...deal, ...patch }, async row => {
+      const { data } = await supabase.from('clients').insert([row]).select('id').single()
+      return (data as any)?.id || null
+    })
+    if (linked) {
+      patch.fact_find_data = { ...(deal.fact_find_data || {}), applicants: linked.applicants }
     }
 
     const { data: rows, error } = await supabase.from('deals').update(patch).eq('id', deal.id).select('id')
