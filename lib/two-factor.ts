@@ -123,6 +123,31 @@ export const DEVICE_COOKIE = 'sf_device'
 // EMPTY MEANS OFF. A portal with nothing configured behaves exactly as it did
 // yesterday. That is deliberate: a missing setting must never be the thing that
 // locks a business out of its own system.
+// ---------------------------------------------------------------------------
+// THE OUTLOOK OUTAGE SWITCH
+// ---------------------------------------------------------------------------
+//
+// 12 Nov 2026. A global Outlook outage. Nobody in the business can open a
+// mailbox, so the six digit code goes somewhere nobody can read and the whole
+// team is locked out of the portal.
+//
+// THE DESIGNED WAY OUT DID NOT WORK. TWO_FACTOR_EMAILS lives in Vercel, and
+// Vercel gates revealing it, editing it, and authorising the CLI behind its
+// own six digit code - to the same mailbox. Every door was the same door.
+//
+// So the switch lives here, in the one place that still deploys: a push to
+// main. The list in Vercel is untouched. Nothing is deleted, nothing has to be
+// set up again.
+//
+// TO PUT TWO FACTOR BACK ON: change the line below to false and ship. That is
+// the whole job. Or `git revert` the commit that turned it on.
+//
+// WHILE THIS IS TRUE, a password is the only thing in front of every client's
+// financial position. The idle and absolute timeouts still run, so a laptop
+// left open still locks itself, but that is all. This is a day's measure, not
+// a month's.
+export const OUTLOOK_OUTAGE = true
+
 export function enforcedFor(email: any, list: any): boolean {
   const who = String(email || '').trim().toLowerCase()
   if (!who) return false

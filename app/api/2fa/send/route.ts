@@ -4,7 +4,7 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { emailShell } from '@/lib/email-shell'
 import {
   makeCode, makeToken, hashSecret, codeExpiry,
-  CODE_MINUTES, MAX_SENDS_PER_HOUR, enforcedFor, readPolicy,
+  CODE_MINUTES, MAX_SENDS_PER_HOUR, enforcedFor, readPolicy, OUTLOOK_OUTAGE,
 } from '@/lib/two-factor'
 
 // SENDING SOMEBODY THEIR SIGN-IN CODE.
@@ -31,7 +31,8 @@ export async function POST(req: NextRequest) {
 
   // Not configured for this person means there is nothing to send. Asking for
   // a code you do not need should not fill your inbox.
-  if (!enforcedFor(user.email, process.env.TWO_FACTOR_EMAILS)) {
+  // OUTLOOK_OUTAGE means no code is sent to anybody. See lib/two-factor.ts.
+  if (OUTLOOK_OUTAGE || !enforcedFor(user.email, process.env.TWO_FACTOR_EMAILS)) {
     return NextResponse.json({ notNeeded: true })
   }
 

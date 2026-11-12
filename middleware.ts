@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import {
   openPass, sealPass, sessionVerdict, isRealVisit, shouldPush, enforcedFor,
+  OUTLOOK_OUTAGE,
   hashSecret, readPolicy, SESSION_COOKIE, DEVICE_COOKIE,
 } from '@/lib/two-factor'
 
@@ -84,7 +85,9 @@ export async function middleware(request: NextRequest) {
   // whole business back to yesterday within a minute, with no deploy. It is
   // the reason this can ship the night before people need to work.
   const secret = process.env.AUTH_COOKIE_SECRET || ''
-  const mustVerify = !!secret && enforcedFor(user.email, process.env.TWO_FACTOR_EMAILS)
+  // OUTLOOK_OUTAGE short circuits the whole gate. See lib/two-factor.ts.
+  const mustVerify = !!secret && !OUTLOOK_OUTAGE
+    && enforcedFor(user.email, process.env.TWO_FACTOR_EMAILS)
   // The three numbers live in Vercel. readPolicy puts a floor and a ceiling on
   // each, so a typo cannot set idle to zero and sign the whole business out on
   // every click. Read here rather than inside the block below, because the

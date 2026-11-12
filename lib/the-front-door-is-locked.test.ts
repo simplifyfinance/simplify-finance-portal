@@ -533,3 +533,43 @@ describe('the rules reach the places that enforce them', () => {
     expect(screen).toContain('rules.trustDays > 0')
   })
 })
+
+// ---------------------------------------------------------------------------
+// THE OUTLOOK OUTAGE SWITCH
+// ---------------------------------------------------------------------------
+//
+// 12 Nov 2026. Outlook was down worldwide. The code goes to a mailbox nobody
+// can open, and every way out that Vercel offers - reveal the setting, edit
+// the setting, authorise the CLI - is guarded by a code to that same mailbox.
+//
+// So the switch is in the code, where a push to main still deploys.
+//
+// THESE TESTS DO NOT SAY WHICH WAY IT IS SET. They say that both doors honour
+// it, so turning it off cannot half work: a middleware that let people in
+// while the send route still mailed codes would be the worst of both.
+describe('the outage switch', () => {
+  const mw = readFileSync('middleware.ts', 'utf8')
+  const send = readFileSync('app/api/2fa/send/route.ts', 'utf8')
+
+  it('is one setting, not a scattering of them', () => {
+    const lib = readFileSync('lib/two-factor.ts', 'utf8')
+    expect(lib).toMatch(/export const OUTLOOK_OUTAGE = (true|false)/)
+  })
+
+  it('the gate honours it', () => {
+    expect(mw).toContain('OUTLOOK_OUTAGE')
+    expect(mw).toMatch(/mustVerify = !!secret\s*&& !OUTLOOK_OUTAGE/)
+  })
+
+  // A gate that lets people through while this route still sends codes would
+  // fill the team's inboxes with codes nobody is being asked for.
+  it('and no code is sent while it is on', () => {
+    expect(send).toContain('OUTLOOK_OUTAGE ||')
+  })
+
+  // THE WAY BACK, WRITTEN DOWN. One word, one ship.
+  it('says in the file itself how to turn it back on', () => {
+    const lib = readFileSync('lib/two-factor.ts', 'utf8')
+    expect(lib).toContain('TO PUT TWO FACTOR BACK ON')
+  })
+})
