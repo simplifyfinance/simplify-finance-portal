@@ -4,7 +4,7 @@
 // "I want both what we got done and what we have sitting."
 import { describe, it, expect } from 'vitest'
 import {
-  mondayOf, ymd, weeksFromNow, weekLabel, weekForAnswer, patchForAnswer, answerOf,
+  ANSWERS, mondayOf, ymd, weeksFromNow, weekLabel, weekForAnswer, patchForAnswer, answerOf,
   standingOf, daysOver, tabOf, onTab, tabCounts,
 } from './lodging-when'
 import { doneThisWeek, sittingNow } from './the-week-so-far'
@@ -40,28 +40,48 @@ describe('a week is a date, not a word', () => {
   })
 })
 
-describe('the four answers', () => {
+describe('the three answers', () => {
+  // Fabio, 17 Nov 2026: "'Later' makes no sense, it is either this week, next,
+  // or client." There were four until then.
+  it('are the only three offered', () => {
+    expect(ANSWERS.map(a => a.key)).toEqual(['this', 'next', 'client'])
+  })
+
   it('turn into a Monday, or into no week at all', () => {
     expect(weekForAnswer('this', TUE)).toBe(MON)
     expect(weekForAnswer('next', TUE)).toBe(NEXT)
-    expect(weekForAnswer('later', TUE)).toBe(null)
     expect(weekForAnswer('client', TUE)).toBe(null)
   })
 
-  // "Later" and "the client" are answers. Without them every deal waiting on
-  // somebody else sits in No week set looking like an oversight.
+  // "Client" is an answer. Without it every deal waiting on somebody else sits
+  // in No week set looking like an oversight.
   it('are each written down as what they are', () => {
     expect(patchForAnswer('this', TUE)).toEqual({ lodgement_plan: 'week', lodgement_week: MON })
     expect(patchForAnswer('client', TUE)).toEqual({ lodgement_plan: 'client', lodgement_week: null })
   })
 
+  it('never write the retired answer', () => {
+    for (const a of ANSWERS) {
+      expect(patchForAnswer(a.key, TUE).lodgement_plan).not.toBe('later')
+    }
+  })
+
   it('light the button the deal is actually on', () => {
     expect(answerOf({ lodgement_plan: 'week', lodgement_week: MON }, TUE)).toBe('this')
     expect(answerOf({ lodgement_plan: 'week', lodgement_week: NEXT }, TUE)).toBe('next')
-    expect(answerOf({ lodgement_plan: 'later' }, TUE)).toBe('later')
+    expect(answerOf({ lodgement_plan: 'client' }, TUE)).toBe('client')
     expect(answerOf({}, TUE)).toBe(null)
     // A week that has gone past lights nothing - it is not "this week" any more.
     expect(answerOf({ lodgement_plan: 'week', lodgement_week: '2026-11-02' }, TUE)).toBe(null)
+  })
+
+  // THE DEALS ALREADY PARKED ON "LATER" MUST COME BACK. They were invisible on
+  // every tab while the answer existed. Leaving them there after it is removed
+  // would hide them for good.
+  it('bring a deal still carrying "later" back to No week set', () => {
+    const parked = { id: 'd', status: 'active', stage: 'pre_lodgement', lodgement_plan: 'later' }
+    expect(answerOf(parked, TUE)).toBe(null)
+    expect(tabOf(parked, TUE)).toBe('no_week')
   })
 })
 

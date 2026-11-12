@@ -11,10 +11,15 @@
 // other way round often enough - a word that was true when somebody typed it
 // and silently false afterwards.
 //
-// AND FOUR ANSWERS, NOT A DATE PICKER. Nobody is promising a Thursday. "Later"
-// and "the client" are real answers with no week attached, and without them
-// every deal held up by somebody else sits in No week set looking like an
-// oversight - which is how a list stops being read.
+// AND THREE ANSWERS, NOT A DATE PICKER. Nobody is promising a Thursday.
+// "Client" is a real answer with no week attached - without it every deal held
+// up by somebody else sits in No week set looking like an oversight.
+//
+// THERE USED TO BE A FOURTH. Fabio, 17 Nov 2026: "'Later' makes no sense, it
+// is either this week, next, or client." He is right. Later is not an answer,
+// it is a way of not giving one - and a deal parked there is invisible until
+// somebody goes looking. Deals already carrying it are routed back to No week
+// set so they get a real answer.
 //
 // NOTHING IS CLEARED WHEN A DEAL LODGES. The week it was promised is what lets
 // the list say "lodged Tuesday" or "slipped, eight days over". Throwing it
@@ -25,6 +30,8 @@ import { bucketOf } from './a-stage-is-a-fact'
 
 const txt = (v: any) => String(v ?? '').trim()
 
+/** 'later' is no longer offered. It stays here so rows already carrying it
+ *  still parse rather than throwing; nothing writes it any more. */
 export type Plan = 'week' | 'later' | 'client'
 
 export const PLAN_LABEL: Record<Plan, string> = {
@@ -33,11 +40,10 @@ export const PLAN_LABEL: Record<Plan, string> = {
   client: 'Not until the client moves',
 }
 
-/** The four buttons, in the order they are drawn. */
+/** The three buttons, in the order they are drawn. */
 export const ANSWERS = [
   { key: 'this', label: 'This week' },
   { key: 'next', label: 'Next' },
-  { key: 'later', label: 'Later' },
   { key: 'client', label: 'Client' },
 ] as const
 
@@ -108,15 +114,16 @@ export function patchForAnswer(key: AnswerKey, now: Date = new Date()): {
   lodgement_plan: Plan; lodgement_week: string | null
 } {
   return {
-    lodgement_plan: key === 'later' ? 'later' : key === 'client' ? 'client' : 'week',
+    lodgement_plan: key === 'client' ? 'client' : 'week',
     lodgement_week: weekForAnswer(key, now),
   }
 }
 
-/** Which of the four buttons is lit for this deal. */
+/** Which of the three buttons is lit for this deal. */
 export function answerOf(deal: any, now: Date = new Date()): AnswerKey | null {
   const plan = txt(deal?.lodgement_plan)
-  if (plan === 'later') return 'later'
+  // A deal still carrying the old "later" lights nothing, because none of the
+  // three is what somebody said. It shows on No week set waiting for an answer.
   if (plan === 'client') return 'client'
   if (plan !== 'week') return null
   const n = weeksFromNow(deal?.lodgement_week, now)
@@ -187,7 +194,8 @@ function stillComing(deal: any): boolean {
 export function tabOf(deal: any, now: Date = new Date()): Tab | null {
   if (!stillComing(deal)) return null
   const plan = txt(deal?.lodgement_plan)
-  if (!plan) return hasLodged(deal) ? null : 'no_week'
+  // No answer, or the retired "later", both mean nobody has said a week.
+  if (!plan || plan === 'later') return hasLodged(deal) ? null : 'no_week'
   if (plan !== 'week') return null
   const n = weeksFromNow(deal?.lodgement_week, now)
   if (n === null) return hasLodged(deal) ? null : 'no_week'

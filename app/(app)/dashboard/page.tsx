@@ -121,8 +121,7 @@ export default async function Dashboard() {
         * lib/the-week-so-far.ts. Both read the deals this page already has, so
         * neither can disagree with the board about what lodged. */}
       <ThisWeek deals={deals || []} />
-      <DueToLodge deals={deals || []} brokerNames={brokerNames} canSet={!!seesAll}
-        me={{ id: user.id, name: profile?.full_name || '' }} />
+      <DueToLodge deals={deals || []} brokerNames={brokerNames} canSet={!!seesAll} />
       <TodayPlan
         deals={deals || []}
         officers={officers}

@@ -33,15 +33,20 @@ export type AnswersPayload = {
 export const LINK_LIVES_FOR_DAYS = 28
 
 export function expiresFrom(issued: Date): string {
-  const d = new Date(issued.getTime())
-  d.setDate(d.getDate() + LINK_LIVES_FOR_DAYS)
-  return d.toISOString()
+  // setDate() counts in the SERVER'S calendar, so a daylight-saving change
+  // inside the four weeks moved the expiry by an hour. Twenty-eight days is
+  // twenty-eight days wherever this runs.
+  return new Date(issued.getTime() + LINK_LIVES_FOR_DAYS * 86_400_000).toISOString()
 }
 
 export function signAnswers(dealId: string, issued = new Date()): string {
   return signPayload({
     dealId: String(dealId || ''),
-    sentOn: issued.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }),
+    // SYDNEY, NOT THE SERVER'S CLOCK. 17 Nov 2026. This ran in UTC on Vercel,
+    // so a link signed before 11am Sydney told the client it was sent the day
+    // before. Same disease as the lodgement dates.
+    sentOn: issued.toLocaleDateString('en-AU',
+      { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Australia/Sydney' }),
     expiresOn: expiresFrom(issued),
   } satisfies AnswersPayload)
 }
