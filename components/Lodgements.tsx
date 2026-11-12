@@ -6,8 +6,7 @@ import { money } from '@/lib/money'
 import { todayYmd, fyEndYear } from '@/lib/periods'
 import { mondayOf, ymd, tabCounts } from '@/lib/lodging-when'
 import {
-  byBroker, totals, dayWords, lenderOf, termsWords, referralInside, dealsInside,
-  referralName, UNANSWERED, type Line2,
+  byBroker, totals, type Line2,
 } from '@/lib/who-brought-us-this'
 import { viewFor, dealsFor, mayEmail, VIEW_NOTE } from '@/lib/who-sees-the-numbers'
 import LodgementSummary from '@/components/LodgementSummary'
@@ -120,19 +119,18 @@ export default function Lodgements({
         ))}
       </span>
 
-      {/* THE THREE VIEWS, above the tables. Tiles, the list, and on the FY tab
-        * the year grid. See components/LodgementSummary.tsx. */}
-      {brokers.length > 0 && (
-        <LodgementSummary lines={brokers} brokerRows={brokerRows} brands={brands}
-          kind={kind} label={span.label} />
-      )}
-
+      {/* LODGED, A LINE, THEN SETTLED - and one list that opens rather than a
+        * summary followed by the same brokers all over again. The whole body
+        * of the page is in here now. See components/LodgementSummary.tsx. */}
       {brokers.length === 0 ? (
         <div className="bg-card border border-dashed border-card-line rounded-xl py-8 text-center
           text-[13.5px] text-faint">
           Nothing lodged or settled in {span.label.toLowerCase()}.
         </div>
-      ) : brokers.map(b => <Broker key={b.key} line={b} />)}
+      ) : (
+        <LodgementSummary lines={brokers} brokerRows={brokerRows} brands={brands}
+          kind={kind} label={span.label} />
+      )}
 
       {/* THE FRIDAY EMAIL. Admin only - one of these goes to a referral
         * partner. See lib/who-sees-the-numbers.ts. */}
@@ -192,77 +190,6 @@ export default function Lodgements({
           The list →
         </Link>
       </p>
-    </div>
-  )
-}
-
-function Broker({ line }: { line: Line2 }) {
-  const rows = dealsInside(line)
-  const splits = referralInside(line)
-  return (
-    <div className="bg-card border border-card-line rounded-xl mb-2.5 overflow-hidden">
-      <div className="flex items-baseline gap-2.5 px-3.5 py-2.5 bg-page border-b border-line-soft
-        flex-wrap">
-        <span className="text-[14px] font-bold text-ink">{line.name}</span>
-        <span className="text-[12px] text-muted">
-          {line.lodged.length} lodged{line.settled.length ? ` · ${line.settled.length} settled` : ''}
-        </span>
-        <span className="ml-auto text-[13px] font-bold text-ink tabular-nums">
-          {money(line.lodgedAmount) || '—'} lodged
-        </span>
-      </div>
-
-      <table className="w-full border-collapse">
-        <thead><tr>
-          <th className={TH}>Client</th><th className={TH}>Lender</th>
-          <th className={TH}>What</th><th className={TH}>Day</th>
-          <th className={TH}>Referral</th><th className={TH + ' text-right'}>Amount</th>
-        </tr></thead>
-        <tbody>
-          {rows.map(({ deal: d, what }, i) => (
-            <tr key={d.id + what + i}>
-              <td className={TD}>
-                <Link href={`/deals/${d.id}`} className="font-semibold text-ink hover:text-brand-ink">
-                  {d.deal_name || 'Untitled deal'}
-                </Link>
-              </td>
-              <td className={TD}>{lenderOf(d) || '—'}</td>
-              <td className={TD}>
-                <span className={`text-[10px] font-bold rounded-md px-2 py-0.5 border ${
-                  what === 'settled'
-                    ? 'bg-done-bg text-done border-done-edge'
-                    : 'bg-info-bg text-brand-ink border-info-edge'}`}>
-                  {what === 'settled' ? 'Settled' : 'Lodged'}
-                </span>
-              </td>
-              <td className={TD + ' text-faint'}>{dayWords(d, what)}</td>
-              <td className={TD}>
-                {termsWords(d)
-                  ? <span className="text-ink font-semibold">{termsWords(d)}</span>
-                  : <span className="text-faint">{referralName(d)}</span>}
-              </td>
-              <td className={TD + ' text-right font-semibold text-ink tabular-nums'}>
-                {money((d.settled_total ?? d.lodged_total ?? d.loan_amount) || 0) || '—'}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* WHO BROUGHT THIS BROKER'S WORK, added up. The same figures as the
-        * column above, read the other way a person reads them. */}
-      <div className="flex gap-4 flex-wrap px-3.5 py-2.5 border-t border-line-soft bg-[#FCFBF9]
-        text-[11.5px] text-muted">
-        <span className="text-[9.5px] font-bold tracking-[.08em] uppercase text-faint self-center">
-          Referral split
-        </span>
-        {splits.map(r => (
-          <span key={r.key} className={r.key === UNANSWERED ? 'text-faint' : ''}>
-            <b className={r.key === UNANSWERED ? '' : 'text-ink'}>{r.name}</b>{' '}
-            {r.lodged.length + r.settled.length} · {money(r.lodgedAmount + r.settledAmount) || '—'}
-          </span>
-        ))}
-      </div>
     </div>
   )
 }

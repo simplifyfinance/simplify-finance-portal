@@ -111,6 +111,9 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
 
   const field = 'w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand'
   const label = 'text-[11px] font-semibold text-faint block mb-1'
+  // Which broker has opened the second-brand line. Nobody writes under two
+  // today, so it stays shut until somebody says otherwise.
+  const [alsoOpen, setAlsoOpen] = useState<Record<string, boolean>>({})
 
   // The bar at the top of the page says this screen is fetching. The shape
 
@@ -238,22 +241,86 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
               </div>
             )}
 
-            <div className="mt-3">
-              <label className={label + ' mb-2'}>Brands (a broker can work under multiple brands)</label>
-              <div className="flex flex-wrap gap-2">
-                {brands.map(brand => {
-                  const list: string[] = val(r, 'brand_ids') || []
-                  const has = list.includes(brand.id)
-                  return (
-                    <button key={brand.id}
-                      onClick={() => edit(r.broker_key, { brand_ids: has ? list.filter(x => x !== brand.id) : [...list, brand.id] })}
-                      className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border transition-colors ${has ? 'bg-ink border-ink text-page' : 'border-line text-muted hover:bg-page hover:text-ink'}`}>
-                      {brand.name}
+            {/* WHICH BUSINESS DOES THIS BROKER WRITE UNDER?
+              *
+              * 12 Nov 2026. Fabio: "I have nowhere in settings to say on each
+              * broker profile under which brand they sit, add a dropdown to
+              * each broker as that dictates where they sit."
+              *
+              * It was here the whole time - a row of pill buttons, one per
+              * brand. With one brand set up it drew ONE pill, already dark,
+              * which reads as a label rather than a control. He was right that
+              * there was nowhere to set it: there was, and it was invisible.
+              *
+              * A dropdown says "pick one", which is the truth - Mark, Fabio
+              * and Kylie under Simplify Finance, Keanen and Justin under
+              * Simplify Finance Brokers. It writes the same brand_ids array
+              * the pills did, so every report, email footer and licence number
+              * is untouched.
+              *
+              * THE SECOND BRAND IS A LINK, NOT A SECOND CONTROL. Nobody writes
+              * under two today. The tick boxes only appear for somebody who
+              * already does, or who presses the line. */}
+            {(() => {
+              const list: string[] = val(r, 'brand_ids') || []
+              const many = list.length > 1 || !!alsoOpen[r.broker_key]
+              const first = r.name.split(' ')[0] || 'this broker'
+              return (
+                <div className="mt-3">
+                  <label className={label + ' mb-1.5'}>
+                    Which business does {first} write under?
+                  </label>
+                  <select
+                    value={list[0] || ''}
+                    onChange={e => {
+                      const picked = e.target.value
+                      // Keeps any extra brands, swaps only the main one.
+                      const rest = list.filter(x => x !== picked).slice(1)
+                      edit(r.broker_key, { brand_ids: picked ? [picked, ...rest] : rest })
+                    }}
+                    className="text-[13px] font-semibold border border-line rounded-lg px-3 py-2
+                      bg-card text-ink focus:outline-none focus:border-brand min-w-[268px]">
+                    <option value="">Nobody has said</option>
+                    {brands.map(brand => (
+                      <option key={brand.id} value={brand.id}>{brand.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-[11.5px] text-faint m-0 mt-1.5">
+                    This is what puts {first}&rsquo;s deals under the right heading on every report.
+                  </p>
+
+                  {many ? (
+                    <div className="mt-2.5">
+                      <label className={label + ' mb-1.5'}>Also writes under</label>
+                      <div className="flex flex-wrap gap-2">
+                        {brands.filter(b => b.id !== list[0]).map(brand => {
+                          const has = list.includes(brand.id)
+                          return (
+                            <button key={brand.id}
+                              onClick={() => edit(r.broker_key, {
+                                brand_ids: has
+                                  ? list.filter(x => x !== brand.id)
+                                  : [...list, brand.id],
+                              })}
+                              className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border
+                                transition-colors ${has
+                                  ? 'bg-ink border-ink text-page'
+                                  : 'border-line text-muted hover:bg-page hover:text-ink'}`}>
+                              {brand.name}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => setAlsoOpen(o => ({ ...o, [r.broker_key]: true }))}
+                      className="text-[11.5px] font-semibold text-brand-ink mt-2 hover:underline">
+                      + {first} also writes under another brand
                     </button>
-                  )
-                })}
-              </div>
-            </div>
+                  )}
+                </div>
+              )
+            })()}
 
             <div className="flex items-center justify-between gap-3 mt-3 flex-wrap">
               <span className={`text-[12px] ${failed ? 'text-[#C4553B] font-medium' : 'text-faint'}`}>
