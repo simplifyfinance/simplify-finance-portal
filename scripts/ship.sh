@@ -55,6 +55,17 @@ if ! ./scripts/check-broker-keys.sh; then
   exit 1
 fi
 
+# 12 Nov 2026. Three columns the code read did not exist, and then the database
+# said there were seven. Every one was written as a guess with a fallback
+# behind it, so none of them ever broke and none of them ever said so - and one
+# of them had the client name blank on a whole screen.
+echo "Checking the columns are real..."
+if ! ./scripts/check-deal-columns.sh; then
+  echo
+  echo "NOT SHIPPED - fix the above first."
+  exit 1
+fi
+
 # 27 Oct 2026. A capitalised premium was in the purchase box and missing from
 # the split card under it, from the whole of the lending options, and from the
 # two compliance paragraphs that say what somebody is borrowing. Five weeks,

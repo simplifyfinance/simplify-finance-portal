@@ -1945,7 +1945,9 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
           { id: me?.id || null, name: me?.name || brokerSig || '' },
           sentEmailAsText({
             what: 'Borrowing capacity sent', subject, to, bcc: deal.salestrekker_bcc,
-            by: brokerSig || deal.assigned_broker, brand: deal.brand_id || undefined,
+            // `brand`, not deal.brand_id - that column does not exist, so this
+            // note has recorded no brand since it was written. 12 Nov 2026.
+            by: brokerSig || deal.assigned_broker, brand: brand || undefined,
             at: new Date(nowIso), html: emailHtml,
           }))
       } catch (e) { console.error('[sendToClient] file note failed', e) }

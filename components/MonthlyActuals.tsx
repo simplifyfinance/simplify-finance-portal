@@ -81,8 +81,8 @@ export default function MonthlyActuals() {
     // shows a figure and it is obvious where it came from.
     const pp: Record<string, any> = {}
     for (const d of (r.data || [])) {
-      const ld = toAuDate(d.lodged_date || d.lodged_at)
-      const sd = toAuDate(d.settled_date || d.settled_at)
+      const ld = toAuDate(d.lodged_at)
+      const sd = toAuDate(d.settled_at)
       const la = num(d.lodged_total) ?? splitsTotal(d.lodged_splits) ?? num(d.loan_amount) ?? 0
       const sa = num(d.settled_total) ?? splitsTotal(d.settled_splits) ?? num(d.loan_amount) ?? 0
       if (ld) {

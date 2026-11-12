@@ -227,7 +227,14 @@ export function dayWords(deal: any, event: Event): string {
 }
 
 export function lenderOf(deal: any): string {
-  return txt(deal?.settled_lender) || txt(deal?.lodged_lender) || txt(deal?.lender)
+  // THERE IS ONE LENDER COLUMN AND THERE ALWAYS HAS BEEN.
+  //
+  // This read settled_lender, then lodged_lender, then lender. The first two
+  // do not exist - see docs/deals-columns.txt - so the chain fell through to
+  // the third every single time, while reading as though the portal tracked
+  // which bank a deal lodged with separately from the one it settled with.
+  // It does not. Five screens were written on that belief.
+  return txt(deal?.lender)
     || txt((deal as any)?.lenders?.name)
 }
 

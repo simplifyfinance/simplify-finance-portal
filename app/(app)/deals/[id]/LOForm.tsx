@@ -1882,7 +1882,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           { id: me?.id || null, name: me?.name || d.brokerSig || '' },
           sentEmailAsText({
             what: 'Lending options sent', subject, to, bcc: deal.salestrekker_bcc,
-            by: d.brokerSig || deal.assigned_broker, brand: deal.brand_id || undefined,
+            // d.brandId, not deal.brand_id - that column does not exist, so
+            // this note has recorded no brand since it was written.
+            by: d.brokerSig || deal.assigned_broker, brand: d.brandId || undefined,
             at: new Date(nowIso), html: emailHtml,
           }))
       } catch (e) { console.error('[sendToClient] file note failed', e) }

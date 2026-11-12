@@ -297,7 +297,7 @@ export default function SettlementsPage() {
             <span className="text-[11px] text-faint">{brokerLabel(d.assigned_broker)}</span>
           </span>
           <span className="min-w-0">
-            <span className="text-muted block truncate">{d.lodged_lender || d.lender || '—'}</span>
+            <span className="text-muted block truncate">{d.lender || '—'}</span>
             {d.lender_ref && <span className="text-[11px] text-faint block truncate">{d.lender_ref}</span>}
           </span>
           <span className="text-muted truncate">{purposeLabel(d)}</span>

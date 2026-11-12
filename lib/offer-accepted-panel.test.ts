@@ -139,8 +139,11 @@ describe('the ANZ acknowledgement', () => {
     expect(anzTemplateFor({ lenders: { name: 'St George' } }, 900000, 850000, 'Fabio').needed).toBe(false)
   })
 
+  // THE COLUMN IS salestrekker_card_id. This test asked for salestrekker_id,
+  // which is not a column, so it passed on a shape production never produces.
+  // A test that invents its own field cannot catch a field that is missing.
   it('prefers the SalesTrekker reference where the deal has one', () => {
-    expect(anzTemplateFor({ ...anz, salestrekker_id: 'ST-4471' }, 900000, 850000, 'F').reference)
+    expect(anzTemplateFor({ ...anz, salestrekker_card_id: 'ST-4471' }, 900000, 850000, 'F').reference)
       .toBe('ST-4471')
   })
 })

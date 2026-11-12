@@ -133,7 +133,12 @@ export function anzTemplateFor(deal: any, oldLoan: any, newLoan: any,
   }
   return {
     needed: true,
-    reference: txt(deal?.salestrekker_id) || txt(deal?.deal_name),
+    // salestrekker_card_id, not salestrekker_id. 12 Nov 2026: the second
+    // spelling does not exist and never has - see docs/deals-columns.txt - so
+    // this fell through to the deal name on every ANZ acknowledgement ever
+    // sent, while reading as though it preferred the SalesTrekker reference.
+    // The test pinned the wrong spelling too, which is how it survived.
+    reference: txt(deal?.salestrekker_card_id) || txt(deal?.deal_name),
     change: `Loan amount reduced from $${was.toLocaleString('en-AU')} to $${now.toLocaleString('en-AU')}.`,
   }
 }

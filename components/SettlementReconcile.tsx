@@ -82,7 +82,9 @@ export default function SettlementReconcile({ brokers }: {
         if (!month || month < COMMISSION_START) continue        // before the records start
         if (!isIssued('upfront', month, today)) continue        // not due yet, so not missing
 
-        const bKey = String(deal.assigned_broker || deal.broker_key || '')
+        // deals.broker_key does not exist - see docs/deals-columns.txt. The
+        // fallback never fired and never could.
+        const bKey = String(deal.assigned_broker || '')
         const from = brokers.find(b => sameBroker(b.key, bKey))?.from || ''
         if (from && month < from) continue                      // earned elsewhere at the time
 
@@ -99,7 +101,12 @@ export default function SettlementReconcile({ brokers }: {
         const comm = calcCommission({ amount, rate, lvr: lvrOf(deal), settledOn })
         pd.push({
           id: String(deal.id),
-          client: deal.client_name || deal.name || '',
+          // WAS deal.client_name || deal.name, AND NEITHER IS A COLUMN.
+          // 12 Nov 2026. This read two fields that have never existed, so the
+          // client column on this screen has been empty on every row since it
+          // was written. Nothing errored, because a missing field is undefined
+          // and `|| ''` tidied it away. deal_name is the one that is real.
+          client: String(deal.deal_name || ''),
           // One per split, typed in after settlement. Checked before any of the
           // name matching below, because it is the bank's own number and the
           // only thing on a deal that is certain to appear on the RCTI.

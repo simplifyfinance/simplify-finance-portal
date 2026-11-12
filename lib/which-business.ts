@@ -66,9 +66,10 @@ export type Business = {
 
 /** The brand written on the deal itself, wherever the forms put it. */
 export function brandOnDeal(deal: any): string {
+  // deals.brand_id does not exist and never has - see
+  // docs/deals-columns.txt. The brand lives inside the two form records.
   return txt(deal?.lo_data?.brandId)
     || txt(deal?.bc_data?.brand)
-    || txt(deal?.brand_id)
 }
 
 /**

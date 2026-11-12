@@ -84,8 +84,8 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
     const pp: Record<string, any> = {}
     for (const d of (r.data || [])) {
       if (String(d.assigned_broker || '').trim().toLowerCase() !== key) continue
-      const ld = toAuDate(d.lodged_date || d.lodged_at)
-      const sd = toAuDate(d.settled_date || d.settled_at)
+      const ld = toAuDate(d.lodged_at)
+      const sd = toAuDate(d.settled_at)
       const la = num(d.lodged_total) ?? splitsTotal(d.lodged_splits) ?? num(d.loan_amount) ?? 0
       const sa = num(d.settled_total) ?? splitsTotal(d.settled_splits) ?? num(d.loan_amount) ?? 0
       if (ld) {
