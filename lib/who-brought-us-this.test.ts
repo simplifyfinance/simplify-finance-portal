@@ -66,7 +66,9 @@ describe('who brought it', () => {
     expect(referralKey(ours())).toBe(OURS)
     expect(referralKey({ deal_name: 'x' })).toBe(UNANSWERED)
     expect(referralName({ deal_name: 'x' })).toBe('Nobody has said')
-    expect(referralName(ours())).toBe('Ours, no split')
+    expect(referralName(ours())).toBe('Simplify Finance 100%')
+    // The name is a parameter, because a second business is coming.
+    expect(referralName(ours(), 'Simplify Finance Brokers')).toBe('Simplify Finance Brokers 100%')
   })
 
   // THE TERMS COME OFF THE DEAL, NOT OFF THE SPLIT. A split renegotiated next
@@ -85,7 +87,7 @@ describe('who brought it', () => {
     ], WEEK)
     expect(rows[0].name).toBe('Justin Cornock')
     expect(rows[0].lodged).toHaveLength(2)
-    expect(rows[1].name).toBe('Ours, no split')
+    expect(rows[1].name).toBe('Simplify Finance 100%')
   })
 
   // A deal is in both breakdowns, once each. That is correct, and it is the
@@ -243,7 +245,7 @@ describe('inside one broker', () => {
     const inside = referralInside(mark())
     expect(inside[0].name).toBe('Justin Cornock')
     expect(inside[0].lodged).toHaveLength(2)
-    expect(inside.find(r => r.name === 'Ours, no split')!.lodged).toHaveLength(1)
+    expect(inside.find(r => r.name === 'Simplify Finance 100%')!.lodged).toHaveLength(1)
   })
 
   it('without another broker’s deal creeping in', () => {

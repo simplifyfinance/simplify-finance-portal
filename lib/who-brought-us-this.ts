@@ -92,10 +92,21 @@ export function referralKey(deal: any): string {
   return s.id || OURS
 }
 
-export function referralName(deal: any): string {
+// WHAT TO CALL A DEAL NOBODY REFERRED.
+//
+// Fabio, 12 Nov 2026: "'Ours, no split' is stupid. Simplify 100% makes more
+// sense." He is right. "Ours" names nobody, and "no split" describes a missing
+// record rather than what actually happened - which is that the whole
+// commission stayed in the business.
+//
+// `ourName` is a parameter and not a constant because a second business is
+// coming. See lib/which-business.ts.
+export const OUR_NAME = 'Simplify Finance'
+
+export function referralName(deal: any, ourName: string = OUR_NAME): string {
   const s = splitOn(deal)
   if (!s) return 'Nobody has said'
-  if (s.none) return 'Ours, no split'
+  if (s.none) return `${ourName} 100%`
   return s.name || 'Unnamed split'
 }
 

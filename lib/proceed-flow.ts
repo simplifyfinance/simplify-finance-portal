@@ -5,6 +5,7 @@ import { notifyCrisMoveCard } from '@/lib/salestrekker-notify'
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
 import { fileNote } from '@/lib/file-note'
 import { requestDocuments, brokerDocumentLine, type DocRequestResult } from '@/lib/document-request'
+import { brokerSubject } from '@/lib/the-client-agreed'
 
 import type { ProceedStage } from './next-steps-copy'
 import { siteUrl } from './site-url'
@@ -125,15 +126,21 @@ async function notifyBrokerOfProgress(
         from: 'Simplify Finance Portal <notifications@simplifyfinance.com.au>',
         to: brokerRecord.email,
         cc: 'info@simplifyfinance.com.au',
-        // THE BANK IN THE SUBJECT LINE. 19 Oct 2026. "has moved to Compliance"
-        // was true and told the broker nothing about the thing the client had
-        // just agreed to. Left out where no lender was captured rather than
-        // padded with a word like "a lender".
+        // THE SUBJECT IS THE NEWS, NOT THE FILING.
+        //
+        // 12 Nov 2026. Fabio: "brokers are saying it's not clear the client
+        // agreed and pressed buttons to proceed." This is half of why. The
+        // subject read "<deal> has moved to Lending Options" - which is true,
+        // tells a broker nothing the portal could not have done by itself, and
+        // reads exactly like somebody in the office moved it.
+        //
+        // What the client DID goes first now. The stage change is in the body
+        // where it always was. The bank still leads when one was captured,
+        // which was the right half of the 19 Oct change. See brokerSubject in
+        // lib/the-client-agreed.ts.
         subject: docs && !docs.ok
           ? `ACTION NEEDED - documents not requested: ${deal.deal_name}`
-          : lender
-            ? `${deal.deal_name} confirmed ${lender} and has moved to ${nextStageLabel}`
-            : `${deal.deal_name} has moved to ${nextStageLabel}`,
+          : brokerSubject(deal.deal_name, lender),
         html: `<p>Hi ${brokerRecord.name?.split(' ')[0] || ''},</p><p><strong>${deal.deal_name}</strong> has progressed to <strong>${nextStageLabel}</strong>.</p>${lender ? `<p>The client confirmed <strong>${lender}</strong> on their own page.</p>` : ''}${brokerDocumentLine(docs)}<p><a href="${siteUrl()}/deals/${dealId}">Open the deal</a></p>`
       })
     })

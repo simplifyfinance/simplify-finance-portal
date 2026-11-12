@@ -24,6 +24,7 @@ import ComplianceForm from './ComplianceForm'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
 import CompliancePackAssignment from './CompliancePackAssignment'
 import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
+import ClientAgreed from '@/components/ClientAgreed'
 import { whoHasIt } from '@/lib/who-has-it'
 import DealProgress, { currentStage } from './DealProgress'
 import DealSettlement from './DealSettlement'
@@ -677,6 +678,17 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           See components/DealPrompts.tsx. */}
       <DealPrompts deal={dealData}
         onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+
+      {/* THE CLIENT AGREED, WHERE A BROKER READS IT.
+          12 Nov 2026. Fabio: "brokers are saying it's not clear the client
+          agreed and pressed buttons to proceed." The portal has recorded who
+          pressed Proceed since 2 Oct and showed it in exactly one place -
+          inside the BC tab, which is the stage the broker has finished with.
+          A bead turning green looks the same whether the client agreed or the
+          office moved it by hand. So it comes out here, above the bar, under
+          the client's name. It drops off at lodgement - Fabio, same day:
+          "when we lodge drop it." See lib/the-client-agreed.ts. */}
+      <ClientAgreed deal={dealData} />
 
       <DealProgress deal={dealData} />
 
