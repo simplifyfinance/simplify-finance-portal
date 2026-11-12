@@ -108,7 +108,7 @@ const live = (d: any) => !isFinished(d)
 
 export default function TodayPlan({
   deals, officers, plans, brokerPlans = [], meOfficerId, meName, today,
-  seesAll = false, brokerKey = null, brokerNames = {},
+  seesAll = false, brokerKey = null, brokerNames = {}, greeting = true,
 }: {
   deals: any[]
   officers: Officer[]
@@ -126,6 +126,8 @@ export default function TodayPlan({
   brokerKey?: string | null
   /** key -> proper name. The key is lower case by design and is never shown. */
   brokerNames?: Record<string, string>
+  /** False where the page has already said good morning. */
+  greeting?: boolean
 }) {
   const supabase = createSupabaseBrowser()
   const view: 'credit' | 'admin' | 'broker' = meOfficerId ? 'credit' : seesAll ? 'admin' : 'broker'
@@ -476,10 +478,15 @@ export default function TodayPlan({
 
   return (
     <div className="mb-6">
-      <div className="flex items-baseline gap-3 mb-1">
-        <h1 className="text-[22px] font-semibold">Good morning{meName ? ` ${meName.split(' ')[0]}` : ''}</h1>
-        <span className={SOFT}>{dayMonth(today)}</span>
-      </div>
+      {/* ONE GREETING A PAGE. 12 Nov 2026, Fabio: "Why there's so many
+        * fucking good mornings?" On an admin page the greeting is rendered
+        * once, above the week's bar, and this one stands down. */}
+      {greeting && (
+        <div className="flex items-baseline gap-3 mb-1">
+          <h1 className="text-[22px] font-semibold">Good morning{meName ? ` ${meName.split(' ')[0]}` : ''}</h1>
+          <span className={SOFT}>{dayMonth(today)}</span>
+        </div>
+      )}
 
       {/* WHAT THE PERSON THEMSELVES READS. Pointed on purpose: "not planned
           yet" sounds like untidiness, and this is about somebody waiting. */}
@@ -554,15 +561,19 @@ export default function TodayPlan({
             * The one number worth acting on is still here: somebody carrying
             * far more than the team average, which shows as one line and only
             * when it is true. */}
-          {(view === 'admin' || view === 'broker') && (
+          {/* YESTERDAY, ACROSS THE BUSINESS went from the admin page on
+            * 12 Nov 2026. What the credit team closed yesterday is on each of
+            * their rows in The credit team this morning, where it belongs to a
+            * person rather than floating as a list. A broker keeps theirs. */}
+          {view === 'broker' && (
             <Card>
               <div className={CAP}>
-                {view === 'admin' ? 'Yesterday, across the business' : 'Yesterday on your deals'}
+                Yesterday on your deals
                 &nbsp;&mdash; written from what moved
               </div>
-              {(view === 'admin' ? businessYesterday : brokerYesterday).length === 0
+              {brokerYesterday.length === 0
                 ? <div className={SOFT}>Nothing closed on {dayMonth(yesterdayDate)}.</div>
-                : (view === 'admin' ? businessYesterday : brokerYesterday).slice(0, 8).map((y, i) => (
+                : brokerYesterday.slice(0, 8).map((y, i) => (
                   <Row key={i}>
                     <span className="text-done">&#10003;</span>
                     <Link href={`/deals/${y.id}`} className="flex-1 font-semibold hover:underline">{y.name}</Link>

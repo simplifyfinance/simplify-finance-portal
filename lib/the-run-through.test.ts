@@ -4,7 +4,9 @@
 import { describe, it, expect } from 'vitest'
 import {
   SEATS, SLIPPING_DAYS, inTeam, isSlipping, notInTeam, runThrough, seatCounts, seatOf,
-  theirOwnBook, bySection, unansweredDays, weekSoFar, worthOf,
+  theirOwnBook, bySection, carriedOver, couldLodge, matches, readTarget, unansweredDays,
+  weekSoFar,
+  worthOf,
 } from './the-run-through'
 import { mondayOf } from './lodging-when'
 
@@ -14,9 +16,15 @@ const MONDAY = mondayOf(NOW)
 const ago = (days: number) =>
   new Date(NOW.getTime() - days * 86_400_000).toISOString()
 
+// Far enough along to be worth a meeting - see couldLodge(). Everything in
+// these tests has compliance out unless it says otherwise.
 const deal = (over: any = {}) => ({
   id: 'd', deal_name: 'A deal', assigned_broker: 'mark', stage: 'Compliance',
-  created_at: ago(5), loan_amount: 500_000, ...over,
+  created_at: ago(5), loan_amount: 500_000,
+  // The clock the meeting counts from is when the deal became discussable, so
+  // a fixture that sets created_at is setting that too.
+  compliance_sent_at: over.created_at ?? ago(4),
+  ...over,
 })
 const said = (key: 'this' | 'next' | 'client', over: any = {}) =>
   key === 'client'
@@ -194,5 +202,149 @@ describe('whose load is this', () => {
     const out = bySection([own, with_us], share)
     expect(out.theirs.map(d => d.id)).toEqual(['own'])
     expect(out.ours.map(d => d.id)).toEqual(['ours'])
+  })
+})
+
+// "it's okay to edit that number... Doesn't need to be overthink this."
+describe('the target somebody typed', () => {
+  it('is used as given', () => {
+    expect(readTarget({ floor: 15, ceiling: 20 })).toEqual({ floor: 15, ceiling: 20 })
+  })
+
+  it('falls back to ten to twelve where nothing is set', () => {
+    expect(readTarget(null)).toEqual({ floor: 10, ceiling: 12 })
+    expect(readTarget({})).toEqual({ floor: 10, ceiling: 12 })
+  })
+
+  it('ignores nonsense rather than printing it', () => {
+    expect(readTarget({ floor: 'ten', ceiling: 0 })).toEqual({ floor: 10, ceiling: 12 })
+    expect(readTarget({ floor: -4, ceiling: 9999 })).toEqual({ floor: 10, ceiling: 12 })
+  })
+
+  // A ceiling under the floor is somebody mid-typing, not a decision.
+  it('never lets the ceiling fall under the floor', () => {
+    expect(readTarget({ floor: 15, ceiling: 3 })).toEqual({ floor: 15, ceiling: 15 })
+  })
+
+  it('rounds a number somebody pasted', () => {
+    expect(readTarget({ floor: 9.6, ceiling: 12.2 })).toEqual({ floor: 10, ceiling: 12 })
+  })
+
+  it('counts the week against it', () => {
+    const w = weekSoFar(
+      [deal({ lodged_at: ago(1) }), said('this'), said('this')], NOW, { floor: 15, ceiling: 20 })
+    expect(w.onTrack).toBe(3)
+    expect(w.floor).toBe(15)
+    expect(w.words).toBe('12 short of 15')
+  })
+})
+
+// "Kylie is the broker, but later on. So have her there, but just leave it
+// blank because she will be part of that."
+describe('a broker with nothing on the list', () => {
+  const names = (k: string) => ({ mark: 'Mark Gallo', kylie: 'Kylie Searle' }[k] || k)
+  const team = () => 'Simplify Finance'
+
+  it('is still on the screen, so the meeting still asks', () => {
+    const runs = runThrough([deal({ assigned_broker: 'Mark' })], 'nobody',
+      names, team, NOW, ['mark', 'kylie'])
+    expect(runs.map(r => r.name)).toEqual(['Mark Gallo', 'Kylie Searle'])
+    expect(runs[1].total).toBe(0)
+    expect(runs[1].deals).toEqual([])
+  })
+
+  it('never sits above somebody who has work', () => {
+    const runs = runThrough([deal({ assigned_broker: 'Mark' })], 'nobody',
+      names, team, NOW, ['kylie', 'mark'])
+    expect(runs[0].key).toBe('mark')
+  })
+})
+
+
+// "nobody has said, it says 64 fucking deals. What do you think?"
+describe('what the meeting is even about', () => {
+  // "Anything starts with everything that is sitting in BC and then LO."
+  it('leaves out a fact find nobody has filled in', () => {
+    const ff = { id: 'ff', assigned_broker: 'mark', created_at: ago(40) }
+    expect(couldLodge(ff)).toBe(false)
+    expect(seatCounts([ff], NOW).nobody).toBe(0)
+  })
+
+  // "compliance issued, lending options, and BC with the client."
+  it('is compliance issued, lending options, and a BC with the client', () => {
+    expect(couldLodge({ compliance_sent_at: ago(1) })).toBe(true)
+    expect(couldLodge({ client_proceeded: true })).toBe(true)
+  })
+
+  it('leaves out a BC that is still ours to write', () => {
+    expect(couldLodge({ bc_data: { started: true } })).toBe(false)
+  })
+
+  // Lodged is a result, not a candidate - but it still counts for the week.
+  it('keeps a deal lodged this week on its own tab and in the count', () => {
+    expect(seatOf(deal({ lodged_at: ago(1) }), NOW)).toBe('lodged')
+    expect(weekSoFar([deal({ lodged_at: ago(1) })], NOW).lodged).toBe(1)
+  })
+
+  // "make sure we can search"
+  it('finds one by client, by deal name and by lender', () => {
+    const d = deal({ deal_name: 'Okonkwo Purchase', lender: 'ING',
+      clients: { first_name: 'Chidi', last_name: 'Okonkwo' } })
+    expect(matches(d, 'okon')).toBe(true)
+    expect(matches(d, 'chidi')).toBe(true)
+    expect(matches(d, 'ing')).toBe(true)
+    expect(matches(d, 'westpac')).toBe(false)
+  })
+
+  it('shows everything until somebody has typed two letters', () => {
+    expect(matches(deal(), '')).toBe(true)
+    expect(matches(deal(), 'x')).toBe(true)
+  })
+
+  // The search beside a broker's name reaches EVERY deal of theirs that could
+  // lodge, not just the tab on screen - that is the point of it.
+  it('carries the whole of a broker’s lodgeable book for the search', () => {
+    const names = (k: string) => k
+    const team = () => 'Simplify Finance'
+    const a = deal({ id: 'a', deal_name: 'Okonkwo Purchase' })
+    const b = said('this', { id: 'b', deal_name: 'Barbieri Refi' })
+    const runs = runThrough([a, b], 'nobody', names, team, NOW)
+    expect(runs[0].deals.map(d => d.id)).toEqual(['a'])
+    expect(runs[0].all.map(d => d.id).sort()).toEqual(['a', 'b'])
+  })
+})
+
+// "if I tick the box that says next week... on next week's summary that starts
+// on Monday, you're going to bring the ones that we clicked from next week and
+// then bring it back and highlight it for this week."
+describe('what was promised at an earlier meeting', () => {
+  const lastMonday = new Date(new Date(MONDAY).getTime() - 7 * 86_400_000)
+    .toISOString().slice(0, 10)
+
+  it('rolls into this week by itself', () => {
+    // Marked "next week" last Monday: that stored THIS Monday.
+    const d = deal({ lodgement_plan: 'week', lodgement_week: MONDAY,
+      lodgement_week_at: new Date(lastMonday + 'T09:00:00+11:00').toISOString() })
+    expect(seatOf(d, NOW)).toBe('this_week')
+  })
+
+  it('and is marked as carried in, not decided just now', () => {
+    const d = deal({ lodgement_plan: 'week', lodgement_week: MONDAY,
+      lodgement_week_at: new Date(lastMonday + 'T09:00:00+11:00').toISOString() })
+    expect(carriedOver(d, NOW)).toBe('carried')
+  })
+
+  it('says slipped where the week it was promised for has gone', () => {
+    const d = deal({ lodgement_plan: 'week', lodgement_week: lastMonday,
+      lodgement_week_at: new Date(lastMonday + 'T09:00:00+11:00').toISOString() })
+    expect(carriedOver(d, NOW)).toBe('slipped')
+  })
+
+  it('says nothing about one decided in this morning’s meeting', () => {
+    expect(carriedOver(said('this'), NOW)).toBe(null)
+  })
+
+  it('says nothing once it has lodged', () => {
+    expect(carriedOver(said('this', { lodged_at: ago(1) }), NOW)).toBe(null)
   })
 })

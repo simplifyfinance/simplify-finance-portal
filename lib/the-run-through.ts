@@ -26,6 +26,8 @@
 // client vanished from the screen - which is the same as not having asked.
 
 import { answerOf, hasLodged, tabOf, weeksFromNow, type AnswerKey } from './lodging-when'
+import { phaseOf } from './deal-phase'
+import { whoHasIt } from './who-has-it'
 
 const txt = (v: any) => String(v ?? '').trim()
 const num = (v: any) => (Number.isFinite(Number(v)) ? Number(v) : 0)
@@ -49,13 +51,59 @@ export const SEATS: Seat[] = ['nobody', 'this_week', 'next_week', 'client', 'lod
  * Lodged wins over everything: once it is in, what somebody predicted in a
  * meeting three weeks ago is history rather than a plan.
  */
+/**
+ * COULD THIS ACTUALLY LODGE THIS WEEK?
+ *
+ * 12 Nov 2026. Fabio, after the first version put sixty-four deals in front of
+ * a Monday meeting:
+ *
+ *   "compliance issued, lending options, and BC with the client. In this
+ *    order, starts a compliance issue and then lending options and then BC...
+ *    anything that is sitting on fact find, anything that is sitting on
+ *    fucking lodged, doesn't matter."
+ *
+ * THREE KINDS OF DEAL, AND ONLY THREE.
+ *
+ *   Compliance issued        the pack has gone out; this is the closest thing
+ *                            to a lodgement there is
+ *   Lending options          a bank is being chosen
+ *   BC sitting with a client we have done our part and they are deciding
+ *
+ * A borrowing capacity still to be WRITTEN is work, not a lodgement candidate.
+ * It belongs on a credit assessor's day and on the Deals page; putting it here
+ * is what turned a meeting into a list nobody reads.
+ *
+ * Anything else is still reachable by name - that is what the search beside
+ * each broker is for. This decides what is on screen before anybody types.
+ */
+export function couldLodge(deal: any): boolean {
+  const p = phaseOf(deal)
+  if (p === 'compliance_sent' || p === 'lo') return true
+  if (p === 'bc') return whoHasIt(deal)?.holder === 'client'
+  return false
+}
+
+/**
+ * THE ORDER THE MEETING WORKS IN.
+ *
+ * Compliance issued first, because it is nearest to lodging. Then lending
+ * options. Then the BCs a client is sitting on.
+ */
+export function lodgeRank(deal: any): number {
+  const p = phaseOf(deal)
+  return p === 'compliance_sent' ? 0 : p === 'lo' ? 1 : 2
+}
+
 export function seatOf(deal: any, now: Date = new Date()): Seat | null {
   if (txt(deal?.status) === 'lost' || txt(deal?.settled_at)) return null
+  // LODGED IS NOT A CANDIDATE, IT IS A RESULT. It stays on its own tab and in
+  // the week's count, and it is never in the three the meeting works through.
   if (hasLodged(deal)) {
     // Only this week's lodgements belong on the meeting screen. Last month's
     // are on Lodged and settled, which is the page for counting.
     return thisWeek(deal, now) ? 'lodged' : null
   }
+  if (!couldLodge(deal)) return null
   if (answerOf(deal, now) === 'client') return 'client'
   const tab = tabOf(deal, now)
   if (tab === 'this_week') return 'this_week'
@@ -111,6 +159,28 @@ export type WeekSoFar = {
 export const TARGET = { floor: 10, ceiling: 12 }
 
 /**
+ * THE TARGET, AS SOMEBODY TYPED IT.
+ *
+ * 12 Nov 2026. Fabio: "it's okay to edit that number. So if we want to target,
+ * let's say we start wanting to lodge 15, 20... Doesn't need to be overthink
+ * this because it's just the target week for the bar."
+ *
+ * So: two whole numbers, in order, within reach of a mortgage business. A
+ * ceiling under the floor is somebody typing, not a decision, and the bar
+ * reading "on track for 11, 4 short of 15" when the floor says 15 and the
+ * ceiling says 3 is worse than useless.
+ */
+export function readTarget(raw: any): { floor: number; ceiling: number } {
+  const n = (v: any, fallback: number) => {
+    const x = Math.round(Number(v))
+    return Number.isFinite(x) && x >= 1 && x <= 999 ? x : fallback
+  }
+  const floor = n(raw?.floor, TARGET.floor)
+  const ceiling = n(raw?.ceiling, TARGET.ceiling)
+  return ceiling < floor ? { floor, ceiling: floor } : { floor, ceiling }
+}
+
+/**
  * THE ONE LINE THAT MATTERS ON A MONDAY.
  *
  * Lodged plus promised, against ten to twelve. Promised is a broker saying
@@ -144,6 +214,9 @@ export function weekSoFar(
 export type BrokerRun = {
   key: string
   name: string
+  /** Everything of theirs that could lodge, whatever seat it is on - what the
+    * search beside their name looks through. */
+  all: any[]
   /** The group this broker sits under - see lib/which-team.ts. */
   team: string
   deals: any[]
@@ -167,6 +240,53 @@ export function unansweredDays(deal: any, now: Date = new Date()): number | null
   const t = new Date(since).getTime()
   if (!Number.isFinite(t)) return null
   return Math.max(0, Math.floor((now.getTime() - t) / 86_400_000))
+}
+
+/**
+ * WAS THIS PROMISED AT AN EARLIER MEETING?
+ *
+ * 12 Nov 2026. Fabio: "if I tick the box that says next week, so guess what?
+ * On next week's summary that starts on Monday... you're going to bring the
+ * ones that we clicked from next week and then bring it back and highlight it
+ * for this week."
+ *
+ * The rolling itself already happens and always did: the answer stores the
+ * MONDAY it is for, not the word, so a deal marked next week on the 16th
+ * carries the 23rd and is simply this week's deal when the 23rd arrives. See
+ * weeksFromNow() in lib/lodging-when.ts.
+ *
+ * What was missing is the highlight. In the room there is a real difference
+ * between a deal somebody just said yes to and one that has been promised
+ * before - and the second is the one to ask about twice.
+ *
+ *   carried   promised at an earlier meeting, due now
+ *   slipped   promised for a week that has already been and gone
+ */
+export type Carried = 'carried' | 'slipped' | null
+
+export function carriedOver(deal: any, now: Date = new Date()): Carried {
+  if (hasLodged(deal)) return null
+  // READ THE WEEK THAT WAS STORED, not the word answerOf gives back: a week
+  // that has already gone is no longer "this", which is exactly the case this
+  // function exists to catch.
+  if (txt(deal?.lodgement_plan) !== 'week') return null
+  const n = weeksFromNow(deal?.lodgement_week, now)
+  if (n === null) return null
+  if (n < 0) return 'slipped'
+  if (n !== 0) return null
+  // Answered before this Monday, for this Monday: carried in from a meeting
+  // that has already happened.
+  const said = txt(deal?.lodgement_week_at)
+  if (!said) return null
+  const monday = new Date(now)
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
+  monday.setHours(0, 0, 0, 0)
+  return new Date(said).getTime() < monday.getTime() ? 'carried' : null
+}
+
+export const CARRIED_WORDS: Record<'carried' | 'slipped', string> = {
+  carried: 'promised last week',
+  slipped: 'slipped — was due already',
 }
 
 /** Loud enough to stop the meeting. Three weeks with nobody saying anything. */
@@ -193,8 +313,32 @@ export function runThrough(
   names: (key: string) => string,
   teamOf: (key: string) => string,
   now: Date = new Date(),
+  /**
+   * EVERY BROKER WHO SHOULD APPEAR WHETHER THEY HAVE ANYTHING OR NOT.
+   *
+   * 12 Nov 2026. Fabio, on the three who run the business between them:
+   * "Kylie is the broker, but later on. So have her there, but just leave it
+   * blank because she will be part of that."
+   *
+   * A name with nothing under it is the meeting asking the question anyway,
+   * which is the point of going round the table. A broker left off the screen
+   * is a broker nobody asks.
+   */
+  always: string[] = [],
 ): BrokerRun[] {
   const by = new Map<string, any[]>()
+  // Everything of each broker's that could lodge, on any seat - the search
+  // beside their name reaches all of it, not just the tab on screen.
+  const everything = new Map<string, any[]>()
+  for (const d of deals || []) {
+    if (!seatOf(d, now)) continue
+    const key = txt(d?.assigned_broker).toLowerCase()
+    if (key) everything.set(key, [...(everything.get(key) || []), d])
+  }
+  for (const k of always) {
+    const key = txt(k).toLowerCase()
+    if (key) by.set(key, [])
+  }
   for (const d of deals || []) {
     if (seatOf(d, now) !== seat) continue
     const key = txt(d?.assigned_broker).toLowerCase()
@@ -204,20 +348,56 @@ export function runThrough(
   const out: BrokerRun[] = []
   for (const [key, list] of by) {
     list.sort((a, b) => {
+      // Lending options before a BC sitting with a client - the first is far
+      // closer to lodging than the second.
+      const r = lodgeRank(a) - lodgeRank(b)
+      if (r !== 0) return r
       const sa = isSlipping(a, now) ? 0 : 1
       const sb = isSlipping(b, now) ? 0 : 1
       if (sa !== sb) return sa - sb
+      // Chronological, oldest first, inside each.
       return (unansweredDays(b, now) ?? -1) - (unansweredDays(a, now) ?? -1)
     })
     out.push({
-      key, name: names(key), team: teamOf(key), deals: list,
+      key, name: names(key), team: teamOf(key), deals: list, all: everything.get(key) || [],
       toDecide: list.filter(d => !answerOf(d, now)).length,
       total: list.length,
     })
   }
   // Most to decide first - the meeting spends its time where the answers are
-  // missing, not in alphabetical order.
-  return out.sort((a, b) => b.toDecide - a.toDecide || b.total - a.total)
+  // missing, not in alphabetical order. A broker with nothing goes last, where
+  // the table can see the name and move on.
+  return out.sort((a, b) =>
+    (b.total > 0 ? 1 : 0) - (a.total > 0 ? 1 : 0)
+    || b.toDecide - a.toDecide || b.total - a.total
+    || a.name.localeCompare(b.name))
+}
+
+/**
+ * TEN AT A TIME, AND A SEARCH BESIDE EACH BROKER FOR THE REST.
+ *
+ * 12 Nov 2026. Fabio, on sixty-four deals with no answer on them: "how are we
+ * sitting down as a team on a meeting on a Monday and then we start from
+ * scratch... why don't you just highlight the first ten, make sure you can
+ * scroll up and down, make sure we can search."
+ *
+ * "Give me 10, don't go more than 10, as in I can see a view and I can scroll
+ * up and down to see if there is more."
+ *
+ * The ten are compliance-issued first, then lending options, oldest first
+ * inside each. Anything else is reached by name.
+ */
+export const SHOW_AT_ONCE = 10
+
+export function matches(deal: any, look: any): boolean {
+  const q = txt(look).toLowerCase()
+  if (q.length < 2) return true
+  const hay = [
+    deal?.deal_name,
+    deal?.clients?.first_name, deal?.clients?.last_name,
+    deal?.lender,
+  ].map(txt).join(' ').toLowerCase()
+  return hay.includes(q)
 }
 
 /** What one broker's section is worth, for the line beside their name. */

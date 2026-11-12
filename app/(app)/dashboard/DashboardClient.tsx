@@ -1,5 +1,4 @@
 'use client'
-import RateNoticeNag from '@/components/RateNoticeNag'
 import { PAGE_WIDE } from '@/lib/page-width'
 import { useMemo, useState } from 'react'
 import { brokerKey as brokerKey_, brokerLabel, sameBroker } from '@/lib/broker-key'
@@ -173,7 +172,6 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
       {/* ONLY EVER THERE WHEN A RATE NOTICE HAS OUTSTAYED ITS REVIEW DATE, which
           means it is not furniture anybody learns to look past. See
           components/RateNoticeNag.tsx. */}
-      <RateNoticeNag />
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-ink">

@@ -1,12 +1,15 @@
 'use client'
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { useSayTheWeek } from '@/lib/use-say-the-week'
 import { ANSWERS, answerOf, type AnswerKey } from '@/lib/lodging-when'
 import {
-  SEATS, SEAT_LABEL, inTeam, isSlipping, notInTeam, runThrough, seatCounts,
-  unansweredDays, weekSoFar, worthOf, type BrokerRun, type Seat,
+  CARRIED_WORDS, SEATS, SEAT_LABEL, SHOW_AT_ONCE, bySection, carriedOver, isSlipping,
+  matches, readTarget,
+  runThrough, seatCounts, unansweredDays, weekSoFar, worthOf, type BrokerRun, type Seat,
 } from '@/lib/the-run-through'
+import { shareOf } from '@/lib/who-gets-paid-on-this'
 import { NO_TEAM_NAME } from '@/lib/which-team'
 
 // THE MONDAY MEETING, ON A SCREEN.
@@ -28,7 +31,9 @@ const money = (n: number) => n > 0 ? `$${n.toLocaleString('en-AU')}` : ''
 const CAP = 'text-[10.5px] font-bold tracking-[0.08em] uppercase text-muted'
 
 export default function RunThrough({
-  deals, brokerNames, brokerRows, secondTeam = 'Simplify Finance Brokers', now,
+  deals, brokerNames, brokerRows, secondTeam = 'Simplify Finance Brokers',
+  target: savedTarget, canSetTarget = false, team = [], settling = [], meName = '',
+  todayWords = '', now,
 }: {
   deals: any[]
   brokerNames: Record<string, string>
@@ -36,10 +41,23 @@ export default function RunThrough({
   brokerRows: Array<{ broker_key?: any; name?: any; team?: any }>
   /** The group that gets its own section at the bottom. */
   secondTeam?: string
+  /** What the business is aiming at this week. Editable on the bar. */
+  target?: { floor?: any; ceiling?: any } | null
+  canSetTarget?: boolean
+  /** The credit assessors and whether they have told management their day. */
+  team?: Array<{ name: string; informedAt?: any; yesterdayCount?: number; todayCount?: number
+                 open?: number }>
+  /** What is settling this week, for the box under it. */
+  settling?: Array<{ id: string; name: string; day: string; amount: number }>
+  meName?: string
+  todayWords?: string
   now?: Date
 }) {
   const when = now || new Date()
+  const supabase = createSupabaseBrowser()
   const [seat, setSeat] = useState<Seat>('nobody')
+  const [look, setLook] = useState<Record<string, string>>({})
+  const [showAll, setShowAll] = useState<Record<string, boolean>>({})
   const { say, busy, problem, setProblem, withAnswers } = useSayTheWeek(when)
 
   const all = useMemo(() => withAnswers(deals || []), [deals, withAnswers])
@@ -56,17 +74,63 @@ export default function RunThrough({
   const names = (key: string) =>
     brokerNames[String(key || '').toLowerCase()] || String(key || '')
 
-  const counts = useMemo(() => seatCounts(all, when), [all])
-  const week = useMemo(() => weekSoFar(all, when), [all])
-  const runs = useMemo(
-    () => runThrough(all, seat, names, teamOf, when), [all, seat, teamOf])
+  // THE NAMES THAT APPEAR WHETHER THEY HAVE ANYTHING OR NOT - the brokers who
+  // run the business between them. Kylie is on this list with nothing under
+  // her today, on purpose.
+  const ourBrokers = useMemo(() => (brokerRows || [])
+    .filter(b => String(b?.team || '').trim() !== secondTeam)
+    .map(b => String(b?.broker_key || '').toLowerCase())
+    .filter(Boolean), [brokerRows, secondTeam])
 
-  const mine = notInTeam(runs, secondTeam)
-  const theirs = inTeam(runs, secondTeam)
+  const [target, setTarget] = useState(() => readTarget(savedTarget))
+  const [editing, setEditing] = useState(false)
+
+  const counts = useMemo(() => seatCounts(all, when), [all])
+  const week = useMemo(() => weekSoFar(all, when, target), [all, target])
+
+  // WHOSE LOAD, OFF THE DEAL'S OWN SPLIT - never off whose name is on it.
+  //
+  // Fabio, 12 Nov 2026: "there are splits that we do 50-50 between Keanen and
+  // us and Justin and us. That sits on our admin load, not theirs. The only
+  // ones that sit on theirs are the ones that they get paid 80-20."
+  //
+  // The deal keeps its own copy of the terms - see lib/who-shares-this-deal.ts
+  // - so this reads the arrangement as it stood on that deal, not as the split
+  // reads today.
+  const shareFor = (d: any) => {
+    const who = names(String(d?.assigned_broker || ''))
+    const line = shareOf({ lines: d?.commission_split_lines }, who)
+    return line?.upfront ?? null
+  }
+
+  const split = useMemo(() => bySection(all, shareFor), [all, brokerNames])
+  const mine = useMemo(
+    () => runThrough(split.ours, seat, names, teamOf, when, ourBrokers),
+    [split.ours, seat, teamOf, ourBrokers])
+  const theirs = useMemo(
+    () => runThrough(split.theirs, seat, names, teamOf, when),
+    [split.theirs, seat, teamOf])
+
+  const [savingTarget, setSavingTarget] = useState(false)
+
+  // ONE ROW, ONE NUMBER PAIR. The target is the business's, not one person's,
+  // so it lives in settings beside the brands rather than on a profile.
+  async function saveTarget() {
+    const next = readTarget(target)
+    setSavingTarget(true)
+    const { error } = await supabase.from('settings')
+      .upsert({ id: 'singleton', week_target: next }).select('id')
+    setSavingTarget(false)
+    if (error) { setProblem('The target was not saved: ' + error.message); return }
+    setTarget(next)
+    setEditing(false)
+  }
 
   const row = (d: any) => {
     const answer = answerOf(d, when)
     const slipping = isSlipping(d, when)
+    // Promised at an earlier meeting, so worth asking about twice.
+    const carried = carriedOver(d, when)
     const days = unansweredDays(d, when)
     const amount = Number(d?.loan_amount ?? d?.amount) || 0
     return (
@@ -79,7 +143,14 @@ export default function RunThrough({
         </Link>
 
         {/* WHY THIS ONE IS THE PROBLEM, not a red dot that says nothing. */}
-        {slipping ? (
+        {carried ? (
+          <span className={`text-[10.5px] rounded-full px-2 py-[1px] whitespace-nowrap border ${
+            carried === 'slipped'
+              ? 'text-chase bg-chase-bg border-chase-edge'
+              : 'text-brand-ink bg-info-bg border-info-edge'}`}>
+            {CARRIED_WORDS[carried]}
+          </span>
+        ) : slipping ? (
           <span className="text-[10.5px] text-chase bg-chase-bg border border-chase-edge
             rounded-full px-2 py-[1px] whitespace-nowrap">
             {days} days, nobody has said
@@ -117,23 +188,75 @@ export default function RunThrough({
     )
   }
 
-  const section = (list: BrokerRun[]) => list.map(r => (
-    <div key={r.key}>
-      <div className="flex items-baseline gap-2 pt-3 pb-1">
-        <span className="text-[11px] font-bold tracking-[0.07em] uppercase text-faint">
-          {r.name}
-        </span>
-        <span className="ml-auto text-[11px] text-faint">
-          {r.toDecide > 0 ? `${r.toDecide} to decide` : `${r.total}`}
-          {worthOf(r.deals) > 0 ? ` · ${money(worthOf(r.deals))}` : ''}
-        </span>
+  // TEN AT A TIME. Fabio, 12 Nov 2026: "why don't you just highlight the first
+  // ten, make sure you can scroll up and down, make sure we can search."
+  // A SEARCH BESIDE EACH BROKER'S NAME.
+  //
+  // Fabio, 12 Nov 2026: "there is a search bar within Mark, there is a search
+  // bar within Fabio... so we can find deals that are not there, highlight
+  // them and mark them this week, next week."
+  //
+  // NOT on the Simplify Finance Brokers section - those deals come from the
+  // broker themselves on their own Monday, so there is nothing for us to go
+  // hunting for.
+  const section = (list: BrokerRun[], canSearch: boolean) => list.map(r => {
+    const q = look[r.key] || ''
+    const found = q.trim().length >= 2 ? r.all.filter(d => matches(d, q)) : null
+    const deals = found ?? r.deals
+    const all = showAll[r.key] || !!found
+    const shown = all ? deals : deals.slice(0, SHOW_AT_ONCE)
+    const hidden = deals.length - shown.length
+    return (
+      <div key={r.key}>
+        <div className="flex items-baseline gap-2 pt-3 pb-1 flex-wrap">
+          <span className="text-[11px] font-bold tracking-[0.07em] uppercase text-faint">
+            {r.name}
+          </span>
+          {canSearch && (
+            <input value={q}
+              onChange={e => setLook(x => ({ ...x, [r.key]: e.target.value }))}
+              placeholder="find one of theirs…"
+              className="text-[11.5px] bg-page border border-line rounded-md px-2.5 py-[3px]
+                w-[190px] placeholder:text-faint" />
+          )}
+          <span className="ml-auto text-[11px] text-faint">
+            {found ? `${found.length} found`
+              : r.toDecide > 0 ? `${r.toDecide} to decide` : r.total > 0 ? `${r.total}` : '—'}
+            {worthOf(deals) > 0 ? ` · ${money(worthOf(deals))}` : ''}
+          </span>
+        </div>
+        {deals.length === 0
+          ? (
+            <div className="text-[12px] text-faint pb-1">
+              {found ? 'Nothing of theirs matches that.' : 'Nothing on this list.'}
+            </div>
+          ) : (
+            <div className={deals.length > SHOW_AT_ONCE
+              ? 'max-h-[430px] overflow-y-auto pr-1' : ''}>
+              {shown.map(row)}
+            </div>
+          )}
+        {hidden > 0 && (
+          <button onClick={() => setShowAll(x => ({ ...x, [r.key]: true }))}
+            className="text-[11.5px] font-semibold text-brand-ink mt-1.5">
+            {hidden} more waiting &mdash; show {r.name.split(' ')[0]}&rsquo;s whole list
+          </button>
+        )}
       </div>
-      {r.deals.map(row)}
-    </div>
-  ))
+    )
+  })
 
   return (
-    <>
+    <div className="mb-6">
+      {/* ONE GREETING, THEN THE BAR. In that order, at the top of the page -
+        * 12 Nov 2026, after the first attempt put the bar halfway down under
+        * three panels that should not have been there at all. */}
+      <div className="flex items-baseline gap-3 mb-2">
+        <h1 className="text-[22px] font-semibold">
+          Good morning{meName ? ` ${meName.split(' ')[0]}` : ''}</h1>
+        <span className="text-[12px] text-muted">{todayWords}</span>
+      </div>
+
       {/* ARE WE GOING TO MAKE TWELVE. The only question a Monday asks. */}
       <div className="bg-[#17140F] rounded-xl px-4 py-3.5 mb-3 flex items-center gap-6 flex-wrap">
         <div>
@@ -159,15 +282,62 @@ export default function RunThrough({
             {week.onTrack}</div>
           <div className="text-[11px] text-[#9A948C] mt-1">{week.words}</div>
         </div>
+        {/* THE PROGRESS ITSELF. Green is in, blue is promised, the rest is
+          * what the week still has to find. */}
+        <div className="flex-1 min-w-[150px]">
+          <div className="h-[9px] rounded-full bg-[#2E2A24] overflow-hidden flex mb-1.5">
+            <div className="bg-[#64E8BB]"
+              style={{ width: `${Math.min(100, (week.lodged / week.ceiling) * 100)}%` }} />
+            <div className="bg-[#6FD3FF]"
+              style={{ width: `${Math.min(100 - (week.lodged / week.ceiling) * 100,
+                (week.promised / week.ceiling) * 100)}%` }} />
+          </div>
+          <div className="flex gap-3.5 text-[10.5px] text-[#9A948C] flex-wrap">
+            <span><span className="inline-block w-[7px] h-[7px] rounded-sm bg-[#64E8BB] mr-1" />
+              {week.lodged} lodged</span>
+            <span><span className="inline-block w-[7px] h-[7px] rounded-sm bg-[#6FD3FF] mr-1" />
+              {week.promised} promised</span>
+            <span><span className="inline-block w-[7px] h-[7px] rounded-sm bg-[#56504A] mr-1" />
+              {week.words}</span>
+          </div>
+        </div>
+
         <div className="ml-auto text-right">
           <div className="text-[10px] font-extrabold tracking-[0.13em] uppercase text-[#9A948C]">
             Target</div>
-          <div className="text-[26px] font-extrabold leading-none text-page mt-1">
-            {week.floor}&ndash;{week.ceiling}</div>
-          <div className="text-[11px] text-[#9A948C] mt-1">a week</div>
+          {/* EDITABLE, BECAUSE A TARGET IS A DECISION AND NOT A FACT.
+            * Fabio, 12 Nov 2026: "if we want to target, let's say we start
+            * wanting to lodge 15, 20... it's just the target week for the bar." */}
+          {editing ? (
+            <div className="flex items-center gap-1 justify-end mt-1">
+              {(['floor', 'ceiling'] as const).map((k, i) => (
+                <span key={k} className="flex items-center gap-1">
+                  {i === 1 && <span className="text-[#9A948C] text-[18px]">&ndash;</span>}
+                  <input type="number" min={1} max={999} value={target[k]}
+                    onChange={e => setTarget(t => ({ ...t, [k]: e.target.value }))}
+                    className="w-[58px] text-[20px] font-extrabold bg-[#2E2A24] text-page
+                      rounded-md px-2 py-1 text-right" />
+                </span>
+              ))}
+            </div>
+          ) : (
+            <div className="text-[26px] font-extrabold leading-none text-page mt-1">
+              {week.floor}&ndash;{week.ceiling}</div>
+          )}
+          {canSetTarget ? (
+            <button onClick={() => void (editing ? saveTarget() : setEditing(true))}
+              disabled={savingTarget}
+              className="text-[11px] text-[#6FD3FF] font-semibold mt-1 disabled:opacity-50">
+              {savingTarget ? 'Saving...' : editing ? 'Save' : 'a week — change'}
+            </button>
+          ) : (
+            <div className="text-[11px] text-[#9A948C] mt-1">a week</div>
+          )}
         </div>
       </div>
 
+      <div className="flex gap-4 items-start flex-wrap lg:flex-nowrap">
+      <div className="flex-1 min-w-[420px]">
       <div className="bg-card border border-card-line rounded-xl px-4 py-3.5 mb-3">
         <div className={`${CAP} mb-3 flex items-center gap-2`}>
           The run-through &mdash; what are we lodging this week
@@ -195,7 +365,7 @@ export default function RunThrough({
               ? 'Every deal has an answer. That is the meeting done.'
               : `Nothing on ${SEAT_LABEL[seat].toLowerCase()}.`}
           </div>
-        ) : section(mine)}
+        ) : section(mine, true)}
       </div>
 
       {/* THE OTHER GROUP, AT THE BOTTOM AND ON ITS OWN.
@@ -211,9 +381,63 @@ export default function RunThrough({
             <span className="ml-auto text-faint tracking-[0.06em] normal-case font-semibold
               text-[10.5px]">what they think is coming</span>
           </div>
-          {section(theirs)}
+          {section(theirs, false)}
         </div>
       )}
-    </>
+      </div>
+
+      {/* THE TEAM, BESIDE THE MEETING. The box Fabio kept from the old page:
+        * who has told management their day, and what is settling. */}
+      <div className="w-full lg:w-[316px] lg:flex-none">
+        {team.length > 0 && (
+          <div className="bg-card border border-card-line rounded-xl px-4 py-3.5 mb-3">
+            <div className={`${CAP} mb-3 flex items-center gap-2`}>
+              The credit team this morning
+              <span className="ml-auto text-faint tracking-[0.06em] normal-case font-semibold
+                text-[10.5px]">
+                {team.filter(t => t.informedAt).length} of {team.length}
+              </span>
+            </div>
+            {team.map(t => (
+              <div key={t.name}
+                className={`rounded-lg px-3 py-2.5 mb-1.5 last:mb-0 border-l-4 ${
+                  t.informedAt ? 'bg-done-bg border-done' : 'bg-chase-bg border-chase'}`}>
+                <div className="text-[12.5px] font-bold">{t.name}</div>
+                <div className="text-[11px] text-muted leading-snug mt-[1px]">
+                  {t.informedAt ? (
+                    <>
+                      <b className="text-ink">Sent {new Date(t.informedAt)
+                        .toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}</b>
+                      <br />{t.yesterdayCount ?? 0} done yesterday &middot; {t.todayCount ?? 0} on today
+                    </>
+                  ) : (
+                    <>
+                      <b className="text-ink">Nothing yet</b>
+                      <br />{t.open ?? 0} files, none planned
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {settling.length > 0 && (
+          <div className="bg-card border border-card-line rounded-xl px-4 py-3.5">
+            <div className={`${CAP} mb-2`}>Settling this week</div>
+            {settling.map(x => (
+              <div key={x.id}
+                className="flex items-center gap-2.5 py-2 border-b border-line-soft last:border-b-0">
+                <Link href={`/deals/${x.id}`}
+                  className="flex-1 text-[13px] font-semibold hover:underline truncate">{x.name}</Link>
+                <span className="text-[11px] text-faint">{x.day}</span>
+                <span className="text-[13px] font-bold tabular-nums">{money(x.amount)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      </div>
+    </div>
   )
 }

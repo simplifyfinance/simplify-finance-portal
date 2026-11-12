@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
 import TodayPlan from '@/components/TodayPlan'
 import RunThrough from '@/components/RunThrough'
+import RateNoticeNag from '@/components/RateNoticeNag'
 import ThisWeek from '@/components/ThisWeek'
 import DueToLodge from '@/components/DueToLodge'
 import { todayYmd } from '@/lib/periods'
@@ -62,7 +63,11 @@ export default async function Dashboard() {
   // Broker names come from the register, never from the key stored on a deal.
   // The key is lower case by design and was being printed straight onto the
   // screen, so every broker read as "fabio" or "kylie".
-  const { data: brokerRows } = await supabase.from('brokers').select('broker_key, name')
+  const { data: brokerRows } = await supabase.from('brokers').select('broker_key, name, team')
+  // WHAT THE BUSINESS IS AIMING AT THIS WEEK. One row, beside the brands.
+  const { data: settingsRow } = await supabase.from('settings')
+    .select('week_target').eq('id', 'singleton').maybeSingle()
+  const weekTarget = (settingsRow as any)?.week_target || null
   const brokerNames: Record<string, string> = {}
   for (const b of (brokerRows || []) as any[]) {
     const k = String(b.broker_key || '').toLowerCase()
@@ -123,39 +128,109 @@ export default async function Dashboard() {
     yesterdayRemoved: (byOfficer.get(o.id)?.yesterday_removed || []) as string[],
   }))
 
+  // WHAT THE ADMIN PAGE NEEDS BESIDE THE MEETING.
+  //
+  // The credit team's morning, and what settles this week. Both are counted
+  // from rows this page already has, so neither can disagree with the credit
+  // assessor's own screen or with Settlements.
+  const todayWords = new Date(today + 'T00:00:00').toLocaleDateString('en-AU', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  })
+
+  const openFor = (officerId: string) => (deals || []).filter((d: any) =>
+    d.assigned_credit_officer === officerId && d.status !== 'lost' && !d.settled_at).length
+
+  const creditToday = officers.map(o => {
+    const row: any = byOfficer.get(o.id)
+    return {
+      name: o.name,
+      informedAt: row?.informed_at || null,
+      yesterdayCount: Array.isArray(row?.yesterday_added)
+        ? (row.yesterday_added as any[]).length : 0,
+      todayCount: Array.isArray(row?.deal_ids) ? (row.deal_ids as any[]).length : 0,
+      open: openFor(o.id),
+    }
+  })
+
+  // THIS WEEK'S SETTLEMENTS, by the date the settlements team confirmed, and
+  // only the ones that have not already settled.
+  const weekStart = new Date(today + 'T00:00:00')
+  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7))
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekEnd.getDate() + 7)
+  const settlingThisWeek = (deals || [])
+    .map((d: any) => ({ d, when: d.confirmed_settlement_date || d.expected_settlement_date }))
+    .filter(({ d, when }) => {
+      if (!when || d.settled_at || d.status === 'lost') return false
+      const t = new Date(String(when) + 'T00:00:00').getTime()
+      return t >= weekStart.getTime() && t < weekEnd.getTime()
+    })
+    .sort((a, b) => String(a.when).localeCompare(String(b.when)))
+    .slice(0, 6)
+    .map(({ d, when }) => ({
+      id: d.id as string,
+      name: `${d.clients?.last_name || d.deal_name || ''}${d.clients?.first_name ? ', ' + d.clients.first_name[0] : ''}`,
+      day: new Date(String(when) + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'short' }),
+      amount: Number(d.loan_amount) || 0,
+    }))
+
   return (
     <>
     <div className="px-6 pt-6">
-      {/* THE WEEK, ABOVE THE DAY. Alan's item 1 - see lib/lodging-when.ts and
-        * lib/the-week-so-far.ts. Both read the deals this page already has, so
-        * neither can disagree with the board about what lodged. */}
-      {/* NOT FOR A CREDIT ASSESSOR.
+      {/* ON EVERY TODAY PAGE, NOT INSIDE ONE PANEL.
         *
-        * 12 Nov 2026. Fabio: "credit doesn't care about settlements. So a
-        * credit assessor does not need to see any settlements."
+        * 12 Nov 2026. It lived inside DashboardClient, which stopped rendering
+        * for admin when Today was rebuilt - so the one person who acts on an
+        * overdue rate review would have been the one person who stopped seeing
+        * it. It is only ever on screen when a notice has outstayed its review
+        * date, so it is not furniture anywhere. */}
+      <RateNoticeNag />
+      {/* ADMIN'S TODAY IS THREE THINGS AND NOTHING ELSE.
         *
-        * Both of these are a broker's and management's business - what lodged
-        * and settled this week, and what is due to lodge. They were the first
-        * two things Katie read every morning and neither was her work. Her
-        * page starts at her day. */}
-      {!creditOfficerId && <ThisWeek deals={deals || []} />}
-      {!creditOfficerId && (
+        * 12 Nov 2026. Fabio, looking at his own page after the first attempt:
+        * "all this stuff, live deals, all the fucking stuff that I told you to
+        * get out... Why there's so many fucking good mornings?"
+        *
+        * He had already said it and I left them on. What he asked for is the
+        * meeting, the week's target and the team - components/RunThrough.tsx.
+        *
+        * SO FOR WHOEVER SEES ALL DEALS, THESE DO NOT RENDER AT ALL:
+        *   This week          what lodged and settled - that is Lodged and settled
+        *   Due to lodge       replaced by the run-through, which IS this as a meeting
+        *   DashboardClient    the second greeting, Deals by broker, Needs your
+        *                      action, the five stage tiles and Recent deals
+        *
+        * A broker's page keeps them until the broker view is designed; a credit
+        * assessor never had them. */}
+      {!creditOfficerId && !seesAll && <ThisWeek deals={deals || []} />}
+      {!creditOfficerId && !seesAll && (
         <DueToLodge deals={deals || []} brokerNames={brokerNames} canSet={!!seesAll} />
       )}
-      {/* THE MONDAY MEETING. Fabio, 12 Nov 2026, on what Today is for from an
-        * admin seat: "we go one by one on the deals sitting there... Right now
-        * is an Excel spreadsheet. I want that gone."
+      {/* THE MONDAY MEETING, AND IT IS THE WHOLE ADMIN PAGE.
         *
-        * Admin only, which is the same test that decides the admin view below
-        * - whoever sees all deals. A broker runs their own deals from their
-        * own day, and credit never sees it at all. */}
-      {!!seesAll && (
+        * 12 Nov 2026. Fabio, on what Today is for from an admin seat: "we go
+        * one by one on the deals sitting there... Right now is an Excel
+        * spreadsheet. I want that gone." And, on the first attempt, which left
+        * every old panel in place above it: "look at the difference come on".
+        *
+        * So for whoever sees all deals this is the page - the greeting, the
+        * week's bar, the run-through, the other group, and the credit team
+        * beside it. TodayPlan does not render at all: its own day card is a
+        * credit assessor's and a broker's, and every admin panel it used to
+        * carry has been taken off. */}
+      {seesAll ? (
         <RunThrough
           deals={deals || []}
           brokerNames={brokerNames}
           brokerRows={(brokerRows || []) as any[]}
+          target={weekTarget}
+          canSetTarget
+          meName={profile?.full_name || ''}
+          todayWords={todayWords}
+          team={creditToday}
+          settling={settlingThisWeek}
         />
-      )}
+      ) : (
       <TodayPlan
         deals={deals || []}
         officers={officers}
@@ -168,16 +243,19 @@ export default async function Dashboard() {
         brokerKey={brokerKey}
         brokerNames={brokerNames}
       />
+      )}
     </div>
-    <DashboardClient
-      deals={deals || []}
-      fullName={profile?.full_name || null}
-      brokerKey={brokerKey}
-      creditOfficerId={creditOfficerId}
-      allowToggle={allowToggle}
-      defaultView={defaultView}
-      brokerNames={brokerNames}
-    />
+    {!seesAll && (
+      <DashboardClient
+        deals={deals || []}
+        fullName={profile?.full_name || null}
+        brokerKey={brokerKey}
+        creditOfficerId={creditOfficerId}
+        allowToggle={allowToggle}
+        defaultView={defaultView}
+        brokerNames={brokerNames}
+      />
+    )}
     </>
   )
 }

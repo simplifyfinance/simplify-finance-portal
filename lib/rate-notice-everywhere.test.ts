@@ -287,7 +287,10 @@ describe('the screens that run it', () => {
   })
 
   it('and something that will not let it be forgotten', () => {
-    const dash = readFileSync('app/(app)/dashboard/DashboardClient.tsx', 'utf8')
+    // ON THE PAGE, NOT INSIDE A PANEL. 12 Nov 2026: it sat in DashboardClient,
+    // which stopped rendering for admin when Today was rebuilt - so the one
+    // person who acts on an overdue notice would have stopped seeing it.
+    const dash = readFileSync('app/(app)/dashboard/page.tsx', 'utf8')
     expect(dash).toContain('<RateNoticeNag />')
     expect(readFileSync('components/RateNoticeNag.tsx', 'utf8')).toContain('nagLine(')
   })
