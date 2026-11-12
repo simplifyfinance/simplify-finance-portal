@@ -48,6 +48,18 @@ for g in scripts/check-*.sh; do
   fi
 done
 
+# WHAT WAS TESTED IS WHAT GETS COMMITTED.
+#
+# 12 Nov 2026. Twice in one day a file written WHILE this was running went into
+# the commit: the tests pass against the tree as it was, the browser check runs
+# for seven minutes, and `git add -A` at the end sweeps up whatever appeared in
+# between. The commit then claims to be tested and is not.
+#
+# Nothing clever. The tree is fingerprinted now and again at the end, and a run
+# that finds them different refuses to commit rather than committing something
+# nobody checked.
+TREE_AT_START=$(git status --porcelain | shasum -a 256 | cut -d' ' -f1)
+
 echo "Checking broker keys..."
 if ! ./scripts/check-broker-keys.sh; then
   echo
@@ -205,6 +217,19 @@ took
 if [ -z "$(git status --porcelain)" ]; then
   echo "Nothing to commit."
   exit 0
+fi
+
+TREE_NOW=$(git status --porcelain | shasum -a 256 | cut -d' ' -f1)
+if [ "$TREE_NOW" != "$TREE_AT_START" ]; then
+  echo
+  echo "NOT COMMITTED - files changed while this was running."
+  echo
+  echo "  The tests and the browser check ran against the files as they were"
+  echo "  when this started. Something has been written since. Committing now"
+  echo "  would put code into main that nothing has checked."
+  echo
+  echo "  Nothing has been committed or pushed. Run it again."
+  exit 1
 fi
 
 git add -A

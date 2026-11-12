@@ -225,16 +225,26 @@ export default function TodayPlan({
   }, [deals, plannedIds])
 
   const byBroker = useMemo(() => {
-    const out = new Map<string, { name: string; bc: number; lo: number; compliance: number; total: number }>()
+    // FACT FIND WAS COUNTED AND NEVER SHOWN.
+    //
+    // 12 Nov 2026. stageWaitingOn() returns 'Fact Find' as well as BC, LO and
+    // Compliance, and the total counted all four while the line printed three.
+    // So the row could read "BC 21 - LO 0 - Compliance 0" beside "22 with us".
+    // A row that does not add up teaches people to distrust the whole panel.
+    //
+    // Counted by its own name now, and only the stages with something in them
+    // are printed - two permanent noughts across two thirds of the line was
+    // the other half of why nobody read it.
+    const out = new Map<string, {
+      name: string; stages: Record<string, number>; total: number
+    }>()
     for (const d of deals.filter(live)) {
       const stage = stageWaitingOn(d)
       if (!stage) continue
       const key = String(d.assigned_broker || '').toLowerCase()
       if (!key) continue
-      const row = out.get(key) || { name: named(key), bc: 0, lo: 0, compliance: 0, total: 0 }
-      if (stage === 'BC') row.bc++
-      else if (stage === 'LO') row.lo++
-      else if (stage === 'Compliance') row.compliance++
+      const row = out.get(key) || { name: named(key), stages: {}, total: 0 }
+      row.stages[stage] = (row.stages[stage] || 0) + 1
       row.total++
       out.set(key, row)
     }
@@ -465,7 +475,12 @@ export default function TodayPlan({
               {byBroker.length === 0 ? <div className={SOFT}>Nothing is with us.</div> : byBroker.map(b => (
                 <Row key={b.name}>
                   <span className="flex-1 font-semibold">{b.name}</span>
-                  <span className={SOFT}>BC {b.bc} &middot; LO {b.lo} &middot; Compliance {b.compliance}</span>
+                  <span className={SOFT}>
+                    {['Fact Find', 'BC', 'LO', 'Compliance']
+                      .filter(k => b.stages[k])
+                      .map(k => `${k} ${b.stages[k]}`)
+                      .join(' \u00b7 ')}
+                  </span>
                   <span className={PILL_US}>{b.total} with us</span>
                 </Row>
               ))}

@@ -32,7 +32,6 @@ type Split = {
   name: string
   kind?: string
   who?: string
-  contact_email?: string | null
   note_template?: string | null
   last_sent_at?: string | null
   last_sent_by?: string | null
@@ -54,6 +53,8 @@ export default function PartnerNote({ deals, splits, brands, meName, today }: {
   const periods = useMemo(() => periodsFor(today), [today])
 
   const [who, setWho] = useState<string>('')
+  const [open, setOpen] = useState(false)
+  const [rest, setRest] = useState(false)
   const [brandId, setBrandId] = useState<string>(() => String(brands?.[0]?.id ?? ''))
   const [ticked, setTicked] = useState<PeriodKey[]>(['week', 'month'])
   // HIS WORDS ONLY. The draft is worked out below rather than written into
@@ -75,6 +76,13 @@ export default function PartnerNote({ deals, splits, brands, meName, today }: {
   const week = periods[0]
   const countFor = (id: string) =>
     dealsOf(deals, id, 'lodged', week).length + dealsOf(deals, id, 'settled', week).length
+
+  const busy1 = partners.filter(p => countFor(p.id) > 0)
+  const quiet = partners.filter(p => countFor(p.id) === 0)
+
+  function choose(id: string) {
+    setWho(id); setMine(null); setSaid(''); setOpen(false)
+  }
 
   const partner = partners.find(p => p.id === who) || null
   const brand = useMemo(
@@ -118,7 +126,7 @@ export default function PartnerNote({ deals, splits, brands, meName, today }: {
       .filter(x => t.includes(x) || x === k))
   }
 
-  async function copy(what: 'html' | 'text' | 'to' | 'subject') {
+  async function copy(what: 'html' | 'text' | 'subject') {
     if (!built || !partner) return
     try {
       if (what === 'html' && typeof ClipboardItem !== 'undefined') {
@@ -128,8 +136,7 @@ export default function PartnerNote({ deals, splits, brands, meName, today }: {
         })])
       } else {
         await navigator.clipboard.writeText(
-          what === 'to' ? String(partner.contact_email || '')
-          : what === 'subject' ? built.subject
+          what === 'subject' ? built.subject
           : what === 'text' ? built.text : built.html)
       }
       setCopied(what)
@@ -174,32 +181,60 @@ export default function PartnerNote({ deals, splits, brands, meName, today }: {
         come from.
       </p>
 
-      {/* WHO IT IS FOR. A partner with nothing this week is still listed,
-        * greyed - that they have sent you nothing for a month is its own
-        * kind of news. */}
-      <div className="flex gap-2 flex-wrap mb-3">
-        {partners.map(p => {
-          const n = countFor(p.id)
-          const on = p.id === who
-          return (
-            <button key={p.id}
-              onClick={() => { setWho(p.id); setMine(null); setSaid('') }}
-              className={`text-left border rounded-[10px] px-3 py-2 transition ${
-                on ? 'bg-ink border-ink' : 'bg-card border-line hover:bg-page'} ${
-                n === 0 && !on ? 'opacity-55' : ''}`}>
-              <span className={`block text-[13px] font-bold ${on ? 'text-page' : 'text-ink'}`}>
-                {p.name}
-              </span>
-              <span className={`block text-[11.5px] ${on ? 'text-[#B9B4AC]' : 'text-muted'}`}>
-                {n ? `${n} ${n === 1 ? 'client' : 'clients'} this week` : 'nothing this week'}
-              </span>
+      {/* WHO IT IS FOR.
+        *
+        * 12 Nov 2026. This was one card per partner - fourteen of them, twelve
+        * saying "nothing this week", wrapping onto three rows. Fabio: "too
+        * many, not efficient... why showing all deal cards?"
+        *
+        * A dropdown, and it opens on the ones who actually sent something.
+        * EVERYBODY ELSE IS STILL THERE, behind a press - writing to a partner
+        * who had a quiet week is a real thing to do, and a partner who has
+        * sent nothing since September is only visible if they are listed at
+        * all. It is just not worth eleven lines every time the page loads. */}
+      <div className="relative inline-block mb-3">
+        <button onClick={() => setOpen(o => !o)}
+          className="inline-flex items-center gap-2.5 border border-line bg-card rounded-[10px]
+            px-3.5 py-2.5 text-[13.5px] font-semibold text-ink min-w-[330px] text-left
+            hover:bg-page">
+          <span className={partner ? '' : 'text-muted font-normal'}>
+            {partner ? partner.name : 'Pick a referral partner'}
+          </span>
+          <span className="ml-auto text-[10px] text-faint">{open ? '▲' : '▼'}</span>
+        </button>
+
+        {open && (
+          <div className="absolute z-20 mt-1 w-[360px] max-h-[420px] overflow-y-auto
+            border border-line bg-card rounded-[10px] shadow-lg">
+            {busy1.length > 0 && (
+              <>
+                <p className={CAP + ' px-3.5 pt-2.5 pb-1.5 m-0 bg-[#FCFBF9] dark:bg-panel'}>
+                  Had clients this week
+                </p>
+                {busy1.map(p => (
+                  <Pick key={p.id} p={p} n={countFor(p.id)} hot
+                    onPick={() => choose(p.id)} />
+                ))}
+              </>
+            )}
+
+            <button onClick={() => setRest(r => !r)}
+              className="w-full flex items-center gap-2 px-3.5 py-2.5 text-left
+                border-t border-line-soft bg-[#FCFBF9] dark:bg-panel hover:bg-page">
+              <span className={CAP}>Everybody else</span>
+              <span className="text-[11px] text-faint">{quiet.length}</span>
+              <span className="ml-auto text-[10px] text-faint">{rest ? '▲' : '▼'}</span>
             </button>
-          )
-        })}
-        {partners.length === 0 && (
-          <p className="text-[12.5px] text-faint m-0">
-            No referral partners are set up. Settings → Commission splits.
-          </p>
+            {rest && quiet.map(p => (
+              <Pick key={p.id} p={p} n={0} onPick={() => choose(p.id)} />
+            ))}
+
+            {partners.length === 0 && (
+              <p className="text-[12.5px] text-faint m-0 px-3.5 py-3">
+                No referral partners are set up. Settings → Commission splits.
+              </p>
+            )}
+          </div>
         )}
       </div>
 
@@ -285,18 +320,9 @@ export default function PartnerNote({ deals, splits, brands, meName, today }: {
           </div>
 
           <div className={CARD}>
-            <div className="flex items-baseline gap-2.5 px-3.5 py-2.5 border-b border-line-soft">
-              <span className={CAP}>To</span>
-              <span className="text-[12.5px] text-muted">
-                {partner.contact_email || 'no email on this partner — Settings → Commission splits'}
-              </span>
-              {partner.contact_email && (
-                <button onClick={() => void copy('to')}
-                  className="ml-auto text-[11.5px] font-semibold text-brand-ink">
-                  {copied === 'to' ? 'Copied' : 'Copy'}
-                </button>
-              )}
-            </div>
+            {/* NO "TO" ROW. Fabio, 12 Nov 2026: "I am copying and pasting and
+              * pasting to my email address." He addresses it in his own mail
+              * client, so an address here was a field to maintain for nothing. */}
             <div className="flex items-baseline gap-2.5 px-3.5 py-2.5 border-b border-line-soft">
               <span className={CAP}>Subject</span>
               <span className="text-[12.5px] text-muted">{built?.subject}</span>
@@ -344,5 +370,22 @@ export default function PartnerNote({ deals, splits, brands, meName, today }: {
         </>
       )}
     </div>
+  )
+}
+
+/** One name in the dropdown. The count only appears where there is one. */
+function Pick({ p, n, hot, onPick }: {
+  p: { id: string; name: string }; n: number; hot?: boolean; onPick: () => void
+}) {
+  return (
+    <button onClick={onPick}
+      className={`w-full flex items-baseline gap-2 px-3.5 py-2 text-left text-[13px]
+        border-b border-line-soft last:border-b-0 hover:bg-page ${
+        hot ? 'text-brand-ink font-semibold bg-info-bg' : 'text-faint'}`}>
+      <span className="flex-1">{p.name}</span>
+      <span className={`text-[11.5px] tabular-nums ${hot ? 'text-brand-ink' : 'text-faint'}`}>
+        {n || '—'}
+      </span>
+    </button>
   )
 }

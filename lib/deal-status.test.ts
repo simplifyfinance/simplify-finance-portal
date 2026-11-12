@@ -69,7 +69,10 @@ describe('what a deal is waiting on', () => {
   })
 
   it('says nothing useful for a deal that is finished or lost', () => {
-    expect(say({ status: 'completed' })).toBe('✓ Done')
+    // settled_at, not a status. 12 Nov 2026: the database holds two
+    // statuses, in_progress and lost. These tests passed on a shape
+    // production has never produced.
+    expect(say({ settled_at: '2026-11-01T13:00:00+00:00' })).toBe('\u2713 Done')
     expect(getWaitingOnLabel({ ...base, status: 'lost' })).toBeNull()
     expect(getWaitingOnLabel(null)).toBeNull()
   })

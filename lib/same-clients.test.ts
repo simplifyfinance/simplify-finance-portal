@@ -171,8 +171,13 @@ describe('which of them is still alive', () => {
   // FINISHED IS NOT DEAD. A settled deal is the loan the client actually has,
   // which is the one somebody most often wants off this row.
   it('calls a finished deal settled, not lost', () => {
+    // settled_at, not a status. 12 Nov 2026: the database holds two
+    // statuses, in_progress and lost. These tests passed on a shape
+    // production has never produced.
+    expect(lifeOf({ id: 'a', settled_at: '2026-11-01T13:00:00+00:00' } as any)).toBe('settled')
+    // And a status string on its own proves nothing - none of these exist.
     for (const s of ['completed', 'settled', 'closed']) {
-      expect(lifeOf({ id: 'a', status: s }), `${s} should be settled`).toBe('settled')
+      expect(lifeOf({ id: 'a', status: s }), `${s} is not a real status`).toBe('live')
     }
   })
 

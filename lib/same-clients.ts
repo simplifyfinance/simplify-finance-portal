@@ -72,12 +72,16 @@ export function otherDealsForSameClients<T extends DealLike>(deal: T, all: T[] |
 export type Life = 'live' | 'settled' | 'lost'
 
 const DEAD = ['lost', 'duplicate']
-const FINISHED = ['completed', 'settled', 'closed']
 
+// SETTLED IS settled_at, NOT A STATUS. 12 Nov 2026: this looked for
+// 'completed', 'settled' or 'closed' and the database has only ever held
+// in_progress and lost. So every settled loan on a client's row read as a
+// live application - on the one screen whose whole job is showing somebody
+// what this client already has.
 export function lifeOf(d: DealLike | null | undefined): Life {
   const s = String(d?.status || '').trim().toLowerCase()
   if (DEAD.includes(s)) return 'lost'
-  if (FINISHED.includes(s)) return 'settled'
+  if (String((d as any)?.settled_at || '').trim()) return 'settled'
   return 'live'
 }
 

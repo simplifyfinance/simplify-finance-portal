@@ -1,4 +1,4 @@
-import { pastFactFind } from './deal-phase'
+import { pastFactFind, isFinished, phaseOf } from './deal-phase'
 
 // What a deal is waiting on, worked out from what has actually happened to it.
 //
@@ -43,8 +43,17 @@ export function getWaitingOnLabel(
   creditOfficerName?: string | null,
 ): { text: string; color: 'warning' | 'accent' | 'pro' | 'success' } | null {
   if (!deal) return null
-  if (deal.status === 'completed') return { text: '✓ Done', color: 'success' }
-  if (deal.status === 'lost') return null
+  // isFinished(), not a status nobody writes. 12 Nov 2026: the whole
+// database holds two statuses, in_progress and lost. Every test for
+// 'completed' was dead, so settled deals counted as live work.
+  //
+  // A SETTLED DEAL WAS SAYING "Ready to push to SalesTrekker". It fell past
+  // the dead 'completed' test, walked the ladder, ran out of steps, and got
+  // the end-of-ladder label - which told somebody to push a deal that had
+  // already settled.
+  if (isFinished(deal)) {
+    return phaseOf(deal) === 'lost' ? null : { text: '\u2713 Done', color: 'success' }
+  }
 
   const officer = creditOfficerName || (deal.assigned_credit_officer ? 'Credit officer' : 'Broker')
 

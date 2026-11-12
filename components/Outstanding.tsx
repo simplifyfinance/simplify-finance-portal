@@ -1,4 +1,5 @@
 'use client'
+import { isFinished } from '@/lib/deal-phase'
 import { useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import {
@@ -46,7 +47,11 @@ export default function Outstanding({ deal, me, onUpdated }: {
   // Not lodged yet, or already past it, or dead. Nothing to say.
   const lodged = !!deal?.lodged_at
   const past = !!deal?.preapproval_at || !!deal?.formal_approval_at || !!deal?.settled_at
-  const dead = deal?.status === 'lost' || deal?.status === 'completed'
+  // 12 Nov 2026. The database holds two statuses, in_progress and lost.
+  // Nothing has ever written 'completed', so this test was dead and every
+  // settled deal counted as live. isFinished() reads settled_at, which is
+  // written by the Mark as settled button and by nothing else.
+  const dead = isFinished(deal)
   if (!lodged || past || dead) return null
 
   const here = !!deal?.outstanding_at

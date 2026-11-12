@@ -1,4 +1,5 @@
 'use client'
+import { isFinished } from '@/lib/deal-phase'
 import { everyRow } from '@/lib/the-whole-book'
 import { brokerLabel, sameBroker } from '@/lib/broker-key'
 import { PAGE_WIDE } from '@/lib/page-width'
@@ -14,6 +15,7 @@ type DealRow = {
   bc_completed_at: string | null
   lo_completed_at: string | null
   compliance_completed_at: string | null
+  settled_at: string | null
   credit_assigned_at: string | null
 }
 
@@ -59,7 +61,7 @@ export default function WorkloadClient() {
     // whatever happened to fit. See lib/the-whole-book.ts.
     const { rows: deals, error: dealsError, truncated } = await everyRow<any>((from, to) => supabase
       .from('deals')
-      .select('id, is_test, assigned_broker, assigned_credit_officer, status, bc_completed_at, lo_completed_at, compliance_completed_at, credit_assigned_at')
+      .select('id, is_test, assigned_broker, assigned_credit_officer, status, settled_at, bc_completed_at, lo_completed_at, compliance_completed_at, credit_assigned_at')
       .or(REAL_DEALS_OR)
       .order('id').range(from, to))
     if (dealsError) { setError(dealsError.message); setLoading(false); return }
@@ -76,7 +78,11 @@ export default function WorkloadClient() {
       // deals that reached status='completed' through some other path without those
       // timestamps ever being set (e.g. old test data), which would otherwise wrongly
       // count as "still in BC" forever.
-      const activeDeals = myDeals.filter(d => d.status !== 'completed' && d.status !== 'lost')
+      // 12 Nov 2026. The database holds two statuses, in_progress and lost.
+      // Nothing has ever written 'completed', so this test was dead and every
+      // settled deal counted as live. isFinished() reads settled_at, which is
+      // written by the Mark as settled button and by nothing else.
+      const activeDeals = myDeals.filter(d => !isFinished(d))
       const completed = myDeals.filter(d => d.compliance_completed_at).length
       const inCompliance = activeDeals.filter(d => d.lo_completed_at && !d.compliance_completed_at).length
       const inLO = activeDeals.filter(d => d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at).length
@@ -113,12 +119,13 @@ export default function WorkloadClient() {
     setLoading(false)
 
     const totalDeals = dealRows.length
-    const activeDealRows = dealRows.filter(d => d.status !== 'completed' && d.status !== 'lost')
+    const activeDealRows = dealRows.filter(d => !isFinished(d))
     const stageCounts = {
       inBC: activeDealRows.filter(d => !d.bc_completed_at).length,
       inLO: activeDealRows.filter(d => d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at).length,
       inCompliance: activeDealRows.filter(d => d.lo_completed_at && !d.compliance_completed_at).length,
-      completed: dealRows.filter(d => d.status === 'completed').length,
+      // This read zero on every row, for every officer, since it was written.
+      completed: dealRows.filter(d => !!d.settled_at).length,
     }
     setStageDistribution({ total: totalDeals, ...stageCounts })
   }

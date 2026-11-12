@@ -1,5 +1,6 @@
 'use client'
 import { brokerLabel } from '@/lib/broker-key'
+import { isFinished } from '@/lib/deal-phase'
 import { PAGE_READ } from '@/lib/page-width'
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
@@ -58,8 +59,12 @@ export default function ClientProfilePage() {
   if (loading) return <Loading what="Loading the client" />
   if (!client) return <div className="p-8 text-sm text-gray-400">Client not found</div>
 
-  const activeDeals = deals.filter(d => d.status !== 'completed')
-  const closedDeals = deals.filter(d => d.status === 'completed')
+  // 12 Nov 2026. The database holds two statuses, in_progress and lost.
+  // Nothing has ever written 'completed', so this test was dead and every
+  // settled deal counted as live. isFinished() reads settled_at, which is
+  // written by the Mark as settled button and by nothing else.
+  const activeDeals = deals.filter(d => !isFinished(d))
+  const closedDeals = deals.filter(d => isFinished(d))
   const initials = `${client.first_name?.[0] || ''}${client.last_name?.[0] || ''}`.toUpperCase()
 
   // Number('300,000') is NaN and NaN >= 250000 is false, so this flag has never

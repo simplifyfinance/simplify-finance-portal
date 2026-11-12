@@ -214,7 +214,8 @@ export function myWork(deals: any[], officerId: any, now: Date = new Date()): Qu
   if (!me) return []
   const items: QueueItem[] = []
   for (const deal of deals || []) {
-    if (txt(deal?.status) === 'lost' || txt(deal?.status) === 'completed') continue
+    // 'completed' is a status nothing writes - see lib/dashboard-funnel.test.ts.
+    if (txt(deal?.status) === 'lost' || txt(deal?.settled_at)) continue
     const stage = stageFor(deal, me)
     if (!stage) continue
     const o = ownerOf(deal, stage)
