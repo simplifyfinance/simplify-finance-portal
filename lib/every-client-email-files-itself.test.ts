@@ -55,11 +55,6 @@ const NOT_TO_A_CLIENT: Record<string, string> = {
   // ASKS OUR OWN REQUESTING TEAM TO CHASE WHAT IS STILL OUT. It goes where the
   // original request went, which is one of us, never the client. 11 Nov 2026.
   'app/api/chase-documents/route.ts': 'asks our requesting team to chase; the client is never on it',
-  // THE FRIDAY EMAIL. The management one goes to us. The referral partner one
-  // is written to a referrer and goes to us to forward unless somebody has
-  // turned that partner to direct - and a referrer is not a client of ours.
-  // 11 Nov 2026.
-  'app/api/weekly-lodgements/route.ts': 'the weekly lodged and settled summary; to us, or to a referral partner',
   // GOES TO A CLIENT, AND HAS NO DEAL BEHIND IT. Fabio, 22 Oct 2026: "on
   // templates folder only ones associated to deal as those are the one that
   // have bcc". The Templates page has no deal card, so there is no code to
