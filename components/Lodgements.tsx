@@ -10,6 +10,7 @@ import {
 } from '@/lib/who-brought-us-this'
 import { viewFor, dealsFor, mayEmail, VIEW_NOTE } from '@/lib/who-sees-the-numbers'
 import LodgementSummary from '@/components/LodgementSummary'
+import PartnerNote from '@/components/PartnerNote'
 
 // WHAT WE LODGED AND SETTLED, GROUPED BY BROKER.
 //
@@ -51,12 +52,16 @@ function spanFor(kind: Kind, now: Date): { from: string; to: string; label: stri
 }
 
 export default function Lodgements({
-  deals: everything, brokerNames, brokerRows, role, brokerKey,
+  deals: everything, brokerNames, brokerRows, splits, brands, role, brokerKey, meName,
 }: {
   deals: any[]
   brokerNames?: Record<string, string>
   /** public.brokers, carrying team - which group each broker is in. */
   brokerRows?: any[]
+  /** public.commission_splits - the referral partners and their saved note. */
+  splits?: any[]
+  /** settings.brands - only the banner on the partner note uses these. */
+  brands?: any[]
   role?: string
   brokerKey?: string
   meName?: string
@@ -70,30 +75,6 @@ export default function Lodgements({
   const sum = totals(deals, span)
   const brokers = byBroker(deals, span, brokerNames)
   const ahead = tabCounts(deals, now)
-
-  const [draft, setDraft] = useState<any>(null)
-  const [busy, setBusy] = useState('')
-  const [said, setSaid] = useState('')
-
-  async function run(preview: boolean) {
-    setBusy(preview ? 'preview' : 'send'); setSaid('')
-    try {
-      const res = await fetch('/api/weekly-lodgements', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ preview }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok || !data?.ok) { setSaid(data?.error || 'That did not work.'); setBusy(''); return }
-      setDraft(data)
-      if (!preview) {
-        const went = [data.management, ...(data.referrers || [])].filter((x: any) => x?.sent).length
-        setSaid(`${went} ${went === 1 ? 'email' : 'emails'} sent.`)
-      }
-    } catch (e: any) {
-      setSaid(e?.message || 'That did not work.')
-    }
-    setBusy('')
-  }
 
   return (
     <div className={PAGE_WIDE + ' px-6 py-6'}>
@@ -130,50 +111,18 @@ export default function Lodgements({
           kind={kind} label={span.label} />
       )}
 
-      {/* THE FRIDAY EMAIL. Admin only - one of these goes to a referral
-        * partner. See lib/who-sees-the-numbers.ts. */}
-      {kind === 'week' && mayEmail(view) && (
-        <div className={CARD + ' mt-4'}>
-          <p className="text-[13.5px] font-bold text-ink m-0 mb-0.5">The Friday email</p>
-          <p className="text-[11.5px] text-faint m-0 mb-2.5 leading-[1.45]">
-            One for management, and one for each referral partner who had something this week.
-            A partner with nothing gets nothing.
-          </p>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button onClick={() => void run(true)} disabled={!!busy}
-              className="text-[12px] font-semibold rounded-lg px-3 py-1.5 border border-line
-                bg-card text-muted hover:bg-page disabled:opacity-50">
-              {busy === 'preview' ? 'Reading…' : 'Show me what would go'}
-            </button>
-            {draft && (
-              <button onClick={() => void run(false)} disabled={!!busy}
-                className="text-[12px] font-semibold rounded-lg px-3 py-1.5 bg-ink text-page
-                  disabled:opacity-50">
-                {busy === 'send' ? 'Sending…' : `Send ${1 + (draft.referrers?.length || 0)}`}
-              </button>
-            )}
-            {said && <span className="text-[11.5px] text-done font-semibold">{said}</span>}
-          </div>
-
-          {draft && (
-            <div className="mt-3">
-              {[draft.management, ...(draft.referrers || [])].filter(Boolean).map((e: any, i: number) => (
-                <div key={i} className="border border-card-line bg-page rounded-[10px] px-3 py-2.5 mt-2">
-                  <div className="flex items-baseline gap-2 flex-wrap">
-                    <span className="text-[12px] font-bold text-ink">{e.subject}</span>
-                    <span className="ml-auto text-[11px] text-faint">
-                      {e.to?.length ? e.to.join(', ') : 'nobody'}
-                    </span>
-                  </div>
-                  {e.error
-                    ? <p className="text-[11.5px] text-chase m-0 mt-1">{e.error}</p>
-                    : <pre className="text-[11.5px] text-body leading-[1.55] m-0 mt-1.5
-                        whitespace-pre-wrap font-sans">{e.body}</pre>}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+      {/* A NOTE TO A REFERRAL PARTNER, where the Friday email used to be.
+        *
+        * 12 Nov 2026. Fabio: "the whole thing of the Friday email is shit."
+        * The fault was the automation - it wrote the email, chose the week and
+        * sent four at once from notifications@ on a timer, with nothing but a
+        * preview between him and the send.
+        *
+        * Admin only, because it goes outside the business. See
+        * lib/who-sees-the-numbers.ts and components/PartnerNote.tsx. */}
+      {mayEmail(view) && (
+        <PartnerNote deals={deals} splits={splits || []} brands={brands || []}
+          meName={meName} />
       )}
 
       {/* AND WHAT IS COMING. A week's result with no forward line is half the

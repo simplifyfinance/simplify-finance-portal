@@ -36,11 +36,22 @@ export default async function LodgementsPage() {
     if (k && n) brokerNames[k] = n
   }
 
+  // THE REFERRAL PARTNERS, their contact and the note he saved last time, and
+  // the brands - only the banner on the partner note uses those. See
+  // components/PartnerNote.tsx.
+  const [{ data: splitRows }, { data: settings }] = await Promise.all([
+    supabase.from('commission_splits')
+      .select('id, name, kind, who, contact_email, note_template, last_sent_at, last_sent_by, active'),
+    supabase.from('settings').select('brands').eq('id', 'singleton').maybeSingle(),
+  ])
+
   return (
     <Lodgements
       deals={realDealsOnly(rows as any[])}
       brokerNames={brokerNames}
       brokerRows={(brokerRows || []) as any[]}
+      splits={(splitRows || []) as any[]}
+      brands={((settings as any)?.brands || []) as any[]}
       role={(profile as any)?.role || ''}
       brokerKey={(profile as any)?.broker_key || ''}
       meName={(profile as any)?.full_name || ''}
