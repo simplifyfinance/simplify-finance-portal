@@ -97,6 +97,31 @@ export function stageWaitingOn(deal: any): string | null {
 // which is what lib/who-did-this-stage.ts was built for.
 const STAGE_OF: Record<string, Stage> = { BC: 'bc', LO: 'lo', Compliance: 'compliance' }
 
+/**
+ * WHEN THE STAGE SITTING WITH US ACTUALLY OPENED.
+ *
+ * 12 Nov 2026. The draft used to line deals up by `credit_assigned_at`, which
+ * is when the DEAL was handed to this assessor - so a file reassigned to her
+ * yesterday read as the newest thing on her list even though it reached BC
+ * three weeks ago, and went to the bottom of a chronological day.
+ *
+ * Fabio: "whichever deal cards hit the BC stage or the LO stage,
+ * chronologically, and then just line them up." That is the stage opening,
+ * which the portal already records - the moment the stage before it closed.
+ * See stageWindow() in lib/who-did-this-stage.ts, which the deal card and the
+ * pipeline both read, so this cannot disagree with them.
+ *
+ * Null on Fact Find, which has no stage before it to close, and on a deal
+ * whose ladder has not been walked - the caller falls back to the dates it
+ * already had.
+ */
+export function stageOpenedAt(deal: any): string | null {
+  const label = stageWaitingOn(deal)
+  const stage = label ? STAGE_OF[label] : null
+  if (!stage) return null
+  return stageWindow(deal, stage).startedAt
+}
+
 export function creditHasIt(deal: any): { officerId: string; name: string } | null {
   const label = stageWaitingOn(deal)
   const stage = label ? STAGE_OF[label] : null
@@ -199,8 +224,23 @@ export function splitAtLine(items: string[]): { today: string[]; queue: string[]
   return { today: items.slice(0, i), queue: items.slice(i + 1).filter(x => x !== LINE) }
 }
 
-/** Where a day starts from: everything drafted, line at the bottom. */
-export function startingOrder(ids: string[], saved?: string[] | null): string[] {
+/**
+ * WHERE A DAY STARTS FROM.
+ *
+ * `empty` starts with NOTHING above the line, and it is how a credit
+ * assessor's day now opens.
+ *
+ * 12 Nov 2026. Fabio, on an assessor holding fourteen files: "14 is too many.
+ * I think on average we can do 4 or 5... they will pick the ones that they're
+ * doing today." Opening with all fourteen above the line says the portal
+ * believes she will do fourteen, which nobody believes, and a day nobody
+ * believes is one nobody edits - they press the button on it and it means
+ * nothing.
+ *
+ * Everything is still listed, in the drafted order. She pulls up the four or
+ * five she is actually doing.
+ */
+export function startingOrder(ids: string[], saved?: string[] | null, empty = false): string[] {
   // A SAVED PLAN DECIDES THE LINE, NOT THE DRAFT. Once somebody has said
   // "this is my day", what they kept above the line is their day - and a deal
   // that arrived since then goes to the queue rather than silently into it.
@@ -209,7 +249,7 @@ export function startingOrder(ids: string[], saved?: string[] | null): string[] 
     const rest = ids.filter(id => !above.includes(id))
     return [...above, LINE, ...rest]
   }
-  return [...ids, LINE]
+  return empty ? [LINE, ...ids] : [...ids, LINE]
 }
 
 // A NOTE ABOUT TODAY, NOT ABOUT THE DEAL.

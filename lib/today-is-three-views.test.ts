@@ -12,6 +12,7 @@
 // This file is the lock on all of it, and on the week - see lib/the-week.ts.
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
+import { LINE, splitAtLine, startingOrder } from './the-days-plan'
 
 const page = readFileSync('components/TodayPlan.tsx', 'utf8')
 const dash = readFileSync('app/(app)/dashboard/page.tsx', 'utf8')
@@ -147,8 +148,25 @@ describe('it is still the portal’s own colours', () => {
 
 describe('the line', () => {
   it('the day is drawn from one order with the line in it', () => {
-    expect(page).toContain('startingOrder(mine.map(d => d.id)')
+    expect(page).toContain('startingOrder(')
+    expect(page).toContain('mine.map(d => d.id)')
     expect(page).toContain('splitAtLine(dayOrder).today')
+  })
+
+  // 12 Nov 2026. Fabio, on an assessor holding fourteen files: "14 is too
+  // many... they will pick the ones that they're doing today." Opening with
+  // all fourteen above the line is a day nobody believes, and a day nobody
+  // believes is one nobody edits before pressing the button.
+  it('a credit assessor opens with nothing above the line', () => {
+    expect(page).toContain("view === 'credit')")
+    expect(startingOrder(['a', 'b'], null, true)).toEqual([LINE, 'a', 'b'])
+    expect(splitAtLine(startingOrder(['a', 'b'], null, true)))
+      .toEqual({ today: [], queue: ['a', 'b'] })
+  })
+
+  // AND A BROKER'S DAY IS UNCHANGED. Only the credit view asked for this.
+  it('leaves every other view exactly as it was', () => {
+    expect(startingOrder(['a', 'b'])).toEqual(['a', 'b', LINE])
   })
 
   it('and only what is above it is saved as the day', () => {

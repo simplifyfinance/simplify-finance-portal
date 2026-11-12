@@ -3,7 +3,7 @@ import { SETTINGS_PANES } from '@/lib/settings-panes'
 import { LENDER_PANES } from '@/lib/lender-panes'
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut, BarChart3, Percent, TrendingUp, CalendarCheck, Mail, BookOpen, Contact, ListChecks, ClipboardList } from "lucide-react"
+import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut, BarChart3, Percent, TrendingUp, CalendarCheck, Mail, BookOpen, Contact, ClipboardList } from "lucide-react"
 import { useEffect, useState } from "react"
 import { createSupabaseBrowser } from "@/lib/supabase-browser"
 import { can, roleLabel as formatRoleLabel } from '@/lib/permissions'
@@ -18,9 +18,21 @@ const nav = [
   // unchanged - every link and bookmark in the portal still works.
   { label: "Today", href: "/dashboard", icon: LayoutDashboard },
   { label: "Deals", href: "/deals", icon: Briefcase },
-  // A CREDIT OFFICER'S OWN LIST, in the order they work it. Alan's item 3,
-  // 11 Nov 2026. Deals is every deal; this is what is waiting on you.
-  { label: "My work", href: "/my-work", icon: ListChecks },
+  // MY WORK WAS HERE, AND IT WAS TODAY TWICE.
+  //
+  // 12 Nov 2026. Fabio: "my work, I don't like it. Maybe I like today because
+  // it's today... let's remove that and it's today."
+  //
+  // He is right and it was my mistake to build both. My work was a permanent
+  // queue of everything allocated to one assessor; Today is that same list
+  // with a line through it, and the two did not even agree on whose deal it
+  // was - My work asked who owns the unfinished stage, Today asks what
+  // assigned_credit_officer says.
+  //
+  // NOTHING WAS LOST WITH THE PAGE. Marking a deal urgent with a reason, and
+  // credit saying they cannot action one, both live on the deal itself, where
+  // the work actually happens. See MarkUrgent and CreditCannotAction in
+  // DealPageClient.
   { label: "Pipeline", href: "/pipeline", icon: TrendingUp },
   // WHAT WE LODGED AND SETTLED, AND WHO BROUGHT IT. 11 Nov 2026 - the
   // Teams channel, except nobody types in it. See lib/who-brought-us-this.ts.

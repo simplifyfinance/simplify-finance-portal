@@ -189,7 +189,17 @@ export default function MyDay({
       {deals.length === 0 ? (
         <div className={SOFT}>Nothing is sitting with you. Enjoy it.</div>
       ) : (
-        <>
+        /* SEVEN ROWS, THEN IT SCROLLS.
+         *
+         * 12 Nov 2026. Fabio, on an assessor holding fourteen files: "7 is the
+         * maximum I want to show because I want it to be able to scroll,
+         * because otherwise this box looks ridiculous."
+         *
+         * Everything is still here and still in order - the box stops growing,
+         * which is a different thing from the list being cut short. A day of
+         * four or five never reaches the limit, so the scroll bar only appears
+         * on the days it is needed. */
+        <div className="max-h-[332px] overflow-y-auto pr-1">
           {today.map((id, i) => row(id, i))}
 
           {/* THE LINE. Drag it to where the day ends. */}
@@ -208,7 +218,7 @@ export default function MyDay({
           </div>
 
           {queue.map(id => row(id, -1))}
-        </>
+        </div>
       )}
 
       <div className="flex gap-2.5 items-center mt-4 flex-wrap">

@@ -120,8 +120,19 @@ export default async function Dashboard() {
       {/* THE WEEK, ABOVE THE DAY. Alan's item 1 - see lib/lodging-when.ts and
         * lib/the-week-so-far.ts. Both read the deals this page already has, so
         * neither can disagree with the board about what lodged. */}
-      <ThisWeek deals={deals || []} />
-      <DueToLodge deals={deals || []} brokerNames={brokerNames} canSet={!!seesAll} />
+      {/* NOT FOR A CREDIT ASSESSOR.
+        *
+        * 12 Nov 2026. Fabio: "credit doesn't care about settlements. So a
+        * credit assessor does not need to see any settlements."
+        *
+        * Both of these are a broker's and management's business - what lodged
+        * and settled this week, and what is due to lodge. They were the first
+        * two things Katie read every morning and neither was her work. Her
+        * page starts at her day. */}
+      {!creditOfficerId && <ThisWeek deals={deals || []} />}
+      {!creditOfficerId && (
+        <DueToLodge deals={deals || []} brokerNames={brokerNames} canSet={!!seesAll} />
+      )}
       <TodayPlan
         deals={deals || []}
         officers={officers}

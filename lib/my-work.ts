@@ -26,6 +26,14 @@ const DAY = 86_400_000
 
 export { STAGE_LABEL }
 
+function daysSince(at: any, now: Date): number | null {
+  const t = txt(at)
+  if (!t) return null
+  const ms = new Date(t).getTime()
+  if (!Number.isFinite(ms)) return null
+  return Math.max(0, Math.floor((now.getTime() - ms) / DAY))
+}
+
 // --- urgent -------------------------------------------------------------------
 
 export type Urgent = { at: string; by: string | null; byName: string; why: string }
@@ -148,34 +156,19 @@ export function stuckPatch(
 /** Cleared the moment somebody picks it up again - it is not a badge. */
 export const UNSTUCK_PATCH = { stuck_at: null, stuck_by_name: null, stuck_why: null }
 
-// --- the queue ----------------------------------------------------------------
-
-export type QueueItem = {
-  deal: any
-  stage: Stage
-  /** How long it has been theirs. Null where nobody wrote a date. */
-  waitingDays: number | null
-  urgent: Urgent | null
-  /** A BC or LO the broker sent back. Goes to the top of the day. */
-  isRework: boolean
-  /** The broker's own place for this deal, shown beside it. */
-  brokerPlace: number | null
-  /** Where this row sits once somebody has dragged it. */
-  order: number | null
-}
-
-function daysSince(at: any, now: Date): number | null {
-  const t = txt(at)
-  if (!t) return null
-  const ms = new Date(t).getTime()
-  if (!Number.isFinite(ms)) return null
-  return Math.max(0, Math.floor((now.getTime() - ms) / DAY))
-}
-
-function num(v: any): number | null {
-  const n = Number(v)
-  return Number.isFinite(n) ? n : null
-}
+// --- WHOSE STAGE IS THIS ------------------------------------------------------
+//
+// THE QUEUE THAT USED TO LIVE HERE IS GONE. 12 Nov 2026. Fabio: "my work, I
+// don't like it... let's remove that and it's today."
+//
+// It was Today twice. myWork(), sortQueue(), orderAfterMove() and the
+// broker-place wording built a second, permanent ordering of the same deals
+// Today already orders - and the two did not agree on whose deal it was. A
+// second answer to one question is the thing this portal keeps getting bitten
+// by, so it is deleted rather than left sitting here for somebody to wire up.
+//
+// What stays is what the DEAL PAGE uses: urgent with a reason, "credit cannot
+// action this", and the one function below.
 
 /**
  * THE STAGE THIS OFFICER HAS OPEN ON THIS DEAL, OR NULL.
@@ -200,79 +193,4 @@ export function stageFor(deal: any, officerId: string): Stage | null {
     if (o?.officerId && o.officerId === txt(officerId)) return s
   }
   return null
-}
-
-/**
- * EVERYTHING ALLOCATED TO ONE PERSON, IN THE ORDER THEY WORK IT.
- *
- * Their own order first where they have dragged anything. Underneath that the
- * default is the honest one: a rework has a client waiting and a broker
- * stopped, then anything urgent, then whatever has been sitting longest.
- */
-export function myWork(deals: any[], officerId: any, now: Date = new Date()): QueueItem[] {
-  const me = txt(officerId)
-  if (!me) return []
-  const items: QueueItem[] = []
-  for (const deal of deals || []) {
-    // 'completed' is a status nothing writes - see lib/dashboard-funnel.test.ts.
-    if (txt(deal?.status) === 'lost' || txt(deal?.settled_at)) continue
-    const stage = stageFor(deal, me)
-    if (!stage) continue
-    const o = ownerOf(deal, stage)
-    items.push({
-      deal, stage,
-      waitingDays: daysSince(o?.since, now),
-      urgent: urgentOn(deal),
-      isRework: stage !== 'compliance' && !!reworkOn(deal, stage as BackStage),
-      brokerPlace: num(deal?.broker_priority),
-      order: num(deal?.credit_order),
-    })
-  }
-  return sortQueue(items)
-}
-
-export function sortQueue(items: QueueItem[]): QueueItem[] {
-  return items.slice().sort((a, b) => {
-    // A row somebody has placed stays where they put it. Unplaced rows fall in
-    // underneath by the default, rather than jumping about as dates change.
-    if (a.order !== null || b.order !== null) {
-      if (a.order === null) return 1
-      if (b.order === null) return -1
-      if (a.order !== b.order) return a.order - b.order
-    }
-    const rank = (i: QueueItem) => (i.isRework ? 0 : i.urgent ? 1 : 2)
-    const r = rank(a) - rank(b)
-    if (r !== 0) return r
-    return (b.waitingDays ?? -1) - (a.waitingDays ?? -1)
-  })
-}
-
-/**
- * The orders to write after a row has been dragged.
- *
- * Every row is numbered, not just the one that moved - a list half placed and
- * half defaulted is a list that rearranges itself behind somebody's back.
- */
-export function orderAfterMove(items: QueueItem[], from: number, to: number): Array<{
-  id: string; credit_order: number
-}> {
-  const next = items.slice()
-  if (from < 0 || from >= next.length || to < 0 || to >= next.length) return []
-  const [moved] = next.splice(from, 1)
-  next.splice(to, 0, moved)
-  return next.map((i, n) => ({ id: String(i.deal?.id || ''), credit_order: n + 1 }))
-}
-
-/** "Pat's 1st", "Jess's 2nd" — the broker's own opinion, said once. */
-export function brokerPlaceWords(item: QueueItem, brokerName?: string): string {
-  if (item.brokerPlace === null || item.brokerPlace <= 0) return ''
-  const who = txt(brokerName) || txt(item.deal?.assigned_broker)
-  const first = who.split(/\s+/)[0]
-  return `${first ? first + '’s ' : ''}${ordinal(item.brokerPlace)}`
-}
-
-export function ordinal(n: number): string {
-  const s = ['th', 'st', 'nd', 'rd']
-  const v = n % 100
-  return n + (s[(v - 20) % 10] || s[v] || s[0])
 }

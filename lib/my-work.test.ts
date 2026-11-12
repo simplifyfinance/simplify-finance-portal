@@ -7,8 +7,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   urgentOn, urgentLine, urgentPatch, validateUrgent, mayClearUrgent, NOT_URGENT_PATCH,
-  stuckOn, validateStuck, stuckPatch,
-  myWork, sortQueue, orderAfterMove, stageFor, brokerPlaceWords, ordinal,
+  stuckOn, validateStuck, stuckPatch, stageFor,
 } from './my-work'
 
 const NOW = new Date('2026-11-11T00:00:00')
@@ -97,86 +96,6 @@ describe('a deal credit cannot action goes back to the broker', () => {
   })
 })
 
-describe('the queue', () => {
-  it('is only what is allocated to this person', () => {
-    const deals = [mine(), mine({ bc_owner_officer: 'kylie' }), mine({ status: 'lost' })]
-    expect(myWork(deals, 'mel', NOW)).toHaveLength(1)
-  })
-
-  it('and a finished stage is not work', () => {
-    expect(myWork([mine({ bc_completed_at: ago(1) })], 'mel', NOW)).toHaveLength(0)
-  })
-
-  it('counts the days from when it became theirs', () => {
-    expect(myWork([mine({ bc_owner_since: ago(3) })], 'mel', NOW)[0].waitingDays).toBe(3)
-  })
-
-  // Until somebody drags something, the default is the honest one.
-  it('starts urgent above everything that is not urgent', () => {
-    const plain = mine({ id: 'plain', bc_owner_since: ago(9) })
-    const hot = mine({
-      id: 'hot', bc_owner_since: ago(1),
-      urgent_at: ago(1), urgent_by: 'u1', urgent_by_name: 'Jess', urgent_why: 'Finance clause Friday.',
-    })
-    expect(myWork([plain, hot], 'mel', NOW).map(i => i.deal.id)).toEqual(['hot', 'plain'])
-  })
-
-  it('then by whatever has been sitting longest', () => {
-    const old = mine({ id: 'old', bc_owner_since: ago(9) })
-    const fresh = mine({ id: 'fresh', bc_owner_since: ago(1) })
-    expect(myWork([fresh, old], 'mel', NOW).map(i => i.deal.id)).toEqual(['old', 'fresh'])
-  })
-
-  // FABIO'S ANSWER: credit can re-order their own queue. A row somebody has
-  // placed stays where they put it.
-  it('keeps a row where its owner put it', () => {
-    const a = mine({ id: 'a', credit_order: 2, bc_owner_since: ago(9) })
-    const b = mine({ id: 'b', credit_order: 1, bc_owner_since: ago(1) })
-    expect(myWork([a, b], 'mel', NOW).map(i => i.deal.id)).toEqual(['b', 'a'])
-  })
-
-  it('and anything unplaced falls in underneath', () => {
-    const placed = mine({ id: 'placed', credit_order: 1, bc_owner_since: ago(1) })
-    const loose = mine({ id: 'loose', bc_owner_since: ago(9) })
-    expect(sortQueue(myWork([loose, placed], 'mel', NOW)).map(i => i.deal.id))
-      .toEqual(['placed', 'loose'])
-  })
-
-  // A list half placed and half defaulted rearranges itself behind somebody's
-  // back, so moving one row numbers all of them.
-  it('numbers every row when one is moved', () => {
-    const items = myWork([mine({ id: 'a' }), mine({ id: 'b' }), mine({ id: 'c' })], 'mel', NOW)
-    const next = orderAfterMove(items, 2, 0)
-    expect(next.map(n => n.credit_order)).toEqual([1, 2, 3])
-    expect(next[0].id).toBe(items[2].deal.id)
-    expect(next).toHaveLength(3)
-  })
-
-  it('and refuses a move that goes nowhere', () => {
-    const items = myWork([mine()], 'mel', NOW)
-    expect(orderAfterMove(items, 0, 5)).toEqual([])
-  })
-})
-
-describe("the broker's own order is a marker, not the sort", () => {
-  it('says whose opinion it is', () => {
-    const items = myWork([mine({ broker_priority: 1 })], 'mel', NOW)
-    expect(brokerPlaceWords(items[0], 'Pat Walsh')).toBe('Pat’s 1st')
-    expect(brokerPlaceWords(items[0], '')).toBe('jess’s 1st')
-  })
-
-  it('says nothing where the broker has no opinion', () => {
-    expect(brokerPlaceWords(myWork([mine()], 'mel', NOW)[0], 'Pat Walsh')).toBe('')
-  })
-
-  // It does not decide the order - that is the whole of Fabio's answer.
-  it('does not move a deal up the queue', () => {
-    const second = mine({ id: 'second', broker_priority: 1, bc_owner_since: ago(1) })
-    const first = mine({ id: 'first', bc_owner_since: ago(9) })
-    expect(myWork([second, first], 'mel', NOW).map(i => i.deal.id)).toEqual(['first', 'second'])
-  })
-
-  it('counts in words a person would use', () => {
-    expect([1, 2, 3, 4, 11, 21].map(ordinal)).toEqual(['1st', '2nd', '3rd', '4th', '11th', '21st'])
-  })
-})
+// THE QUEUE'S OWN TESTS WENT WITH IT. 12 Nov 2026 - My work was Today twice,
+// so myWork(), sortQueue(), orderAfterMove() and the broker-place wording are
+// deleted. What is left here is what the deal page still uses.

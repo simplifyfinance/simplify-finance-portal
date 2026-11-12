@@ -13,7 +13,7 @@ import { sameBroker } from '@/lib/broker-key'
 import { whyNoPlan, lastWorkdayBefore } from '@/lib/the-week'
 import {
   draftDay, finishedOn, finishedAcross, planBoard, notTold, stageWaitingOn, creditHasIt,
-  reworkWaiting, askWaiting,
+  reworkWaiting, askWaiting, stageOpenedAt,
   startingOrder, splitAtLine, withNote,
   type PlanDeal, type Plan,
 } from '@/lib/the-days-plan'
@@ -161,7 +161,9 @@ export default function TodayPlan({
       .filter(live)
       .map(d => ({
         id: d.id, name: d.deal_name, stage: stageWaitingOn(d) || '',
-        since: d.credit_assigned_at || d.created_at,
+        // CHRONOLOGICAL BY WHEN THE STAGE OPENED, not by when the deal was
+        // handed to this person. See stageOpenedAt() - 12 Nov 2026.
+        since: stageOpenedAt(d) || d.credit_assigned_at || d.created_at,
         // TODAY'S ASK ONLY. Yesterday's slot is not today's - see askOn() in
         // lib/a-slot-each.ts, which is also why this stopped being d.priority.
         priority: askWaiting(d, today),
@@ -173,7 +175,10 @@ export default function TodayPlan({
   }, [deals, meOfficerId, brokerKey])
 
   // THE DRAFT, THEN WHATEVER THEY HAVE DONE TO IT SINCE.
-  const dayOrder = order ?? startingOrder(mine.map(d => d.id), mySaved?.deals?.map(d => d.id) || null)
+  // A CREDIT ASSESSOR'S DAY OPENS EMPTY and she pulls up what she is doing.
+  // See startingOrder() - 12 Nov 2026, on an assessor holding fourteen files.
+  const dayOrder = order ?? startingOrder(
+    mine.map(d => d.id), mySaved?.deals?.map(d => d.id) || null, view === 'credit')
   const todayIds = splitAtLine(dayOrder).today
 
   // YESTERDAY IS THE LAST DAY ANYBODY WAS AT WORK, which on a Monday is
@@ -344,6 +349,36 @@ export default function TodayPlan({
     </Card>
   )
 
+  // TELL MANAGEMENT, NOT WATCH THE TEAM.
+  //
+  // 12 Nov 2026. Fabio: "the team today, you don't need to show Mellissa and
+  // anyone else. So a credit assessor just works on their file. There should
+  // be something on the right-hand side that says to remind them to share
+  // their day with management."
+  //
+  // The board of who has and has not told the brokers is a management view and
+  // it stays on the admin screen. What an assessor needs here is whether SHE
+  // has, and the button that does it is on the left.
+  const tellBox = (
+    <Card>
+      <div className={CAP}>Your day, shared</div>
+      {saved ? (
+        <div className="text-[13px] text-done bg-done-bg border border-done-edge rounded-lg px-3 py-2.5 leading-relaxed">
+          &#10003; Shared at {new Date(saved).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}
+          {' '}&mdash; {todayIds.length} {todayIds.length === 1 ? 'deal' : 'deals'}.
+          <div className="text-muted mt-1">Change the list and press the button again.</div>
+        </div>
+      ) : (
+        <div className="text-[13px] text-body bg-info-bg border border-info-edge rounded-lg px-3 py-2.5 leading-relaxed">
+          The brokers and management have not seen your day yet.
+          <div className="text-muted mt-1">
+            Pull up the ones you are doing, then press <b>Yes &mdash; this is my day</b>.
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+
   const waitingBox = elsewhere.length > 0 && (
     <Card>
       {/* WHOSE DEALS. 12 Nov 2026: this counts only the deals of whoever is
@@ -507,7 +542,7 @@ export default function TodayPlan({
         </div>
 
         <div className="w-full lg:w-[330px] lg:flex-none">
-          {teamBox}
+          {view === 'credit' ? tellBox : teamBox}
           {waitingBox}
         </div>
       </div>
