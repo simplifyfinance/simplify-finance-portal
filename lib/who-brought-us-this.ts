@@ -219,3 +219,55 @@ export function lenderOf(deal: any): string {
   return txt(deal?.settled_lender) || txt(deal?.lodged_lender) || txt(deal?.lender)
     || txt((deal as any)?.lenders?.name)
 }
+
+// --- one broker's own referral breakdown --------------------------------------
+
+/**
+ * WHO BROUGHT THIS BROKER'S WORK.
+ *
+ * 12 Nov 2026. Fabio: "admin need to per broker number of deals / name of the
+ * clients / dollar amount and within the broker the breakdown on referral
+ * splits."
+ *
+ * So the referral lives twice on purpose: on the row, because you want to know
+ * which deal came from where, and summed underneath, because "two of Mark's
+ * four were Justin's" is the sentence that manages the relationship. The same
+ * figures, read the two ways a person reads them.
+ */
+export function referralInside(line: { lodged: any[]; settled: any[] }): Line2[] {
+  const rows = new Map<string, Line2>()
+  const take = (d: any, which: Event) => {
+    const key = referralKey(d)
+    if (!rows.has(key)) {
+      rows.set(key, {
+        key, name: referralName(d), terms: termsWords(d),
+        lodged: [], settled: [], lodgedAmount: 0, settledAmount: 0,
+      })
+    }
+    rows.get(key)![which].push(d)
+  }
+  for (const d of line?.lodged || []) take(d, 'lodged')
+  for (const d of line?.settled || []) take(d, 'settled')
+  for (const r of rows.values()) {
+    r.lodgedAmount = money(r.lodged)
+    r.settledAmount = money(r.settled)
+  }
+  // UNANSWERED LAST. It is a thing to go and fix rather than a referral, and
+  // putting it at the top of somebody's week reads like an accusation.
+  return [...rows.values()].sort((a, b) => {
+    const rank = (x: Line2) => (x.key === UNANSWERED ? 1 : 0)
+    return rank(a) - rank(b)
+      || (b.lodged.length + b.settled.length) - (a.lodged.length + a.settled.length)
+      || a.name.localeCompare(b.name)
+  })
+}
+
+/** Every deal in one broker's week, lodged then settled, for the table. */
+export function dealsInside(line: { lodged: any[]; settled: any[] }): Array<{
+  deal: any; what: Event
+}> {
+  return [
+    ...(line?.lodged || []).map(deal => ({ deal, what: 'lodged' as Event })),
+    ...(line?.settled || []).map(deal => ({ deal, what: 'settled' as Event })),
+  ]
+}

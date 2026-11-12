@@ -5,9 +5,7 @@
 // of the whole office. Fabio: "these friday email capabilities and reporting
 // only available to whomever have admin access?"
 import { describe, it, expect } from 'vitest'
-import {
-  viewFor, dealsFor, showsMoney, showsReferral, showsBrokers, mayEmail, VIEW_NOTE,
-} from './who-sees-the-numbers'
+import { viewFor, dealsFor, mayEmail, VIEW_NOTE } from './who-sees-the-numbers'
 
 // The three roles as they actually stand: five admins, two brokers, ten staff.
 describe('the role decides, and nobody is named', () => {
@@ -60,41 +58,31 @@ describe('whose deals', () => {
   })
 })
 
-describe('which columns', () => {
-  // Commission is admin only everywhere else in this portal. A report printing
-  // "Justin Cornock 50%, Simplify 50%" is the same information in a hat.
-  it('keeps referral terms to admin', () => {
-    expect(showsReferral('everything')).toBe(true)
-    expect(showsReferral('mine')).toBe(false)
-    expect(showsReferral('team')).toBe(false)
+describe('what the three views actually differ on', () => {
+  // THIS TEST SAID THE OPPOSITE FOR A DAY.
+  //
+  // The first version kept dollars and referral terms to admin, on the
+  // reasoning that commission is admin only everywhere else in the portal.
+  // Fabio, asked straight out: the whole team, same detail. The people doing
+  // the work can see the work, and a report somebody has to ask a colleague to
+  // read out is a report nobody uses.
+  it('shows staff everything an admin sees', () => {
+    expect(VIEW_NOTE.team).toBe(VIEW_NOTE.everything)
   })
 
-  it('keeps one broker’s figures away from another', () => {
-    expect(showsBrokers('everything')).toBe(true)
-    expect(showsBrokers('mine')).toBe(false)
-  })
-
-  // A broker sees what their own deals are worth. The rest of the team get
-  // counts - what a deal is worth is not a question their job asks.
-  it('holds the money back below broker', () => {
-    expect(showsMoney('everything')).toBe(true)
-    expect(showsMoney('mine')).toBe(true)
-    expect(showsMoney('team')).toBe(false)
-  })
-
-  // Nothing about a referral relationship leaves the building without an admin
-  // pressing it.
-  it('and the Friday emails are admin only, both of them', () => {
+  // What stays with admin is SENDING, not knowing. One of those emails goes to
+  // a referral partner, and nothing about a referral relationship leaves this
+  // building without Fabio or Alan pressing it.
+  it('and keeps only the sending to admin', () => {
     expect(mayEmail('everything')).toBe(true)
-    expect(mayEmail('mine')).toBe(false)
     expect(mayEmail('team')).toBe(false)
+    expect(mayEmail('mine')).toBe(false)
   })
 
-  it('every view says on screen what it is not showing', () => {
+  it('every view says on screen what it is', () => {
     for (const v of ['everything', 'mine', 'team'] as const) {
       expect(VIEW_NOTE[v].length).toBeGreaterThan(10)
     }
     expect(VIEW_NOTE.mine).toContain('not here')
-    expect(VIEW_NOTE.team).toContain('not here')
   })
 })

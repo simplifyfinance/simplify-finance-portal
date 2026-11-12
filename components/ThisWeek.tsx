@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { doneThisWeek, sittingNow } from '@/lib/the-week-so-far'
 import { mondayOf, ymd } from '@/lib/lodging-when'
 import { byReferral } from '@/lib/who-brought-us-this'
-import { viewFor, showsReferral } from '@/lib/who-sees-the-numbers'
 
 // THIS WEEK, BOTH HALVES.
 //
@@ -24,12 +23,13 @@ const CARD = 'bg-card border border-card-line rounded-xl px-4 py-3.5'
 const ROW = 'flex items-baseline gap-2.5 py-[7px] border-t border-line-soft first:border-t-0 first:pt-0'
 const N = 'text-[21px] font-bold text-ink tabular-nums min-w-[34px] leading-none'
 
-export default function ThisWeek({ deals, now, role }: {
-  deals: any[]; now?: Date
-  /** Who brought it is commission information. Admin only, same as the report. */
-  role?: string
-}) {
-  const seesReferral = showsReferral(viewFor(role))
+// WHO BROUGHT IT IS NOT HELD BACK FROM ANYBODY.
+//
+// 12 Nov 2026. It was admin only for a day. Fabio, asked straight out what
+// staff should see: the whole team, same detail. The people doing the work can
+// see the work - what stays with admin is sending a referral partner an email,
+// not knowing that we have one.
+export default function ThisWeek({ deals, now }: { deals: any[]; now?: Date }) {
   const when = now || new Date()
   const done = doneThisWeek(deals, when)
   const sitting = sittingNow(deals, when)
@@ -46,8 +46,7 @@ export default function ThisWeek({ deals, now, role }: {
         This week
       </p>
 
-      <div className={`grid gap-3 max-[760px]:grid-cols-1 ${
-          seesReferral ? 'grid-cols-3 max-[1100px]:grid-cols-2' : 'grid-cols-2'}`}>
+      <div className="grid grid-cols-3 gap-3 max-[1100px]:grid-cols-2 max-[760px]:grid-cols-1">
         <div className={CARD}>
           <p className="text-[13.5px] font-bold text-ink m-0 mb-0.5">What we got done</p>
           <p className="text-[11.5px] text-faint m-0 mb-2.5 leading-[1.45]">
@@ -91,7 +90,6 @@ export default function ThisWeek({ deals, now, role }: {
             )
           })}
         </div>
-        {seesReferral && (
         <div className={CARD + ' border-info-edge'}>
           <p className="text-[13.5px] font-bold text-ink m-0 mb-0.5">Where it came from</p>
           <p className="text-[11.5px] text-faint m-0 mb-2.5 leading-[1.45]">
@@ -114,7 +112,6 @@ export default function ThisWeek({ deals, now, role }: {
             The week&rsquo;s report →
           </Link>
         </div>
-        )}
       </div>
 
       <p className="text-[11.5px] text-faint leading-[1.5] m-0 mt-2.5">

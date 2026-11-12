@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   happened, byReferral, byBroker, totals, forReferrer, referralName, termsWords, dayWords,
+  referralInside, dealsInside,
   OURS, UNANSWERED, referralKey,
 } from './who-brought-us-this'
 import {
@@ -216,5 +217,46 @@ describe('the Sydney day, not the UTC one', () => {
   // anywhere the clock was not set to Sydney.
   it('names the weekday in Sydney too', () => {
     expect(dayWords({ lodged_at: MON }, 'lodged')).toBe('Monday')
+  })
+})
+
+describe('inside one broker', () => {
+  // 12 Nov 2026. Fabio: "admin need to per broker number of deals / name of
+  // the clients / dollar amount and within the broker the breakdown on
+  // referral splits." So the referral is on the row AND summed underneath -
+  // the same figures, read the two ways a person reads them.
+  const deals = [
+    justin({ lodged_at: '2026-11-10', assigned_broker: 'mark' }),
+    justin({ lodged_at: '2026-11-11', assigned_broker: 'mark' }),
+    ours({ lodged_at: '2026-11-12', assigned_broker: 'mark' }),
+    justin({ lodged_at: '2026-11-10', assigned_broker: 'pat' }),
+  ]
+  const mark = () => byBroker(deals, WEEK, { mark: 'Mark Gallo' })
+    .find(b => b.name === 'Mark Gallo')!
+
+  it('lists every one of that broker’s deals, lodged then settled', () => {
+    expect(dealsInside(mark())).toHaveLength(3)
+    expect(dealsInside(mark()).every(r => r.what === 'lodged')).toBe(true)
+  })
+
+  it('and sums them by who brought them', () => {
+    const inside = referralInside(mark())
+    expect(inside[0].name).toBe('Justin Cornock')
+    expect(inside[0].lodged).toHaveLength(2)
+    expect(inside.find(r => r.name === 'Ours, no split')!.lodged).toHaveLength(1)
+  })
+
+  it('without another broker’s deal creeping in', () => {
+    expect(referralInside(mark()).reduce((t, r) => t + r.lodged.length, 0)).toBe(3)
+  })
+
+  // It is a thing to go and fix rather than a referral, and putting it at the
+  // top of somebody's week reads like an accusation.
+  it('puts "nobody has said" last', () => {
+    const unanswered = { id: 'u', lodged_at: '2026-11-10', assigned_broker: 'mark' }
+    const line = byBroker([...deals, unanswered], WEEK, { mark: 'Mark Gallo' })
+      .find(b => b.name === 'Mark Gallo')!
+    const inside = referralInside(line)
+    expect(inside[inside.length - 1].name).toBe('Nobody has said')
   })
 })

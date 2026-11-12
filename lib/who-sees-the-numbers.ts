@@ -32,9 +32,9 @@ export function viewFor(role: any): View {
 }
 
 export const VIEW_NOTE: Record<View, string> = {
-  everything: 'Every deal, every broker, and what each referral partner is on.',
-  mine: 'Your own deals. Other brokers’ figures and referral terms are not here.',
-  team: 'What the team lodged and settled. Amounts and referral terms are not here.',
+  everything: 'Every broker, every client, every amount, and what each referral partner is on.',
+  mine: 'Your own deals. Other brokers\u2019 clients are not here.',
+  team: 'Every broker, every client, every amount, and what each referral partner is on.',
 }
 
 /** Whose deals this person is looking at. */
@@ -52,27 +52,16 @@ export function dealsFor(view: View, deals: any[], key: any): any[] {
   return (deals || []).filter(d => sameBroker(d?.assigned_broker, key))
 }
 
-/** What a deal is worth, and so what anybody is paid on it. */
-export function showsMoney(view: View): boolean {
-  return view !== 'team'
-}
-
-/** Which referral partner is behind a deal, and on what terms. */
-export function showsReferral(view: View): boolean {
-  return view === 'everything'
-}
-
-/** One broker's figures beside another's. */
-export function showsBrokers(view: View): boolean {
-  return view === 'everything'
-}
-
 /**
  * MAY SEND THE FRIDAY EMAILS.
  *
- * Both of them - the management summary and the one that goes to a referral
- * partner. Nothing about a referral relationship leaves this building without
- * an admin pressing it.
+ * 12 Nov 2026. This is now the ONLY thing the three views differ on, besides
+ * whose deals a broker gets. Fabio, asked straight out what staff should see:
+ * the whole team, same detail. The people doing the work can see the work.
+ *
+ * What stays with admin is the sending - one of these emails goes to a
+ * referral partner, and nothing about a referral relationship leaves this
+ * building without Fabio or Alan pressing it.
  */
 export function mayEmail(view: View): boolean {
   return view === 'everything'
