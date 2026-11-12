@@ -53,7 +53,11 @@ describe('what the ladder says on its own', () => {
   })
 
   it('a finished or lost deal is holding nobody up', () => {
-    expect(whoHasIt({ ...PAST_BC, status: 'completed' })).toBeNull()
+    // settled_at, not status 'completed'. 12 Nov 2026: nothing in the
+    // codebase has ever written that status, so this test passed on a shape
+    // production cannot produce while settled deals were being counted as
+    // work waiting on a bank. See lib/dashboard-funnel.test.ts.
+    expect(whoHasIt({ ...PAST_BC, settled_at: '2026-11-01T13:00:00+00:00' })).toBeNull()
     expect(whoHasIt({ ...PAST_BC, status: 'lost' })).toBeNull()
   })
 })

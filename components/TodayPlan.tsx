@@ -5,6 +5,7 @@ import AskForThisNext from '@/components/AskForThisNext'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { dayMonth } from '@/lib/same-date-everywhere'
 import { whoHasIt } from '@/lib/who-has-it'
+import { isFinished } from '@/lib/deal-phase'
 // A broker is never matched by lower-casing a name - brokerKey() takes the
 // first word, so "Fabio De Castro".toLowerCase() never equals "fabio".
 // See scripts/check-broker-keys.sh, which failed this file on the first run.
@@ -83,7 +84,19 @@ function Card({ children, live }: { children: React.ReactNode; live?: boolean })
   )
 }
 
-const live = (d: any) => d?.status !== 'completed' && d?.status !== 'lost'
+// ONE TEST FOR "IS THIS DEAL STILL ALIVE", AND IT IS NOT THIS FILE'S OWN.
+//
+// 12 Nov 2026. This file had its own: status is not 'completed' and not
+// 'lost'. Nothing has ever written 'completed', so it only ever excluded lost
+// deals and every settled deal went on being counted as work. Meanwhile the
+// deal board four inches above used isFinished(), which reads the timestamps.
+// One page, two answers, eleven deals apart.
+//
+// Fabio, on being shown it: "we're now working on building statistics and
+// analysis for the business... this needs to be 100% accurate."
+//
+// isFinished() is the honest one and it is now the only one.
+const live = (d: any) => !isFinished(d)
 
 export default function TodayPlan({
   deals, officers, plans, brokerPlans = [], meOfficerId, meName, today,
@@ -323,7 +336,15 @@ export default function TodayPlan({
 
   const waitingBox = elsewhere.length > 0 && (
     <Card>
-      <div className={CAP}>Waiting on someone else &mdash; {elsewhere.length}</div>
+      {/* WHOSE DEALS. 12 Nov 2026: this counts only the deals of whoever is
+        * signed in, while "Where the book is" four inches above counts the
+        * whole team - and neither said so, so the two numbers looked like
+        * they disagreed. They never did; they were answering different
+        * questions with the same words. */}
+      <div className={CAP}>
+        {meOfficerId ? 'Yours, waiting on someone else' : 'Your deals, waiting on someone else'}
+        {' '}&mdash; {elsewhere.length}
+      </div>
       {elsewhere.slice(0, 6).map(({ deal, has }) => (
         <Row key={deal.id}>
           <Link href={`/deals/${deal.id}`} className="flex-1 font-semibold hover:underline">{deal.deal_name}</Link>

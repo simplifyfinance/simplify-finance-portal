@@ -24,6 +24,7 @@
 // that make the reports possible are the next ship, not this one.
 
 import { waitingIndex } from './deal-status'
+import { isFinished } from './deal-phase'
 import { requestRounds, progressOf } from './document-progress'
 
 export type Holder = 'us' | 'client' | 'lender'
@@ -78,7 +79,25 @@ export function waitingOnDocuments(deal: any): boolean {
 // and what it is waiting on is the bank.
 export function whoHasIt(deal: any): WhoHasIt | null {
   if (!deal) return null
-  if (deal.status === 'completed' || deal.status === 'lost') return null
+  // A FINISHED DEAL IS WAITING ON NOBODY.
+  //
+  // 12 Nov 2026. This asked for status 'completed' or 'lost'. NOTHING IN THE
+  // CODEBASE HAS EVER WRITTEN 'completed' - the only thing that writes a
+  // status at all is the Close Deal dialog, and it writes 'lost'. So half the
+  // test could never be true and a settled deal fell past the last step into
+  // "with the lender", where it sat forever.
+  //
+  // On the day it was found: 272 deals, 131 lost, 11 settled. "Where the book
+  // is" counted 141 and the deal board counted 130. The eleven settled ones
+  // were the whole difference, and they were being shown as work waiting on
+  // a bank.
+  //
+  // Fabio: "a settlement date does not mark a deal as settled... we need to
+  // physically mark the deal as settled." settled_at is exactly that - it is
+  // written by the Mark as settled button and by nothing else. A deal with a
+  // settlement date in the diary and nothing pressed is still live, which is
+  // what isFinished() says.
+  if (isFinished(deal)) return null
 
   const i = waitingIndex(deal)
   const holder: Holder = i === -1 ? 'lender' : (i === 3 || i === 6) ? 'client' : 'us'

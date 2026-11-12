@@ -65,7 +65,11 @@ describe('who has it', () => {
   })
 
   it('a finished or dead deal has no chip at all', () => {
-    expect(whoHasIt(deal({ status: 'completed' }))).toBeNull()
+    // settled_at, not status 'completed'. 12 Nov 2026: nothing in the
+    // codebase has ever written that status, so this test passed on a shape
+    // production cannot produce while settled deals were being counted as
+    // work waiting on a bank. See lib/dashboard-funnel.test.ts.
+    expect(whoHasIt(deal({ settled_at: '2026-11-01T13:00:00+00:00' }))).toBeNull()
     expect(whoHasIt(deal({ status: 'lost' }))).toBeNull()
     expect(whoHasIt(null)).toBeNull()
   })

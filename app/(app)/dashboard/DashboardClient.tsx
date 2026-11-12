@@ -143,11 +143,18 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
   // Counted by phase, not by the stale stage column, and with the post-compliance
   // life of a deal finally represented.
   const stageCounts = useMemo(() => {
-    const counts: Record<string, number> = { BC: 0, LO: 0, Compliance: 0, 'In application': 0 }
+    // FACT FIND GETS A TILE. 12 Nov 2026: BC + LO + Compliance + In
+    // application came to 117 against 130 live, and the missing thirteen were
+    // sitting at Fact Find with nowhere to be shown. A strip of counts that
+    // does not add up to the number beside it teaches people to distrust all
+    // five. lib/dashboard-funnel.test.ts now fails if it stops adding up.
+    const counts: Record<string, number> =
+      { 'Fact Find': 0, BC: 0, LO: 0, Compliance: 0, 'In application': 0 }
     for (const d of filteredDeals) {
       if (isFinished(d)) continue
       const p = phaseOf(d)
-      if (p === 'bc') counts.BC++
+      if (p === 'fact_find') counts['Fact Find']++
+      else if (p === 'bc') counts.BC++
       else if (p === 'lo') counts.LO++
       else if (p === 'compliance') counts.Compliance++
       else if (isInApplication(d)) counts['In application']++
@@ -270,14 +277,15 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
       </div>
 
       {/* Pipeline funnel */}
-      <div className="grid grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-6 gap-4 mb-6">
         <div className="bg-card border border-gray-100 rounded-xl p-4">
           <div className="text-xs text-gray-400 mb-1">Live deals</div>
           <div className="text-2xl font-semibold text-ink">{liveTotal}</div>
         </div>
-        {(['BC', 'LO', 'Compliance', 'In application'] as const).map(stage => (
+        {(['Fact Find', 'BC', 'LO', 'Compliance', 'In application'] as const).map(stage => (
           <div key={stage} className="bg-card border border-gray-100 rounded-xl p-4">
-            <div className="text-xs text-gray-400 mb-1">{stage === 'In application' ? stage : stage + ' stage'}</div>
+            <div className="text-xs text-gray-400 mb-1">
+              {stage === 'In application' || stage === 'Fact Find' ? stage : stage + ' stage'}</div>
             <div className="text-2xl font-semibold text-ink">{stageCounts[stage] || 0}</div>
           </div>
         ))}
