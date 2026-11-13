@@ -1,6 +1,6 @@
 "use client"
-import { useEffect, useRef } from 'react'
-import { TOUCH_EVERY_MS } from '@/lib/two-factor'
+import { useEffect } from 'react'
+import { someoneIsHere, SIGNS_OF_LIFE } from '@/lib/still-here'
 
 // SOMEBODY IS ACTUALLY AT THE KEYBOARD.
 //
@@ -20,34 +20,24 @@ import { TOUCH_EVERY_MS } from '@/lib/two-factor'
 //
 // WHY NOT mousemove: a cat on a desk, a trackpad nudged by a sleeve, and some
 // screen savers all move the pointer. Pressing something is a decision.
+//
+// 13 NOV 2026 - TYPING INTO A BOX COUNTS TOO, and so does a save. This was too
+// strict: Katie saved a compliance card at 3:11pm and the portal signed her
+// out at 3:14pm for inactivity. The throttle and the hidden-tab rule are
+// unchanged, so a laptop left open overnight still times out. The whole rule
+// now lives in lib/still-here.ts, because a save has to be able to say it too.
 export default function StillHere() {
-  const last = useRef(0)
-
   useEffect(() => {
     let stopped = false
+    // ONE COUNTER FOR THE WHOLE TAB, in lib/still-here.ts, shared with every
+    // save. Typing and saving at the same moment is one person, so it is one
+    // heartbeat - not two.
+    const tell = () => { if (!stopped) someoneIsHere() }
 
-    const tell = () => {
-      const now = Date.now()
-      if (now - last.current < TOUCH_EVERY_MS) return
-      last.current = now
-      // fire-and-forget: this is a heartbeat. A failed one costs nothing and
-      // the next keystroke in five minutes sends another.
-      fetch('/api/2fa/touch', { method: 'POST', keepalive: true }).catch(() => {})
-    }
-
-    // A HIDDEN TAB IS NOT SOMEBODY WORKING. Without this, a background tab
-    // that happens to receive a key event would hold the session open.
-    const onKey = () => { if (!stopped && !document.hidden) tell() }
-
-    window.addEventListener('keydown', onKey, { passive: true })
-    window.addEventListener('pointerdown', onKey, { passive: true })
-    window.addEventListener('touchstart', onKey, { passive: true })
-
+    for (const e of SIGNS_OF_LIFE) window.addEventListener(e, tell, { passive: true })
     return () => {
       stopped = true
-      window.removeEventListener('keydown', onKey)
-      window.removeEventListener('pointerdown', onKey)
-      window.removeEventListener('touchstart', onKey)
+      for (const e of SIGNS_OF_LIFE) window.removeEventListener(e, tell)
     }
   }, [])
 

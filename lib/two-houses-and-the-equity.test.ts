@@ -38,22 +38,49 @@ const readRows = (html: string): string[] =>
 describe('two houses, and the equity under the one it comes from', () => {
   const rows = readRows(equityBoxes(D))
 
+  // 12 NOV 2026, AND THIS IS THE SECOND TIME THIS CARD HAS BEEN APPROVED.
+  //
+  // The 18 October shape is above in the git history: a limit row, then each
+  // loan as one row carrying its typed label with the rate and repayment on an
+  // italic line underneath. It was sound. What was not sound is that the
+  // REFINANCE ONLY card drew the same thing a different way - it inlined the
+  // first loan and tacked the rest on - and Karen Terry's second loan went to
+  // a client looking like a property. See lib/loans-against-a-house.ts.
+  //
+  // So both cards now ask one function, and this is what it draws. Fabio was
+  // shown the one-loan house and the two-loan house side by side with the
+  // October layout before a line of this was changed: "Match the refinance
+  // card."
+  //
+  // THE ONE-LOAN HOUSE LOST A REPEATED FIGURE. It used to print $495,000 as
+  // the limit and again as the loan, because with one loan they are the same
+  // number.
   it('reads as the mock Fabio approved', () => {
     expect(rows).toEqual([
       '10 Example Road, Mango Hill QLD 4509 — valued at $830,000',
       'Existing loan balance $495,000',
       'Limit against this property $495,000',
-      'Refinanced loan $495,000',
-      '6.14% p.a.* · Interest only for 5 years, then principal and interest for 25 · $2,533 per month',
+      'Indicative rate 6.14% p.a.*',
+      'Estimated repayments $2,533',
+      'Repayment type Interest only for 5 years, then principal and interest for 25',
+      'Loan term 30 years',
       'LVR 59.6%',
       '15 Sample Street, Wynnum West QLD 4178 — valued at $995,000',
       'Existing loan balance $506,000',
       'Equity released $290,000',
       'Limit against this property $796,000',
-      'Refinanced loan $506,000',
-      '6.14% p.a.* · Interest only for 5 years, then principal and interest for 25 · $2,589 per month',
-      'Equity release $290,000',
-      '6.89% p.a.* · Interest only for 5 years, then principal and interest for 25 · $1,665 per month',
+      'Loan 1 — Refinanced loan',
+      'New loan amount $506,000',
+      'Indicative rate 6.14% p.a.*',
+      'Estimated repayments $2,589',
+      'Repayment type Interest only for 5 years, then principal and interest for 25',
+      'Loan term 30 years',
+      'Loan 2 — Equity release',
+      'New loan amount $290,000',
+      'Indicative rate 6.89% p.a.*',
+      'Estimated repayments $1,665',
+      'Repayment type Interest only for 5 years, then principal and interest for 25',
+      'Loan term 30 years',
       'LVR 80%',
     ])
   })
@@ -65,9 +92,16 @@ describe('two houses, and the equity under the one it comes from', () => {
     expect(rows.join(' | ')).not.toContain('$0')
   })
 
+  // NEITHER IS BURIED, AND EACH IS NAMED AS A LOAN. The typed label is kept
+  // where it says something - these two do - and is never the only thing
+  // telling a client the row is money. Karen's splits were both named after
+  // the house, and that is exactly when a label says nothing at all.
   it('both loans on one house are listed - neither is buried', () => {
-    expect(rows.filter(r => /^Refinanced loan/.test(r))).toHaveLength(2)
-    expect(rows).toContain('Equity release $290,000')
+    const second = rows.slice(rows.findIndex(r => /Sample Street/.test(r)))
+    expect(second).toContain('Loan 1 — Refinanced loan')
+    expect(second).toContain('Loan 2 — Equity release')
+    expect(second.filter(r => /^New loan amount/.test(r))).toHaveLength(2)
+    expect(second).toContain('New loan amount $290,000')
   })
 
   it('and each house carries its own ratio, not an average', () => {

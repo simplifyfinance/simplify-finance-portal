@@ -431,10 +431,23 @@ describe('the tables', () => {
 
 describe('the beacon', () => {
   const beacon = readFileSync('components/StillHere.tsx', 'utf8')
+  // 13 NOV 2026. The rule moved into lib/still-here.ts, because a SAVE has to
+  // be able to say "somebody is here" too and a save does not come from this
+  // component. Katie saved a compliance card at 3:11pm and was signed out for
+  // inactivity at 3:14pm. The listener is still here; the rule is shared.
+  const rule = readFileSync('lib/still-here.ts', 'utf8')
 
   it('listens for a finger, not for the portal talking to itself', () => {
-    expect(beacon).toContain('keydown')
-    expect(beacon).toContain('pointerdown')
+    expect(rule).toContain('keydown')
+    expect(rule).toContain('pointerdown')
+    expect(beacon).toContain('SIGNS_OF_LIFE')
+  })
+
+  // THE ONE THAT WAS MISSING, AND IT COST AN AFTERNOON. This portal is used by
+  // typing into boxes that save themselves.
+  it('and counts typing into a box, and a save', () => {
+    expect(rule).toContain("'input'")
+    expect(readFileSync('lib/checked-write.ts', 'utf8')).toContain('someoneIsHere()')
   })
 
   // A cat on a desk and a nudged trackpad both move a pointer. Pressing
@@ -446,8 +459,10 @@ describe('the beacon', () => {
     expect(beacon).not.toMatch(/addEventListener\(\s*['"]mouseover/)
   })
 
+  // Fabio, 21 Oct 2026: "I leave the portal open and it stays open overnight."
+  // Unchanged by the 13 Nov work, and checked where the rule now lives.
   it('ignores a tab nobody is looking at', () => {
-    expect(beacon).toContain('document.hidden')
+    expect(rule).toContain('document.hidden')
   })
 })
 

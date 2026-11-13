@@ -16,12 +16,22 @@
 // .select() with no arguments is deliberate: it returns the affected rows
 // whatever the table's primary key is called, and it works for deletes too.
 
+import { someoneIsHere } from './still-here'
+
 export async function checkedWrite(query: any, what: string): Promise<string | null> {
   const { data, error } = await query.select()
   if (error) return `${what} was not saved - ${error.message}`
   if (!data || data.length === 0) {
     return `${what} was not saved - the database refused the change. Nothing has been recorded.`
   }
+  // A WRITE THAT LANDED MEANS SOMEBODY IS AT THEIR DESK.
+  //
+  // 13 Nov 2026. Katie saved a compliance card at 3:11pm and was signed out
+  // for inactivity at 3:14pm, because the only thing that counted as being
+  // there was a keystroke measured a particular way. A save cannot happen
+  // without a person; a laptop left open overnight never produces one.
+  // See lib/still-here.ts.
+  someoneIsHere()
   return null
 }
 

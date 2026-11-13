@@ -71,6 +71,7 @@ const NOT_CLIENT_FACING: Record<string, string> = {
   // app/api/send-milestone-email/route.ts. It sends nothing itself.
   'lib/the-loan-now.ts':            'builds the loan details; the offer accepted email that prints them carries the notice',
   'lib/split-cards.ts':             'builds the cards; the emails that print them are wired',
+  'lib/loans-against-a-house.ts':   'builds the loan rows inside a card; the emails that print them are wired',
   'lib/assessment-content.ts':      'the assessment is for the lender and the file, not the client',
   'lib/handover-view.ts':           'internal handover to the credit team',
   'lib/broker-notes.ts':            'goes into the lender portal, not to a client',

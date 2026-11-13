@@ -102,7 +102,14 @@ describe('two securities, two boxes', () => {
   it('a second split on one house is not dropped', () => {
     const extra = { ...AVARD, splits: [...AVARD.splits,
       { label: 'Fixed portion', amount: '50,000', rate: '5.89', type: 'P&I', securityId: 'p1' }] }
-    expect(readRows(refinanceBoxes(extra)).join(' | ')).toContain('Fixed portion $50,000')
+    // 12 Nov 2026. It used to be one bare row carrying the typed label and
+    // nothing else, which is how Karen Terry's $192,000 came out looking like
+    // a property. Now both loans are headed and both get the same rows.
+    // See lib/one-way-to-show-the-loans.test.ts.
+    const rows = readRows(refinanceBoxes(extra)).join(' | ')
+    expect(rows).toContain('Total new lending $129,000')
+    expect(rows).toContain('Loan 2 \u2014 Fixed portion')
+    expect(rows).toContain('New loan amount $50,000')
   })
 })
 

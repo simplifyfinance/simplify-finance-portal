@@ -33,6 +33,11 @@
 #   generate-email/route.ts    bridging, family pledge and the LVR-comparison
 #                              emails, where the template IS two loans in a
 #                              fixed order and says so in its headings.
+#                              12 Nov 2026: 20 down to 19. refinanceBoxes no
+#                              longer takes splits[0] and inlines it - the
+#                              loans against a house are drawn in one place
+#                              now, and that place does not count either. See
+#                              lib/loans-against-a-house.ts.
 #
 # None of those produces a wrong figure today. Every one of them is wrong the
 # moment somebody adds or reorders a split, so if you are touching one, take
@@ -48,7 +53,7 @@ LOCKED=(
   "lib/deal-facts.ts=1"
   "lib/loan-id.ts=2"
   "app/(app)/deals/[id]/BCForm.tsx=2"
-  "app/api/generate-email/route.ts=20"
+  "app/api/generate-email/route.ts=19"
 )
 
 count_in() {

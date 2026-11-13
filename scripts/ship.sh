@@ -130,6 +130,13 @@ if ! ./scripts/check-split-position.sh; then
   exit 1
 fi
 
+echo "Checking the clock..."
+if ! ./scripts/check-one-clock.sh; then
+  echo
+  echo "NOT SHIPPED - fix the above first."
+  exit 1
+fi
+
 echo "Checking email HTML..."
 if ! ./scripts/check-email-html.sh; then
   echo

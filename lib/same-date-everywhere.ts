@@ -40,7 +40,16 @@ function parts(value: any): { d: number; m: number; y: number } | null {
   if (iso) return { y: +iso[1], m: +iso[2] - 1, d: +iso[3] }
   const at = new Date(raw)
   if (!Number.isFinite(at.getTime())) return null
-  return { y: at.getFullYear(), m: at.getMonth(), d: at.getDate() }
+  // WHICH DAY IT WAS IN SYDNEY, NEVER ON THE MACHINE DRAWING IT.
+  //
+  // getDate() answers in whatever zone the process is running in. The servers
+  // run on UTC, so 10:02am Sydney came out as the day before - which is
+  // exactly how an afternoon was lost arguing about when somebody worked.
+  const bits: Record<string, string> = {}
+  for (const part of new Intl.DateTimeFormat('en-GB', {
+    timeZone: OFFICE, day: '2-digit', month: '2-digit', year: 'numeric',
+  }).formatToParts(at)) bits[part.type] = part.value
+  return { y: Number(bits.year), m: Number(bits.month) - 1, d: Number(bits.day) }
 }
 
 // "24 Sep 2026"
@@ -80,7 +89,17 @@ export function longDate(value: any): string {
 // drawing. Two people on two laptops in two countries now read the same time on
 // the same record, which is what anybody looking at a file actually wants.
 // Only digits come from the operating system; the month is spelled here.
-const MELBOURNE = 'Australia/Melbourne'
+// 13 Nov 2026. Fabio: "make sure that the timestamps are precise and they are
+// based on Sydney Eastern Time... I don't want to have this issue again."
+//
+// The night before, a deal card saved at 10:02am Sydney was recorded as
+// 23:02 the previous day, because the database keeps UTC and nothing here
+// turned it back. An hour was spent arguing about whether somebody had worked
+// late when they had not worked late at all.
+//
+// Melbourne and Sydney are the same clock, but the name matters: somebody
+// reading this file should see the city Fabio named.
+export const OFFICE = 'Australia/Sydney'
 
 export function dayMonthTime(value: any): string {
   const raw = String(value ?? '').trim()
@@ -90,7 +109,7 @@ export function dayMonthTime(value: any): string {
 
   const bits: Record<string, string> = {}
   for (const p of new Intl.DateTimeFormat('en-GB', {
-    timeZone: MELBOURNE, day: '2-digit', month: '2-digit',
+    timeZone: OFFICE, day: '2-digit', month: '2-digit',
     hour: '2-digit', minute: '2-digit', hour12: false,
   }).formatToParts(at)) bits[p.type] = p.value
 
@@ -98,4 +117,15 @@ export function dayMonthTime(value: any): string {
   const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12
   const ampm = hour24 < 12 ? 'am' : 'pm'
   return `${Number(bits.day)} ${MONTHS[Number(bits.month) - 1]}, ${hour12}:${bits.minute} ${ampm}`
+}
+
+/** "3:14 pm" in the office's clock, for something happening as you read it. */
+export function nowInSydney(at: Date = new Date()): string {
+  const bits: Record<string, string> = {}
+  for (const p of new Intl.DateTimeFormat('en-GB', {
+    timeZone: OFFICE, hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(at)) bits[p.type] = p.value
+  const h24 = Number(bits.hour)
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12
+  return `${h12}:${bits.minute} ${h24 < 12 ? 'am' : 'pm'}`
 }

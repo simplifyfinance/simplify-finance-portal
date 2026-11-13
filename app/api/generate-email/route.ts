@@ -19,6 +19,7 @@ import { findPurchaseSplit } from '@/lib/split-security-tag'
 import { isBeingPurchased } from '@/lib/securities'
 import { repaymentOf, splitRows, cardTitle, structureLead, realSplits,
          repaymentTypeLine } from '@/lib/split-cards'
+import { loansAgainst } from '@/lib/loans-against-a-house'
 import { purchaseRows } from '@/lib/purchase-rows'
 import { isDollarForDollar, increaseFor, lendingAgainst, lvrFor,
          anyRefinanced, anyToppedUp, cashReleased } from '@/lib/top-up'
@@ -361,26 +362,18 @@ export const PLUS_INCIDENTALS = " (plus solicitor's fees and incidentals)"
 // and the new loan amount say the whole of it.
 export function refinanceBoxes(d: any) {
   const houses = groupsOf(d).filter(g => g.property)
-  return houses.map(g => {
-    const sp = g.splits[0] || {}
-    const extra = g.splits.slice(1)
-    return card(`Refinanced Loan \u2014 ${g.heading}`,
+  return houses.map(g =>
+    card(`Refinanced Loan \u2014 ${g.heading}`,
       rowIf('Existing loan balance', moneyIf(g.balance)) +
-      rowIf('New loan amount', moneyIf(g.limit > 0 ? g.limit : g.drawn)) +
-      rowIf('Indicative rate', txt(sp?.rate) ? `${txt(sp.rate)}% p.a.*` : '') +
-      repaymentRow(sp, d.loanTerm) +
-      rowIf('Repayment type', txt(sp?.type)) +
-      rowIf('Loan term', txt(d.loanTerm) ? `${txt(d.loanTerm)} years` : '') +
-      // A SECOND SPLIT ON ONE HOUSE IS NOT DROPPED. Rare on this scenario and
-      // silent when it happened, which is the fault this whole file keeps
-      // being fixed for.
-      extra.map((x: any) => row(txt(x?.label) || 'Split', money(x?.amount))
-        + note([txt(x?.rate) ? `${txt(x.rate)}% p.a.*` : '',
-                repaymentTypeLine(x, d.loanTerm) || ''].filter(Boolean).join(' \u00b7 '))).join('') +
+      // THE LOANS ARE NOT THIS FILE'S BUSINESS. One house with two loans used
+      // to be drawn here one way and in equityBoxes another, and the weaker of
+      // the two sent Karen Terry's $192,000 out wearing her house's name.
+      // See lib/loans-against-a-house.ts.
+      loansAgainst(g, d.loanTerm, { one: 'New loan amount', many: 'Total new lending' }) +
       // Per property, because one ratio across two houses is a number a lender
       // does not assess. The combined figure follows the cards.
       (g.lvr === null ? '' : row('LVR', `${g.lvr}%`)))
-  }).join('')
+  ).join('')
 }
 
 // THE SAME TWO BOXES, WITH THE EQUITY ROWS THIS SCENARIO NEEDS.
@@ -398,15 +391,9 @@ export function equityBoxes(d: any) {
     card(g.heading + (g.value ? ` \u2014 valued at ${g.value}` : ''),
       rowIf('Existing loan balance', moneyIf(g.balance)) +
       rowIf('Equity released', moneyIf(g.release)) +
-      rowIf('Limit against this property', moneyIf(g.limit)) +
-      g.splits.map((sp: any) => {
-        const under = [
-          txt(sp?.rate) ? `${txt(sp.rate)}% p.a.*` : '',
-          repaymentTypeLine(sp, d.loanTerm) || '',
-          repaymentOf(sp, d.loanTerm) ? `${repaymentOf(sp, d.loanTerm)} per month` : '',
-        ].filter(Boolean).join(' \u00b7 ')
-        return row(txt(sp?.label) || 'Split', money(sp?.amount)) + (under ? note(under) : '')
-      }).join('') +
+      // The same loans, drawn the same way as every other card.
+      loansAgainst(g, d.loanTerm,
+        { one: 'Limit against this property', many: 'Limit against this property' }) +
       (g.lvr === null ? '' : row('LVR', `${g.lvr}%`)))).join('')
 }
 
