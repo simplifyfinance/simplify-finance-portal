@@ -1,6 +1,7 @@
 "use client"
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { draftKey, shouldOffer, type Draft } from '@/lib/draft-store'
+import { onDoorClosed } from '@/lib/the-door-closed'
 
 // THE BROWSER SIDE OF THE DRAFT. What may be kept and what may be offered is
 // decided in lib/draft-store.ts; this is the part that touches storage.
@@ -35,6 +36,9 @@ export function useDraft(opts: {
   // The record as the database handed it over, for judging whether a draft is
   // worth offering at all.
   stored: any
+  // What is on the screen right now, read at the moment the portal finds out it
+  // has been signed out. See the effect below.
+  current?: () => any
 }) {
   const key = draftKey(opts.meId, opts.dealId, opts.column)
   const [offer, setOffer] = useState<DraftOffer>(null)
@@ -52,6 +56,25 @@ export function useDraft(opts: {
     // Not worth offering - expired, empty, already saved, or it would empty the
     // record. Either way it is not wanted again.
     else drop(key)
+  }, [key])
+
+  // THE DOOR CLOSED WHILE THEY WERE TYPING.
+  //
+  // 13 Nov 2026. The screen is about to tell somebody they have been signed out
+  // and that their work is still here. That promise is kept HERE, before
+  // anything is drawn.
+  //
+  // The draft is already written as they type, so most of the time this changes
+  // nothing. It is for the keystroke between the last write and the sign-out.
+  const latest = useRef(opts.current)
+  latest.current = opts.current
+  useEffect(() => {
+    if (!key) return
+    return onDoorClosed(() => {
+      const value = latest.current?.()
+      if (value === undefined) return
+      write(key, { at: Date.now(), value })
+    })
   }, [key])
 
   // KEPT ONLY WHILE THE DATABASE DOES NOT HAVE IT. Called as the person types.

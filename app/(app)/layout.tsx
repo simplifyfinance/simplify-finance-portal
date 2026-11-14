@@ -3,6 +3,7 @@ import Sidebar from "@/components/Sidebar";
 import TopProgress from "@/components/TopProgress";
 import Paco from "@/components/Paco";
 import StillHere from "@/components/StillHere";
+import TheDoorClosed from "@/components/TheDoorClosed";
 
 // EVERYTHING BEHIND THE LOGIN IS ONE. Nothing outside it is.
 //
@@ -34,6 +35,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           the presence ping deliberately do not count - a laptop left open
           overnight has to time out. See components/StillHere.tsx. */}
       <StillHere />
+      {/* AND IF THE SESSION ENDS ANYWAY, THE TAB SAYS SO AND THE WORK IS KEPT.
+          13 Nov 2026 - Katie worked for an hour into a card that had been
+          signed out underneath her. It draws nothing until that happens, and
+          it never stands in front of a request. See components/TheDoorClosed.tsx. */}
+      <TheDoorClosed />
       {/* THE BAR GOES HERE AND NOWHERE ELSE.
           It is fixed to the window rather than drawn inside <main>, which
           scrolls - a bar that slides away the moment you scroll is a bar you

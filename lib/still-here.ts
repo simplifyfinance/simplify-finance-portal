@@ -28,6 +28,7 @@
 // So a save now says "somebody is here", and the overnight case is untouched:
 // a tab nobody is using saves nothing, presses nothing, and still times out.
 import { TOUCH_EVERY_MS } from './two-factor'
+import { heartbeatSaysOut, theDoorHasClosed } from './the-door-closed'
 
 // ---------------------------------------------------------------------------
 // THE RULE, AS A FUNCTION OF ITS ARGUMENTS
@@ -79,7 +80,14 @@ export function someoneIsHere(now: number = Date.now()): void {
   if (!shouldTell(lastTold, now)) return
   lastTold = now
   try {
-    fetch('/api/2fa/touch', { method: 'POST', keepalive: true }).catch(() => {})
+    // AND WE READ THE ANSWER. The middleware replies 401 on this route in its
+    // own words when the session is gone, and this is a request the portal was
+    // making anyway - so finding out costs nothing and nothing sits in front of
+    // a database call. See lib/the-door-closed.ts, and the version of it that
+    // wrapped fetch and broke every deal card on 13 Nov.
+    fetch('/api/2fa/touch', { method: 'POST', keepalive: true })
+      .then(res => { if (heartbeatSaysOut(res?.status)) theDoorHasClosed() })
+      .catch(() => {})
   } catch {
     // A heartbeat that cannot be sent is not an error anybody should see.
   }
