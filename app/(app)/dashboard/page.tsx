@@ -10,7 +10,7 @@ import RateNoticeNag from '@/components/RateNoticeNag'
 import ThisWeek from '@/components/ThisWeek'
 import DueToLodge from '@/components/DueToLodge'
 import { todayYmd } from '@/lib/periods'
-import { needsChasing, chaseLine, latest as latestPush } from '@/lib/the-push-leaves-a-mark'
+import { needsChasing, chaseLine, latest as latestPush, mineNotArrived } from '@/lib/the-push-leaves-a-mark'
 import { whereItIs } from '@/lib/the-run-through'
 import { OFFICE } from '@/lib/same-date-everywhere'
 import { mayViewAs, lookingAt, isSomebodyElse, type Somebody, type Seat } from '@/lib/view-as'
@@ -295,6 +295,17 @@ export default async function Dashboard(
   //
   // A DEAL NOBODY HAS PUSHED IS NEVER HERE. That is a deal that is not ready,
   // which is not the same thing as a deal that is stuck.
+  // A PUSH SHE MADE THAT NEVER ARRIVED, ON HER OWN SCREEN.
+  //
+  // 15 Nov 2026. The one-hour chase goes to the run-through, which is
+  // management's screen. Katie pressed the button on 13 Nov, believed the deal
+  // had gone, and was the only person the portal never told - while being the
+  // one person who could have fixed it in thirty seconds.
+  //
+  // whoseId, not user.id, so looking at her Today through View as shows HER
+  // stuck pushes rather than the viewer's. See lib/view-as.ts.
+  const myStuckPushes = mineNotArrived(deals || [], whoseId, new Date())
+
   const stuckPushes = (deals || [])
     .filter((d: any) => needsChasing(d?.push_log, new Date()))
     .map((d: any) => ({
@@ -407,6 +418,7 @@ export default async function Dashboard(
         meName={profile?.full_name || ''}
         today={today}
         seesAll={theirScreen}
+        myStuckPushes={myStuckPushes}
         readOnly={!!viewingId}
         brokerKey={brokerKey}
         brokerNames={brokerNames}

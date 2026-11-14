@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import AskForThisNext from '@/components/AskForThisNext'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { dayMonth, OFFICE } from '@/lib/same-date-everywhere'
+import { dayMonth, dayMonthTime, OFFICE } from '@/lib/same-date-everywhere'
 import BrokerWeek from '@/components/BrokerWeek'
 import WhereMyDealsAre from '@/components/WhereMyDealsAre'
 import { askAbout } from '@/lib/the-brokers-monday'
@@ -115,7 +115,7 @@ const live = (d: any) => !isFinished(d)
 export default function TodayPlan({
   deals, officers, plans, brokerPlans = [], meOfficerId, meName, today,
   seesAll = false, brokerKey = null, brokerNames = {}, greeting = true,
-  readOnly = false,
+  readOnly = false, myStuckPushes = [],
 }: {
   deals: any[]
   officers: Officer[]
@@ -129,6 +129,15 @@ export default function TodayPlan({
   today: string
   /** auth_sees_all_deals() - the admin flag, already asked by the page. */
   seesAll?: boolean
+  /**
+   * PUSHES THIS PERSON MADE THAT NEVER ARRIVED.
+   *
+   * 15 Nov 2026. The one-hour chase goes to management's run-through. This is
+   * the same fault told to the person who pressed the button - the only one
+   * who can fix it, and the only one who was never told.
+   * See lib/the-push-leaves-a-mark.ts.
+   */
+  myStuckPushes?: Array<{ id: string; name: string; at: string; line: string }>
   /** Their broker key, when they are a broker. */
   brokerKey?: string | null
   /** key -> proper name. The key is lower case by design and is never shown. */
@@ -537,6 +546,36 @@ export default function TodayPlan({
         <div className="flex items-baseline gap-3 mb-1">
           <h1 className="text-[22px] font-semibold">Good morning{meName ? ` ${meName.split(' ')[0]}` : ''}</h1>
           <span className={SOFT}>{dayMonth(today)}</span>
+        </div>
+      )}
+
+      {/* A PUSH YOU MADE THAT NEVER ARRIVED.
+        *
+        * ABOVE EVERYTHING, because the whole fault is that she did not know.
+        * It is not red at her - the software failed, not the person - so it
+        * carries the same blue the portal uses for work in hand, and the words
+        * say what happened and nothing about whose fault it was.
+        *
+        * Only shown to the person who pressed it, and only after an hour, on
+        * the same clock the run-through chases on. */}
+      {myStuckPushes.length > 0 && (
+        <div className="mb-3 rounded-xl border border-info-edge bg-info-bg px-4 py-3">
+          <div className={`${CAP} mb-2 text-info`}>
+            {myStuckPushes.length === 1
+              ? 'A push you made never arrived'
+              : `${myStuckPushes.length} pushes you made never arrived`}
+          </div>
+          {myStuckPushes.map(s => (
+            <div key={s.id}
+                 className="flex flex-wrap items-center gap-2.5 border-b border-info-edge py-1.5
+                            text-[13.5px] last:border-b-0">
+              <Link href={`/deals/${s.id}`} className="font-semibold hover:underline">{s.name}</Link>
+              <span className="text-[12px] text-muted">{s.line}</span>
+              <span className="ml-auto whitespace-nowrap text-[11.5px] text-faint">
+                pressed {dayMonthTime(s.at)}
+              </span>
+            </div>
+          ))}
         </div>
       )}
 

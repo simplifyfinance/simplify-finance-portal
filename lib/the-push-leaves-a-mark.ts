@@ -144,3 +144,56 @@ export function chaseLine(raw: any): string {
   if (!last) return ''
   return `Pushed by ${last.by} and never arrived — nobody has this deal.`
 }
+
+// ---------------------------------------------------------------------------
+// AND THE PERSON WHO PRESSED IT IS TOLD, NOT JUST MANAGEMENT
+// ---------------------------------------------------------------------------
+//
+// 13 Nov 2026, Jayver Varghese. The push was pressed, no email went, and the
+// portal wrote nothing - so a deal somebody had pushed and a deal nobody had
+// touched were identical in the database. That is fixed: every press leaves a
+// mark now, and after an hour a stuck one appears on the run-through.
+//
+// But the run-through is management's screen. Fabio asked the question himself
+// on 14 Nov and it went unanswered: should it also tell the person who pressed
+// it?
+//
+// IT MUST. Katie pressed that button and walked away believing the deal had
+// gone to SalesTrekker. She is the one person who would have fixed it in
+// thirty seconds, and she is the only one the portal never told. Telling her
+// manager first - an hour later - is how a software fault turns into a
+// conversation about whether somebody did their job. See CLAUDE.md, "When the
+// data and a person's account disagree".
+//
+// It reads from byId, the user id written at the moment of the press, never
+// from the name. A name is something a person types and retypes.
+
+export type NotArrived = { id: string; name: string; at: string; line: string }
+
+/** Did THIS person press the push that never arrived? */
+export function pressedBy(raw: any, userId: any): boolean {
+  const last = latest(raw)
+  const who = txt(userId)
+  return !!who && !!last && txt(last.byId) === who
+}
+
+/**
+ * THE PUSHES THIS PERSON MADE THAT NEVER ARRIVED.
+ *
+ * Same hour as the run-through uses, from the same needsChasing() - if the two
+ * ever disagreed, somebody would be chased about a deal their own screen said
+ * was fine.
+ */
+export function mineNotArrived(deals: any[], userId: any,
+                               now: Date = new Date()): NotArrived[] {
+  const who = txt(userId)
+  if (!who) return []
+  return (deals || [])
+    .filter(d => needsChasing(d?.push_log, now) && pressedBy(d?.push_log, who))
+    .map(d => ({
+      id: String(d?.id ?? ''),
+      name: txt(d?.deal_name) || 'A deal',
+      at: txt(latest(d?.push_log)?.at),
+      line: 'You pushed this and it never arrived. Nobody has this deal.',
+    }))
+}
