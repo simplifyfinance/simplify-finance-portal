@@ -10,6 +10,7 @@ import ThisWeek from '@/components/ThisWeek'
 import DueToLodge from '@/components/DueToLodge'
 import { todayYmd } from '@/lib/periods'
 import { needsChasing, chaseLine, latest as latestPush } from '@/lib/the-push-leaves-a-mark'
+import { whereItIs } from '@/lib/the-run-through'
 import { OFFICE } from '@/lib/same-date-everywhere'
 import { mayViewAs, lookingAt, isSomebodyElse, type Somebody, type Seat } from '@/lib/view-as'
 import ViewAsPicker from '@/components/ViewAsPicker'
@@ -148,7 +149,7 @@ export default async function Dashboard(
   const today = todayYmd()
   const [{ data: officerRows }, { data: planRows }] = await Promise.all([
     supabase.from('credit_officers').select('id, name').eq('active', true).order('name'),
-    supabase.from('daily_plans').select('officer_id, broker_key, deal_ids, confirmed_at, notes, on_it_now, yesterday_ok_at, informed_at, yesterday_added, yesterday_removed').eq('plan_date', today),
+    supabase.from('daily_plans').select('officer_id, broker_key, plan_date, deal_ids, confirmed_at, notes, on_it_now, yesterday_ok_at, informed_at, yesterday_added, yesterday_removed, order_from, seen_at').eq('plan_date', today),
   ])
   const officers = (officerRows || []).map((o: any) => ({ id: o.id, name: o.name }))
   const byOfficer = new Map((planRows || []).map((p: any) => [p.officer_id, p]))
@@ -207,6 +208,20 @@ export default async function Dashboard(
         ? (row.yesterday_added as any[]).length : 0,
       todayCount: Array.isArray(row?.deal_ids) ? (row.deal_ids as any[]).length : 0,
       open: openFor(o.id),
+      // MANAGEMENT SETS THE ORDER. 12 Nov 2026 - "the brokers and admin always
+      // dictate for Katie and Mel what they want to be done first." Her id and
+      // her row so an order can be written; her open files because an order is
+      // her own list reordered, not a day invented for her.
+      id: o.id,
+      plan: row || null,
+      openDeals: (deals || [])
+        .filter((d: any) => d.assigned_credit_officer === o.id)
+        .filter((d: any) => !d.settled_at && d.status !== 'lost')
+        .map((d: any) => ({
+          id: String(d.id),
+          deal_name: d.deal_name,
+          where: whereItIs(d),
+        })),
     }
   })
 
@@ -337,6 +352,7 @@ export default async function Dashboard(
           settling={settlingThisWeek}
           overloaded={overloaded}
           stuckPushes={stuckPushes}
+          me={{ id: user.id, name: profile?.full_name || '' }}
         />
       ) : (
       <TodayPlan

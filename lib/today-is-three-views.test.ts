@@ -131,7 +131,10 @@ describe('the page is given what the three views need', () => {
     // notes are. Two tests naming the same string is how the first run of
     // this ship failed: the query grew a column and this line still wanted
     // the old one.
-    expect(dash).toContain('broker_key, deal_ids')
+    // 14 Nov 2026: plan_date went in between them, because an order is written
+    // to a row keyed by officer AND date and the write needs the date it is
+    // amending. See lib/the-order-from-above.ts.
+    expect(dash).toContain('broker_key, plan_date, deal_ids')
   })
 
   it('a broker’s plan is saved against their key, not an officer id', () => {

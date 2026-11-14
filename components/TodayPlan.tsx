@@ -7,6 +7,7 @@ import { dayMonth, OFFICE } from '@/lib/same-date-everywhere'
 import BrokerWeek from '@/components/BrokerWeek'
 import WhereMyDealsAre from '@/components/WhereMyDealsAre'
 import { askAbout } from '@/lib/the-brokers-monday'
+import TheOrderCame from '@/components/TheOrderCame'
 import { whoHasIt } from '@/lib/who-has-it'
 import { isFinished } from '@/lib/deal-phase'
 // A broker is never matched by lower-casing a name - brokerKey() takes the
@@ -541,6 +542,21 @@ export default function TodayPlan({
               onConfirm={() => void confirmYesterday()}
               dayWords={dayMonth(yesterdayDate)}
             />
+          )}
+          {/* MANAGEMENT CHANGED YOUR ORDER.
+            *
+            * 12 Nov 2026, Fabio: "Credit never disagrees with the order... if
+            * I give the order, they follow the order." And 14 Nov, on what she
+            * does about it: "I don't want her to have to agree to it... she
+            * does confirm that she understands the changes."
+            *
+            * So Got it means SEEN. Her day keeps whatever tick it had and
+            * there is nothing to accept. It sits above the three presses
+            * because it is part of the day she was already going to answer,
+            * not a notification beside it. See components/TheOrderCame.tsx. */}
+          {view === 'credit' && !readOnly && meOfficerId && myRow && (
+            <TheOrderCame plan={myRow} hers={(myRow?.dealIds || []).map(String)}
+              officerId={meOfficerId} onSeen={() => window.location.reload()} />
           )}
           {view === 'credit' && dayCard}
 

@@ -11,7 +11,9 @@ import {
 } from '@/lib/the-run-through'
 import { shareOf } from '@/lib/who-gets-paid-on-this'
 import { NO_TEAM_NAME } from '@/lib/which-team'
-import { dayMonthTime } from '@/lib/same-date-everywhere'
+import { dayMonthTime, OFFICE } from '@/lib/same-date-everywhere'
+import { orderFrom, seenState } from '@/lib/the-order-from-above'
+import SetHerOrder from '@/components/SetHerOrder'
 
 // THE MONDAY MEETING, ON A SCREEN.
 //
@@ -35,6 +37,7 @@ export default function RunThrough({
   deals, brokerNames, brokerRows, secondTeam = 'Simplify Finance Brokers',
   target: savedTarget, canSetTarget = false, firstTeam = 'Simplify Finance',
   team = [], settling = [], overloaded = null, stuckPushes = [],
+  me = {},
   meName = '',
   todayWords = '', now,
 }: {
@@ -51,7 +54,15 @@ export default function RunThrough({
   canSetTarget?: boolean
   /** The credit assessors and whether they have told management their day. */
   team?: Array<{ name: string; informedAt?: any; yesterdayCount?: number; todayCount?: number
-                 open?: number }>
+                 open?: number
+                 /** Her credit_officers id, so an order can be written to her row. */
+                 id?: string
+                 /** Her daily_plans row for today, order and all. */
+                 plan?: any
+                 /** Her open files, which is what an order is chosen from. */
+                 openDeals?: Array<{ id: string; deal_name?: string; where?: string }> }>
+  /** Who is setting the order. Every admin may - 14 Nov 2026, Fabio. */
+  me?: { id?: any; name?: any }
   /** What is settling this week, for the box under it. */
   settling?: Array<{ id: string; name: string; day: string; amount: number }>
   /** Named only when one assessor is carrying far more than the rest. */
@@ -62,6 +73,7 @@ export default function RunThrough({
   todayWords?: string
   now?: Date
 }) {
+  const [ordering, setOrdering] = useState<string | null>(null)
   const when = now || new Date()
   const supabase = createSupabaseBrowser()
   const [seat, setSeat] = useState<Seat>('nobody')
@@ -493,12 +505,39 @@ export default function RunThrough({
               <div key={t.name}
                 className={`rounded-lg px-3 py-2.5 mb-1.5 last:mb-0 border-l-4 ${
                   t.informedAt ? 'bg-done-bg border-done' : 'bg-chase-bg border-chase'}`}>
-                <div className="text-[12.5px] font-bold">{t.name}</div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[12.5px] font-bold">{t.name}</span>
+                  {/* MANAGEMENT SETS THE ORDER, AND THE LOOP CLOSES HERE.
+                      12 Nov 2026 - "the brokers and admin always dictate for
+                      Katie and Mel what they want to be done first." The only
+                      question is whether she has seen it; there is nothing to
+                      accept. See lib/the-order-from-above.ts. */}
+                  {t.id && (
+                    <button type="button"
+                      onClick={() => setOrdering(o => (o === t.id ? null : t.id!))}
+                      className="ml-auto rounded-lg border border-info-edge bg-info-bg px-2.5
+                                 py-[2px] text-[11px] font-semibold text-brand-ink">
+                      {orderFrom(t.plan) ? 'Change' : 'Set her order'}
+                    </button>
+                  )}
+                </div>
+                {t.id && (() => {
+                  const st = seenState(t.plan, now || new Date())
+                  if (st.none) return null
+                  return (
+                    <div className={`mt-1 inline-block rounded-full border px-2 py-px
+                      text-[10.5px] font-bold ${st.seen
+                        ? 'border-done-edge bg-done-bg text-done'
+                        : 'border-chase-edge bg-chase-bg text-chase'}`}>
+                      {st.words}
+                    </div>
+                  )
+                })()}
                 <div className="text-[11px] text-muted leading-snug mt-[1px]">
                   {t.informedAt ? (
                     <>
                       <b className="text-ink">Sent {new Date(t.informedAt)
-                        .toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}</b>
+                        .toLocaleTimeString('en-AU', { timeZone: OFFICE, hour: 'numeric', minute: '2-digit' })}</b>
                       <br />{t.yesterdayCount ?? 0} done yesterday &middot; {t.todayCount ?? 0} on today
                     </>
                   ) : (
@@ -510,6 +549,17 @@ export default function RunThrough({
                 </div>
               </div>
             ))}
+            {ordering && (() => {
+              const t = team.find(x => x.id === ordering)
+              if (!t) return null
+              return (
+                <div className="mt-2">
+                  <SetHerOrder officerId={t.id!} name={t.name} plan={t.plan}
+                    deals={t.openDeals || []} me={me}
+                    onDone={() => { setOrdering(null); window.location.reload() }} />
+                </div>
+              )
+            })()}
           </div>
         )}
 
