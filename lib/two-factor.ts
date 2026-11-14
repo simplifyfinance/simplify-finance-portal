@@ -146,7 +146,10 @@ export const DEVICE_COOKIE = 'sf_device'
 // financial position. The idle and absolute timeouts still run, so a laptop
 // left open still locks itself, but that is all. This is a day's measure, not
 // a month's.
-export const OUTLOOK_OUTAGE = true
+// BACK ON, 14 Nov 2026. Outlook is back and the codes reach people again.
+// Left here, set to false, rather than deleted: the next outage is a one word
+// change and a ship, and the comments above are the instructions.
+export const OUTLOOK_OUTAGE = false
 
 export function enforcedFor(email: any, list: any): boolean {
   const who = String(email || '').trim().toLowerCase()
