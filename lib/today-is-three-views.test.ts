@@ -97,17 +97,49 @@ describe('three views, and admin wins', () => {
     })
   })
 
+  // IT READS CODE, NOT COMMENTS. 15 Nov 2026: this list passed for a heading
+  // that had already been deleted, because the comment explaining the deletion
+  // still contained the old words. Third time tonight a check read prose as if
+  // it were instructions - see scripts/check-one-clock.sh and the sweep guard.
+  const CODE = page.split('\n')
+    .filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('*')
+                 && !l.trim().startsWith('{/*'))
+    .join('\n')
+
   it('each view draws something of its own', () => {
     expect(day, 'the day list has lost its heading').toContain('Today, in this order')
+    // THREE OF THESE WERE DEAD. 15 Nov 2026: 'Where the book is this morning',
+    // 'With us and on nobody' and 'By broker' were taken off the Today page on
+    // 12 Nov - Fabio, looking at his own: "all these data..." - and this test
+    // went on passing because the COMMENT recording their removal still spells
+    // them out. A test that asserts the presence of something deliberately
+    // deleted is worse than no test: it reads as cover.
     for (const want of [
-      'With credit today',                         // broker
-      'Where the book is this morning',            // admin
-      'With us and on nobody',                     // admin
-      'By broker',                                 // admin
-      'The team today',                            // everybody
+      'What credit is doing on your files today',  // broker
+      'Chase these',                               // broker
+      'The team today',                            // admin only, as of 15 Nov
     ]) {
-      expect(page, `the page no longer says "${want}"`).toContain(want)
+      expect(CODE, `the page no longer says "${want}"`).toContain(want)
     }
+  })
+
+  // ---------------------------------------------------------------------
+  // AND WHAT A BROKER NO LONGER CARRIES - 15 Nov 2026
+  // ---------------------------------------------------------------------
+  it('a broker has no day list, because nobody assigns him a day', () => {
+    expect(CODE, 'the day list is back on the broker screen')
+      .not.toContain("{view === 'broker' && dayCard}")
+  })
+
+  it('and the credit roster is admin\'s, not his', () => {
+    // It used to read `view === 'credit' ? tellBox : teamBox`, so everybody
+    // who was not credit got the roster - brokers included.
+    expect(CODE).toContain("view === 'credit' ? tellBox : view === 'admin' ? teamBox : null")
+  })
+
+  it('and the chase list carries ages, oldest first', () => {
+    expect(CODE).toContain('oldestFirst(elsewhere')
+    expect(CODE).toContain('waitedWords(daysWaiting(deal, now))')
   })
 })
 

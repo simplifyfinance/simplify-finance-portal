@@ -11,6 +11,7 @@ import TheOrderCame from '@/components/TheOrderCame'
 import { whoHasIt } from '@/lib/who-has-it'
 import { isFinished } from '@/lib/deal-phase'
 import { whichToday, type TodayView } from '@/lib/which-today'
+import { daysWaiting, waitedWords, oldestFirst } from '@/lib/how-long-waiting'
 // A broker is never matched by lower-casing a name - brokerKey() takes the
 // first word, so "Fabio De Castro".toLowerCase() never equals "fabio".
 // See scripts/check-broker-keys.sh, which failed this file on the first run.
@@ -496,14 +497,32 @@ export default function TodayPlan({
         * whole team - and neither said so, so the two numbers looked like
         * they disagreed. They never did; they were answering different
         * questions with the same words. */}
+      {/* A CHASE LIST, AND IT NEEDS AGES. 15 Nov 2026.
+        *
+        * These are the deals nobody inside the business can move - they are
+        * with a client, a valuer or a lender. Only the broker can shift them,
+        * which makes this a chase list rather than a status list.
+        *
+        * It said "Client" and nothing else. "Client" is a category. "Client,
+        * 6 days" is a phone call. A broker chases on age, not on kind.
+        *
+        * OLDEST FIRST AND NOTHING RED. A deal eleven days with a valuer is
+        * not his fault, and a red chip reads as though it were. The order
+        * carries the same information without the accusation.
+        * See lib/how-long-waiting.ts. */}
       <div className={CAP}>
-        {meOfficerId ? 'Yours, waiting on someone else' : 'Your deals, waiting on someone else'}
+        {meOfficerId ? 'Yours, waiting on someone else'
+          : view === 'broker' ? 'Chase these — waiting on somebody outside'
+          : 'Your deals, waiting on someone else'}
         {' '}&mdash; {elsewhere.length}
       </div>
-      {elsewhere.slice(0, 6).map(({ deal, has }) => (
+      {oldestFirst(elsewhere, r => r.deal, now).slice(0, 6).map(({ deal, has }) => (
         <Row key={deal.id}>
           <Link href={`/deals/${deal.id}`} className="flex-1 font-semibold hover:underline">{deal.deal_name}</Link>
           <span className={`${PILL} ${has!.style}`}>{has!.label}</span>
+          <span className="whitespace-nowrap text-[11.5px] tabular-nums text-muted">
+            {waitedWords(daysWaiting(deal, now))}
+          </span>
         </Row>
       ))}
     </Card>
@@ -588,10 +607,18 @@ export default function TodayPlan({
             <WhereMyDealsAre deals={wholeBook} officerName={officerName} />
           )}
 
-          {view === 'broker' && dayCard}
+          {/* NO DAY LIST FOR A BROKER. 15 Nov 2026.
+            *
+            * Credit has one because the business assigns them a day and they
+            * confirm it. Nobody assigns Keanen a day - he is self-employed.
+            * So it was a to-do list he had to maintain himself, on a screen
+            * that should be read rather than managed. */}
           {view === 'broker' && (
             <Card>
-              <div className={CAP}>With credit today &mdash; your files on somebody&rsquo;s plan</div>
+              {/* 15 Nov 2026: was "With credit today - your files on somebody's plan",
+                which does not say whose files or what is happening to them. This
+                card exists to stop the "is anyone actually on this?" phone call. */}
+              <div className={CAP}>What credit is doing on your files today</div>
               {withCredit.length === 0
                 ? <div className={SOFT}>Credit is not carrying anything of yours.</div>
                 : withCredit.map(({ deal, credit, stage }) => (
@@ -672,7 +699,14 @@ export default function TodayPlan({
               </p>
             </Card>
           )}
-          {view === 'credit' ? tellBox : teamBox}
+          {/* THE CREDIT ROSTER IS NOT A BROKER'S BUSINESS. 15 Nov 2026.
+            *
+            * teamBox names every credit assessor and whether she has told the
+            * brokers her day yet. It reached a broker only because this line
+            * said "credit gets one box, everybody else gets the other" - a
+            * default nobody chose. A self-employed broker should not be shown
+            * who on your team is behind. */}
+          {view === 'credit' ? tellBox : view === 'admin' ? teamBox : null}
           {waitingBox}
         </div>
       </div>
