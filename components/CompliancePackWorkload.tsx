@@ -4,6 +4,7 @@ import { REAL_DEALS_OR } from '@/lib/test-deal'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { countPacks, daysOfMonth, type PackRow, type PersonCount, type DayRow } from '@/lib/compliance-workload'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 // COMPLIANCE PACKS, ON THE WORKLOAD TAB.
 //
@@ -168,7 +169,7 @@ export default function CompliancePackWorkload() {
           {hidden.length > 0 && (
             <button type="button" onClick={() => setShowAll(true)}
               className="mt-2.5 text-[13px] font-semibold text-brand-ink hover:underline">
-              Show the rest of {new Date(`${days[0].day}T00:00:00`).toLocaleDateString('en-AU', { month: 'long' })} ↓
+              Show the rest of {new Date(`${days[0].day}T00:00:00`).toLocaleDateString('en-AU', { timeZone: OFFICE, month: 'long' })} ↓
               {/* WHAT IS IN IT, BEFORE YOU OPEN IT. A fortnight where nothing
                   happened is one sentence, not fourteen rows. */}
               <span className="font-normal text-faint">

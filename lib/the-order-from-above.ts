@@ -26,6 +26,8 @@
 // morning swapping position one between them. Brokers keep one slot each - see
 // lib/a-slot-each.ts.
 
+import { OFFICE } from './same-date-everywhere'
+
 const txt = (v: any) => String(v ?? '').trim()
 
 export type OrderFromAbove = {
@@ -115,7 +117,7 @@ export function whatSheIsTold(row: any, hers: string[], now = new Date()): Told 
   if (!o || !unseen(row)) return null
   const when = new Date(o.at)
   const sameDay = when.toDateString() === now.toDateString()
-  const time = when.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })
+  const time = when.toLocaleTimeString('en-AU', { timeZone: OFFICE, hour: 'numeric', minute: '2-digit' })
   const who = o.byName || 'Management'
   return {
     line: sameDay
@@ -157,11 +159,11 @@ export function seenState(row: any, now = new Date()): SeenState {
   if (!o) return { none: true, seen: false, waiting: null, words: 'No order set today.' }
   const seenAt = txt(row?.seen_at ?? row?.seenAt)
   if (!unseen(row)) {
-    const at = new Date(seenAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })
+    const at = new Date(seenAt).toLocaleTimeString('en-AU', { timeZone: OFFICE, hour: 'numeric', minute: '2-digit' })
     return { none: false, seen: true, waiting: null, words: `Seen ${at}.` }
   }
   const mins = minutesSince(o.at, now)
-  const at = new Date(o.at).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })
+  const at = new Date(o.at).toLocaleTimeString('en-AU', { timeZone: OFFICE, hour: 'numeric', minute: '2-digit' })
   return {
     none: false, seen: false, waiting: mins,
     words: `Order sent ${at}. Not opened yet.`,

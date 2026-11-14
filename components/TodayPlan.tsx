@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import AskForThisNext from '@/components/AskForThisNext'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { dayMonth } from '@/lib/same-date-everywhere'
+import { dayMonth, OFFICE } from '@/lib/same-date-everywhere'
 import { whoHasIt } from '@/lib/who-has-it'
 import { isFinished } from '@/lib/deal-phase'
 // A broker is never matched by lower-casing a name - brokerKey() takes the
@@ -383,7 +383,7 @@ export default function TodayPlan({
             <div className="text-[13.5px] font-semibold">{r.name}{r.officerId === meOfficerId ? ' — you' : ''}</div>
             <div className="text-[11.5px] text-muted leading-snug">
               {r.confirmedAt
-                ? `Told the brokers ${new Date(r.confirmedAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })} · ${r.count} deals`
+                ? `Told the brokers ${new Date(r.confirmedAt).toLocaleTimeString('en-AU', { timeZone: OFFICE, hour: 'numeric', minute: '2-digit' })} · ${r.count} deals`
                 : l?.theirs || `${r.name} has not started yet`}
             </div>
           </div>
@@ -430,7 +430,7 @@ export default function TodayPlan({
           <span className="text-[12.5px] text-muted">
             <b className="text-ink font-semibold">{step.label}</b>
             {step.done && step.at
-              ? ` — confirmed ${new Date(step.at).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}`
+              ? ` — confirmed ${new Date(step.at).toLocaleTimeString('en-AU', { timeZone: OFFICE, hour: 'numeric', minute: '2-digit' })}`
               : ' — not confirmed'}
           </span>
         </div>
@@ -439,7 +439,7 @@ export default function TodayPlan({
         <div className="mt-3 text-[13px] text-done bg-done-bg border border-done-edge rounded-[10px]
           px-3 py-2.5 text-center font-semibold">
           &#10003; {where.label} &mdash;{' '}
-          {new Date(informed!).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}
+          {new Date(informed!).toLocaleTimeString('en-AU', { timeZone: OFFICE, hour: 'numeric', minute: '2-digit' })}
         </div>
       ) : (
         <button onClick={() => void inform()} disabled={!where.ready || busy}

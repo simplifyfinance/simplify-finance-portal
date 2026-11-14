@@ -33,6 +33,7 @@
 // have.
 
 import { looksLikeAWipe } from './wipe-guard'
+import { OFFICE } from './same-date-everywhere'
 
 export type Draft = { at: number; value: any }
 
@@ -89,8 +90,8 @@ export function shouldOffer(draft: Draft | null, stored: any, now = Date.now()):
 // is the sentence they just lost or something from last week.
 export function draftWhen(at: number, now = Date.now()): string {
   const d = new Date(at)
-  const time = d.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })
+  const time = d.toLocaleTimeString('en-AU', { timeZone: OFFICE, hour: '2-digit', minute: '2-digit' })
   const sameDay = new Date(now).toDateString() === d.toDateString()
   if (sameDay) return `at ${time} today`
-  return `on ${d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })} at ${time}`
+  return `on ${d.toLocaleDateString('en-AU', { timeZone: OFFICE, weekday: 'short', day: 'numeric', month: 'short' })} at ${time}`
 }

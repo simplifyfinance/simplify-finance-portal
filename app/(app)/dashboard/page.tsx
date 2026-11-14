@@ -10,6 +10,7 @@ import ThisWeek from '@/components/ThisWeek'
 import DueToLodge from '@/components/DueToLodge'
 import { todayYmd } from '@/lib/periods'
 import { needsChasing, chaseLine, latest as latestPush } from '@/lib/the-push-leaves-a-mark'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 export const metadata = { title: 'Today' }
 
@@ -212,7 +213,7 @@ export default async function Dashboard() {
     .map(({ d, when }) => ({
       id: d.id as string,
       name: `${d.clients?.last_name || d.deal_name || ''}${d.clients?.first_name ? ', ' + d.clients.first_name[0] : ''}`,
-      day: new Date(String(when) + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'short' }),
+      day: new Date(String(when) + 'T00:00:00').toLocaleDateString('en-AU', { timeZone: OFFICE, weekday: 'short' }),
       amount: Number(d.loan_amount) || 0,
     }))
 

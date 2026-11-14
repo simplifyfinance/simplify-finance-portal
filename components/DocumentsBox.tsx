@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { whyNotRequestable, whyOnTheList, timeWords, agoWords } from '@/lib/documents-say-why'
 import { patchDealColumn } from '@/lib/patch-deal-column'
-import { dayMonth } from '@/lib/same-date-everywhere'
+import { dayMonth, OFFICE } from '@/lib/same-date-everywhere'
 import { documentsFor, documentsDue, groupedDocuments, type DocRound } from '@/lib/document-rules'
 import { rowsFor, tickedCount, toRequest, withTick, withAdded, withoutAdded, withDeferred,
   withReceived, withUnreceived,
@@ -671,8 +671,8 @@ function whenAsked(iso: string): string {
   const today = new Date()
   const sameDay = d.toDateString() === today.toDateString()
   return sameDay
-    ? `today at ${d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}`
-    : `on ${d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`
+    ? `today at ${d.toLocaleTimeString('en-AU', { timeZone: OFFICE, hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}`
+    : `on ${d.toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short' })}`
 }
 
 function roundLabel(r: DocRound): string {

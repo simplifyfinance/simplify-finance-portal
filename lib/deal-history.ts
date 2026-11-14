@@ -15,6 +15,7 @@
 // Rule 2 is the one that matters and it has no throttle. Rule 1 is convenience.
 
 import { filledCount } from './wipe-guard'
+import { OFFICE } from './same-date-everywhere'
 
 // How often a version is kept when the record is only growing or being tidied.
 export const KEEP_EVERY_MS = 3 * 60 * 1000
@@ -100,8 +101,8 @@ export function describeVersion(v: Version, now = new Date()): string {
   const sameDay = at.toDateString() === now.toDateString()
   const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1)
   const when = sameDay ? 'Today' : at.toDateString() === yesterday.toDateString() ? 'Yesterday'
-    : at.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
-  const time = at.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }).toLowerCase()
+    : at.toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short' })
+  const time = at.toLocaleTimeString('en-AU', { timeZone: OFFICE, hour: 'numeric', minute: '2-digit' }).toLowerCase()
   const who = String(v.replacedByName || '').trim()
   const filled = typeof v.filled === 'number' ? `${v.filled} things filled in` : ''
   return [`${when} at ${time}`, who, filled].filter(Boolean).join(' — ')
