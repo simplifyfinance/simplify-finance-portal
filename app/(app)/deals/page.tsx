@@ -76,7 +76,20 @@ export default function DealsPage() {
   }, [deals])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  // ARRIVING HERE TO START ONE OPENS THE FORM.
+  //
+  // 12 Nov 2026. The broker's Today has a "New deal card" button, and Fabio
+  // was explicit that it has to work rather than drop somebody on a list and
+  // leave them hunting for the button. See components/TodayPlan.tsx.
+  //
+  // READ AFTER THE PAGE IS UP, NOT DURING IT. useSearchParams() makes this
+  // page un-prerenderable without a Suspense boundary around the whole of it -
+  // the build says so and refuses. Reading the address once on mount asks the
+  // same question and costs nothing.
   const [showModal, setShowModal] = useState(false)
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('new') === '1') setShowModal(true)
+  }, [])
   const [userRole, setUserRole] = useState<string>('')
   const [brokerKey, setBrokerKey] = useState<string | null>(null)
   // WHICH TILE IS PRESSED. 'all' is not a filter, it is the absence of one.

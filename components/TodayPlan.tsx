@@ -4,6 +4,9 @@ import Link from 'next/link'
 import AskForThisNext from '@/components/AskForThisNext'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { dayMonth, OFFICE } from '@/lib/same-date-everywhere'
+import BrokerWeek from '@/components/BrokerWeek'
+import WhereMyDealsAre from '@/components/WhereMyDealsAre'
+import { askAbout } from '@/lib/the-brokers-monday'
 import { whoHasIt } from '@/lib/who-has-it'
 import { isFinished } from '@/lib/deal-phase'
 // A broker is never matched by lower-casing a name - brokerKey() takes the
@@ -305,6 +308,20 @@ export default function TodayPlan({
   // same daily_plans row - so they go through one function rather than three
   // that each have their own idea of what the key is. See
   // lib/the-morning-three.ts for why they are separate at all.
+  // HIS WHOLE BOOK, AND THE PART OF IT WORTH ASKING ABOUT.
+  //
+  // NOT `mine` above. That one deliberately leaves out whatever credit is
+  // carrying, so a file is not counted twice on one screen. Where my deals are
+  // is the opposite question - it exists to show him which of our credit team
+  // is holding each file, which is what he currently rings up to ask.
+  const wholeBook = useMemo(
+    () => brokerKey ? deals.filter(d => sameBroker(d.assigned_broker, brokerKey)) : [],
+    [deals, brokerKey])
+  const askThisWeek = useMemo(
+    () => askAbout(deals, brokerKey, sameBroker), [deals, brokerKey])
+  const officerName = (id: any) =>
+    officers.find(o => o.id === String(id ?? ''))?.name || ''
+
   async function save(patch: Record<string, any>): Promise<boolean> {
     // NOT YOUR DAY, NOT YOUR ANSWER. One guard, at the single door that every
     // press goes through, rather than a disabled attribute on each button -
@@ -527,6 +544,29 @@ export default function TodayPlan({
           )}
           {view === 'credit' && dayCard}
 
+          {/* THE MONDAY ASK, AND IT IS THE WHOLE POINT OF THIS PAGE.
+            *
+            * 12 Nov 2026, mocked and approved. His answers are exactly what
+            * fills the Simplify Finance Brokers section of the run-through -
+            * same three buttons, same three answers, written by the same
+            * function. Nobody types anything twice.
+            * See components/BrokerWeek.tsx and lib/the-brokers-monday.ts. */}
+          {view === 'broker' && !readOnly && <BrokerWeek deals={askThisWeek} />}
+          {view === 'broker' && readOnly && askThisWeek.length > 0 && (
+            <div className="mb-3 rounded-xl border-2 border-ink bg-card px-4 py-3.5">
+              <div className={CAP}>It is Monday &mdash; what is coming this week?</div>
+              <div className={SOFT}>
+                {askThisWeek.length} deals. Only {meName.split(' ')[0] || 'they'} can answer these.
+              </div>
+            </div>
+          )}
+
+          {/* WHAT WE ARE DOING WITH HIS FILES, which is the thing a
+            * self-employed broker cannot see today and rings up to ask. */}
+          {view === 'broker' && (
+            <WhereMyDealsAre deals={wholeBook} officerName={officerName} />
+          )}
+
           {view === 'broker' && dayCard}
           {view === 'broker' && (
             <Card>
@@ -595,6 +635,22 @@ export default function TodayPlan({
         </div>
 
         <div className="w-full lg:w-[330px] lg:flex-none">
+          {/* START SOMETHING. 12 Nov 2026, Fabio: the New deal card button
+            * "must work" - so it opens the form rather than dropping somebody
+            * on the deals list to hunt for it. See app/(app)/deals/page.tsx. */}
+          {view === 'broker' && !readOnly && (
+            <Card>
+              <div className={CAP}>Start something</div>
+              <Link href="/deals?new=1"
+                className="inline-block rounded-[9px] bg-brand-ink px-3.5 py-2 text-[12.5px]
+                           font-bold text-page">
+                + New deal card
+              </Link>
+              <p className="mt-2 text-[11.5px] text-faint">
+                It lands on your name and in our queue.
+              </p>
+            </Card>
+          )}
           {view === 'credit' ? tellBox : teamBox}
           {waitingBox}
         </div>
