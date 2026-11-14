@@ -17,6 +17,7 @@ import { brokerKey as keyOf } from '@/lib/broker-key'
 import { bcLanes, sentOn } from '@/lib/bc-lanes'
 import { paneHeight, dragScrollBy } from '@/lib/board-pane'
 import { columnCountLabel } from '@/lib/board-filters'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 // The whole book, in columns.
 //
@@ -466,7 +467,7 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                   // once that is known, otherwise how long it has sat here.
                   const settleOn = d.settled_at || d.confirmed_settlement_date || d.expected_settlement_date
                   const when = settleOn
-                    ? new Date(settleOn).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+                    ? new Date(settleOn).toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short' })
                     : age.label
                   const urgent = isUrgentNow(d)
                   // A CARD WEARING A STATE WEARS IT ALL THE WAY ROUND, LIGHTLY.

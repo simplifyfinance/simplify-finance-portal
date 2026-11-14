@@ -5,6 +5,7 @@ import {
   WHY, empty, tidy, saidSomething, whatPacoKeeps, theShortVersion,
   whatIsMissing, readyToSend, type Handover as Note, type Stage,
 } from '@/lib/handover-notes'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 // THE BOX THAT POPS WHEN CREDIT HANDS A DEAL OVER.
 //
@@ -120,7 +121,7 @@ export default function HandoverBox({ dealId, stage, lenders, toWhom, onSent, on
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               lender: keep.lender, said: keep.said, tier: keep.tier,
-              source: `Noticed on a deal, ${new Date().toLocaleDateString('en-AU')}`,
+              source: `Noticed on a deal, ${new Date().toLocaleDateString('en-AU', { timeZone: OFFICE })}`,
             }),
           }).catch(() => {})
         }
@@ -259,7 +260,7 @@ export function HandoverNotes({ dealId }: { dealId: string }) {
   const when = (s: any) => {
     const d = new Date(String(s || ''))
     return isNaN(d.getTime()) ? '' : d.toLocaleString('en-AU',
-      { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+      { timeZone: OFFICE, day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })
   }
 
   return (

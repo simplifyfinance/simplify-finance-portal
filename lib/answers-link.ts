@@ -1,4 +1,5 @@
 import { signPayload, verifyPayload, siteUrl } from './ready-link'
+import { OFFICE } from './same-date-everywhere'
 
 // THE LINK A CLIENT OPENS TO ANSWER WHAT IS STILL MISSING.
 //
@@ -46,7 +47,7 @@ export function signAnswers(dealId: string, issued = new Date()): string {
     // so a link signed before 11am Sydney told the client it was sent the day
     // before. Same disease as the lodgement dates.
     sentOn: issued.toLocaleDateString('en-AU',
-      { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Australia/Sydney' }),
+      { timeZone: OFFICE, day: 'numeric', month: 'long', year: 'numeric' }),
     expiresOn: expiresFrom(issued),
   } satisfies AnswersPayload)
 }

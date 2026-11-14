@@ -38,6 +38,7 @@ import { securitiesOf } from './box-security'
 import { retirementPicture } from './box-goals'
 import { CREDIT_QUESTIONS } from './credit-history-facts'
 import { clientAgreement, optionOnTheDeal, optionGap, lenderOnTheDeal } from './client-agreement'
+import { OFFICE } from './same-date-everywhere'
 
 const txt = (v: any) => String(v ?? '').trim()
 const shout = (s: string) => `** ${s} **`
@@ -263,7 +264,7 @@ export function boxFour(deal: any): Box {
     let line = bits.join(' ')
     if (inc > 0) line += `, on a gross salary of ${money(inc)} a year`
     const prev = (a.employment || []).find((e: any) => !e?.isCurrent && txt(e?.endDate))
-    if (prev) line += `, with a previous role ending in ${new Date(prev.endDate).toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })}`
+    if (prev) line += `, with a previous role ending in ${new Date(prev.endDate).toLocaleDateString('en-AU', { timeZone: OFFICE, month: 'long', year: 'numeric' })}`
     people.push(line)
   }
   if (people.length) analysis.push(people.join('. ').replace(/^(.)/, c => c.toUpperCase()) + '.')

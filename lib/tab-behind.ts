@@ -30,6 +30,7 @@
 // genuinely wants the boxes empty clears them, the same as any other day.
 
 import { filledCount } from './wipe-guard'
+import { OFFICE } from './same-date-everywhere'
 
 // Below this there is nothing to judge. Two boxes against five is somebody who
 // has just started, not a screen that loaded from the wrong place.
@@ -84,7 +85,7 @@ function clockTime(at: string | null | undefined): string {
   if (!at) return ''
   const d = new Date(at)
   if (isNaN(d.getTime())) return ''
-  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase().replace(' ', '')
+  return d.toLocaleTimeString([], { timeZone: OFFICE, hour: 'numeric', minute: '2-digit' }).toLowerCase().replace(' ', '')
 }
 
 // WHAT "SHOW ME WHAT IS SAVED" ACTUALLY DOES.

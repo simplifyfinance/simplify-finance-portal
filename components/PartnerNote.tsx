@@ -6,6 +6,7 @@ import {
   buildPartnerNote, dealsOf, draftNote, lineFor, periodsFor, scoreOf,
   type PeriodKey,
 } from '@/lib/the-partner-note'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 // A NOTE TO A REFERRAL PARTNER.
 //
@@ -250,7 +251,7 @@ export default function PartnerNote({ deals, splits, brands, meName, today }: {
               {lastSent(partner) && (
                 <span className="ml-auto text-[11.5px] text-done font-semibold">
                   Last sent {new Date(lastSent(partner)).toLocaleDateString('en-AU',
-                    { day: 'numeric', month: 'short', timeZone: 'Australia/Sydney' })}
+                    { timeZone: OFFICE, day: 'numeric', month: 'short' })}
                 </span>
               )}
             </div>

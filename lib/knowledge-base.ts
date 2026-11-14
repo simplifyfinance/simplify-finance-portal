@@ -35,6 +35,7 @@
 
 import { emailShell } from './email-shell'
 import { siteUrl } from './site-url'
+import { OFFICE } from './same-date-everywhere'
 
 export type Section = 'templates' | 'features' | 'process'
 
@@ -1088,7 +1089,7 @@ export function sectionLabel(key: Section): string {
 export function readableDate(iso: string): string {
   const d = new Date(`${iso}T00:00:00`)
   if (isNaN(d.getTime())) return iso
-  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
+  return d.toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 // ---------------------------------------------------------------------------

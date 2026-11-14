@@ -4,6 +4,7 @@ import { verifyAnswers, hasExpired, type AnswersPayload } from './answers-link'
 import { openQuestions, marksOn, type Question } from './what-we-still-need'
 import { applyAnswers, keysAnswered, type Answer } from './answers-from-the-client'
 import { fileNote } from './file-note'
+import { OFFICE } from './same-date-everywhere'
 
 // THE PAGE A CLIENT OPENS TO ANSWER WHAT IS STILL MISSING.
 //
@@ -125,7 +126,7 @@ function span(e: any): string {
 function month(v: any): string {
   const d = new Date(txt(v))
   if (!txt(v) || isNaN(d.getTime())) return ''
-  return d.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })
+  return d.toLocaleDateString('en-AU', { timeZone: OFFICE, month: 'short', year: 'numeric' })
 }
 
 function dependantCount(ff: any): number {

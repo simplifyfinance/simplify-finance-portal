@@ -5,6 +5,7 @@ import { digitsOnly, compactMoney } from '@/lib/money'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { fyEndYear, todayYmd, toAuDate } from '@/lib/periods'
 import Loading from '@/components/Loading'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 const FY_MONTHS = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6]
 const NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
@@ -197,7 +198,7 @@ export default function MonthlyActuals() {
       }
       await load()
       setStatus(ups.length || dels.length
-        ? 'Saved at ' + new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })
+        ? 'Saved at ' + new Date().toLocaleTimeString('en-AU', { timeZone: OFFICE, hour: '2-digit', minute: '2-digit' })
         : 'Nothing changed.')
     } catch (e: any) {
       setStatus('NOT SAVED - ' + (e?.message || 'the change did not reach the database'))

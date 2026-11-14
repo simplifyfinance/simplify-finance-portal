@@ -27,6 +27,7 @@
 // the strip at the top of a live deal.
 
 import { toAuDate } from './periods'
+import { OFFICE } from './same-date-everywhere'
 
 const txt = (v: any) => String(v ?? '').trim()
 
@@ -53,7 +54,7 @@ function dayWords(ts: any): string {
   const parsed = new Date(d)
   if (isNaN(parsed.getTime())) return ''
   return parsed.toLocaleDateString('en-AU',
-    { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Australia/Sydney' })
+    { timeZone: OFFICE, weekday: 'long', day: 'numeric', month: 'long' })
 }
 
 function daysAgo(ts: any, now: Date): number | null {

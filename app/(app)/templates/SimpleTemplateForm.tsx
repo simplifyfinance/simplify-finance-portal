@@ -7,6 +7,7 @@ import { useSender } from './useSender'
 import { SenderPanel, ClientPanel, inp, inpS, panel, panelS } from './TemplateFields'
 import PasteReminder from './PasteReminder'
 import SendConfirm from './SendConfirm'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 // One form for every template that needs nothing but the client. Nothing is
 // calculated, so the email is ready as soon as the name and address are in.
@@ -104,7 +105,7 @@ export default function SimpleTemplateForm({
       email: recipients,
       brokerKey: brokerKeyDep,
       brokerName: brokerNameDep,
-      sentOn: new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }),
+      sentOn: new Date().toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'long', year: 'numeric' }),
     }
     let live = true
     const t = setTimeout(async () => {

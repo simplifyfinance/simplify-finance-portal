@@ -5,6 +5,7 @@ import { todayYmd } from '@/lib/periods'
 import { STATE_LABEL, isRefinance, isPurchase, stepLabel, attentionFor,
          STEPS, stepIsOn, stepPatch,
          type SettlementState, type SettlementStep } from '@/lib/settlement'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 // The same fields as the settlements board, on the deal itself, for the people who
 // work settlements. A broker opening this deal never renders it - the panel is the
@@ -76,7 +77,7 @@ export default function DealSettlementPanel({ deal, onUpdated }: { deal: any; on
     const next = { ...d, ...patch }
     setD(next)
     onUpdated?.(patch)
-    setMsg('Saved at ' + new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+    setMsg('Saved at ' + new Date().toLocaleTimeString('en-AU', { timeZone: OFFICE, hour: '2-digit', minute: '2-digit' }))
   }
 
   // Two independent stages now, each with its own date, not one enum holding one

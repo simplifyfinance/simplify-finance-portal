@@ -192,7 +192,7 @@ export default async function Dashboard(
   // The credit team's morning, and what settles this week. Both are counted
   // from rows this page already has, so neither can disagree with the credit
   // assessor's own screen or with Settlements.
-  const todayWords = new Date(today + 'T00:00:00').toLocaleDateString('en-AU', {
+  const todayWords = new Date(today + 'T00:00:00').toLocaleDateString('en-AU', { timeZone: OFFICE,
     weekday: 'long', day: 'numeric', month: 'long',
   })
 

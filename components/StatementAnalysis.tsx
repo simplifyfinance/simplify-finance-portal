@@ -10,6 +10,7 @@ import { combine, personOf, peopleByAccount, removalCost } from '@/lib/statement
 import { analyse } from '@/lib/statement-analysis'
 import { useBusyWhile } from '@/components/useBusy'
 import Loading from '@/components/Loading'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 // The Statements tab. Everything on screen comes from ONE analysis over ONE
 // ledger, so a card and the transactions behind it can never drift.
@@ -937,7 +938,7 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
                     {n ? ` · ${n.toLocaleString('en-AU')} transactions` : ''}
                   </span><br />
                   <span className="text-[11px] text-faint">
-                    uploaded {new Date(u.uploaded_at).toLocaleString('en-AU', { day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                    uploaded {new Date(u.uploaded_at).toLocaleString('en-AU', { timeZone: OFFICE, day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
                     {u.uploaded_by_email ? ` by ${u.uploaded_by_email}` : ''}
                   </span>
                 </span>
@@ -967,7 +968,7 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
               {uploads.length > 1
                 ? `One analysis across all ${uploads.length} sets.`
                 : 'The analysis reads the statements against this deal\u2019s fact find.'}
-              {upload.reanalysed_at ? ` Last re-run ${new Date(upload.reanalysed_at).toLocaleString('en-AU', { day: '2-digit', month: 'short', hour: 'numeric', minute: '2-digit' })}.` : ''}
+              {upload.reanalysed_at ? ` Last re-run ${new Date(upload.reanalysed_at).toLocaleString('en-AU', { timeZone: OFFICE, day: '2-digit', month: 'short', hour: 'numeric', minute: '2-digit' })}.` : ''}
             </span>
           </div>
 
@@ -978,8 +979,8 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
                 {stale.join(', ')}{stale.length === 1 ? ' has' : ' have'} moved in Settings. These findings
                 still show what you saw
                 {upload.reanalysed_at
-                  ? ` on ${new Date(upload.reanalysed_at).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}`
-                  : ` on ${new Date(upload.uploaded_at).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}`}.
+                  ? ` on ${new Date(upload.reanalysed_at).toLocaleDateString('en-AU', { timeZone: OFFICE, day: '2-digit', month: 'short', year: 'numeric' })}`
+                  : ` on ${new Date(upload.uploaded_at).toLocaleDateString('en-AU', { timeZone: OFFICE, day: '2-digit', month: 'short', year: 'numeric' })}`}.
               </span>
               <button onClick={reanalyse} disabled={busy}
                 className="ml-auto text-[11.5px] font-semibold text-white bg-info border border-[var(--color-info)] rounded-lg px-3 py-1.5 disabled:opacity-40">
@@ -1080,7 +1081,7 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
                           <div className="mt-1.5 text-[12px] text-done">
                             ✓ {describeAnswer(answered)}
                             <span className="text-[11px] text-muted">
-                              {' '}· {answered.answered_by || 'recorded'} · {new Date(answered.answered_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              {' '}· {answered.answered_by || 'recorded'} · {new Date(answered.answered_at).toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short', year: 'numeric' })}
                               {' '}· <button onClick={() => clearAnswer(key)} disabled={saving === key}
                                         className="underline text-info disabled:opacity-50">Change</button>
                             </span>

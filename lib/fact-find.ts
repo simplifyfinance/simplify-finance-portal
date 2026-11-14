@@ -8,6 +8,7 @@
 // for a field given the answers already given, this does not call it missing.
 
 import { readMoney, annualise } from './money'
+import { OFFICE } from './same-date-everywhere'
 
 export function notWorking(emp: any): boolean {
   return String(emp?.employmentType || '').trim().toLowerCase() === 'not working'
@@ -236,7 +237,7 @@ function gap(start: Date, a: number, b: number): HistoryGap {
  * somebody says it. I wrote "to" first and both sentences came out wrong.
  */
 export function gapInWords(g: HistoryGap): string {
-  const say = (d: Date) => d.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })
+  const say = (d: Date) => d.toLocaleDateString('en-AU', { timeZone: OFFICE, month: 'long', year: 'numeric' })
   return `${say(g.from)} and ${say(g.to)}`
 }
 

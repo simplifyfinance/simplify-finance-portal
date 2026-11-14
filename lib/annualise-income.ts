@@ -36,6 +36,8 @@
 // lenders and that is a credit decision later on so keep it simple."
 
 // THE AUSTRALIAN FINANCIAL YEAR: 1 July to 30 June.
+import { OFFICE } from './same-date-everywhere'
+
 const FY_FIRST_MONTH = 6   // zero-based: June is 5, July is 6
 
 // How much year to date a lender wants before an annualised figure means
@@ -183,7 +185,7 @@ function words(days: number): string {
   return weeks >= 2 ? `${weeks} weeks` : `${days} ${days === 1 ? 'day' : 'days'}`
 }
 
-const au = (d: Date) => d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
+const au = (d: Date) => d.toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'long', year: 'numeric' })
 
 /**
  * HOW MUCH OF THE YEAR THIS PAYSLIP ACCOUNTS FOR, AND WHETHER IT IS ENOUGH.
@@ -329,7 +331,7 @@ const money2 = (n: number): string => '$' + Math.round(n).toLocaleString('en-AU'
 const exact2 = (n: number): string =>
   '$' + n.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const auDay = (d: Date): string =>
-  d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
+  d.toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'long', year: 'numeric' })
 
 function workingOut(
   lines: AssessedLine[], coverage: Coverage, rate: number, full: number, shaded: number,

@@ -4,6 +4,8 @@
 // internal notes, "latest update", "outstandings". You typed today's note over
 // yesterday's and yesterday's was gone. This is append only.
 
+import { OFFICE } from './same-date-everywhere'
+
 export type Note = {
   id: string
   deal_id: string
@@ -124,7 +126,7 @@ export function whenLabel(iso: string | null | undefined): string {
       day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true,
     })
   } catch {
-    return d.toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })
+    return d.toLocaleString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })
   }
 }
 

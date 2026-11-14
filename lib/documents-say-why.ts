@@ -12,6 +12,7 @@
 // chased - see lib/document-progress.ts.
 
 import { type DocRow } from './document-progress'
+import { OFFICE } from './same-date-everywhere'
 
 const txt = (v: any) => String(v ?? '').trim()
 
@@ -90,13 +91,13 @@ export function trailFor(row: any, now: Date = new Date()): string {
 export function dayWords(at: any): string {
   const d = new Date(txt(at))
   if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+  return d.toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short' })
 }
 
 export function timeWords(at: any): string {
   const d = new Date(txt(at))
   if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleString('en-AU', {
+  return d.toLocaleString('en-AU', { timeZone: OFFICE,
     day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', hour12: true,
   }).replace(/\s?(am|pm)/i, (m) => m.toLowerCase().trim())
 }

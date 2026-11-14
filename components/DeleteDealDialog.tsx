@@ -7,6 +7,7 @@
 // This codebase has been bitten by that twice.
 import { useState } from 'react'
 import { canDelete, whatIsLost, deleteConfirmed, DELETE_WORD } from '@/lib/delete-deal'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 export function DeleteDealDialog({ deal, documentCount, busy, onMarkLost, onDelete, onCancel }: {
   deal: any
@@ -124,7 +125,7 @@ function summaryOf(deal: any): string {
     return t ? t[0].toUpperCase() + t.slice(1) : ''
   }
   const created = deal?.created_at
-    ? new Date(deal.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })
+    ? new Date(deal.created_at).toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'long' })
     : ''
   return [
     words(deal?.transaction_type),

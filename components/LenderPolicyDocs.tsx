@@ -8,6 +8,7 @@ import { whereIsPaco, rungTone, type Standing } from '@/lib/the-ladder'
 import { whereFor, sourceLine, alsoCoveredBy, REGISTER_CHECKED_ON } from '@/lib/where-the-policy-lives'
 import { tidyLink, whyNotALink, nameFromLink, siteOf } from '@/lib/dropped-links'
 import { flat } from '@/lib/plain-words'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 // THE LENDERS' OWN WRITTEN POLICY.
 //
@@ -59,7 +60,7 @@ type Rule = {
 const today = () => new Date().toISOString().slice(0, 10)
 const when = (s: any) => {
   const d = new Date(String(s || ''))
-  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 const CARD = 'bg-card border border-card-line rounded-xl overflow-hidden mb-3'

@@ -27,6 +27,7 @@
 
 import { phaseOf, phaseSince } from './deal-phase'
 import { bucketOf } from './a-stage-is-a-fact'
+import { OFFICE } from './same-date-everywhere'
 
 const txt = (v: any) => String(v ?? '').trim()
 
@@ -99,7 +100,7 @@ export function weekLabel(monday: any, now: Date = new Date()): string {
 }
 
 function month(d: Date): string {
-  return d.toLocaleDateString('en-AU', { month: 'short' })
+  return d.toLocaleDateString('en-AU', { timeZone: OFFICE, month: 'short' })
 }
 
 /** The Monday an answer means, or null where the answer carries no week. */

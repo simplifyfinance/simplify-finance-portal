@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { describeAnswer, type Answer } from '@/lib/statement-answers'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 // The statement queries and their answers, shown where people already look.
 //
@@ -65,7 +66,7 @@ export default function StatementQueries({ dealId }: { dealId: string }) {
           <p className="text-[11px] text-gray-400 m-0">{LABELS[a.item_key] || a.item_key}</p>
           <p className="text-[13px] text-gray-800 m-0">{describeAnswer(a)}</p>
           <p className="text-[11px] text-gray-400 m-0">
-            {a.answered_by || 'recorded'} · {new Date(a.answered_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+            {a.answered_by || 'recorded'} · {new Date(a.answered_at).toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short', year: 'numeric' })}
           </p>
         </div>
       ))}

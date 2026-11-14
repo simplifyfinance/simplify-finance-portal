@@ -19,6 +19,7 @@
 
 import { money } from './money'
 import { dayWords, lenderOf, type ForReferrer, type Line2, type Totals } from './who-brought-us-this'
+import { OFFICE } from './same-date-everywhere'
 
 const txt = (v: any) => String(v ?? '').trim()
 
@@ -126,5 +127,5 @@ export function weekEndingWords(now: Date = new Date()): string {
   // Monday is 1, so Friday is four days after the week's Monday.
   const back = (d.getDay() + 6) % 7
   d.setDate(d.getDate() - back + 4)
-  return d.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })
+  return d.toLocaleDateString('en-AU', { timeZone: OFFICE, weekday: 'long', day: 'numeric', month: 'long' })
 }

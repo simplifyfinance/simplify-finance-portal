@@ -147,7 +147,7 @@ export default function CompliancePackWorkload() {
                 <tr key={d.day} className={d.day === today ? 'bg-page' : undefined}>
                   <td className={`py-2 pr-3 text-[13px] border-b border-line-soft ${d.day === today ? 'font-bold text-ink' : 'text-gray-700'}`}>
                     {new Date(`${d.day}T00:00:00`).toLocaleDateString('en-AU',
-                      { weekday: 'short', day: 'numeric', month: 'short' })}
+                      { timeZone: OFFICE, weekday: 'short', day: 'numeric', month: 'short' })}
                     {d.day === today && <span className="font-normal text-faint"> · today</span>}
                   </td>
                   {people.map(p => {

@@ -25,6 +25,8 @@
 // saving - something changed, or a write is on its way
 // slow   - a write has been in flight past SLOW_SAVE_MS, or the computer is offline
 // failed - the database refused it, or it never arrived
+import { OFFICE } from './same-date-everywhere'
+
 export type SaveStage = 'clean' | 'saving' | 'slow' | 'failed'
 
 export type SaveStatus = {
@@ -44,7 +46,7 @@ export type SaveStatus = {
 export const SLOW_SAVE_MS = 8000
 
 export function stampNow(now: Date = new Date()): string {
-  return now.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })
+  return now.toLocaleTimeString('en-AU', { timeZone: OFFICE, hour: '2-digit', minute: '2-digit' })
 }
 
 // quiet - grey text, no box. warn/bad - a coloured pill, because these are the

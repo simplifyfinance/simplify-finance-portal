@@ -6,6 +6,7 @@ import type { ReadPayslip, ReadLine } from '@/lib/payslip-lines'
 import { isTotal } from '@/lib/payslip-lines'
 import { toFactFind, unsettled, whatHappened, type Fields, type Column } from '@/lib/income-to-fact-find'
 import { assessCombined, annualFromRate, type BaseRate } from '@/lib/combined-ytd'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 // WHAT A PAYSLIP SAYS THIS PERSON EARNS IN A YEAR, ON THE SCREEN.
 //
@@ -57,7 +58,7 @@ const money = (n: number) => '$' + Math.round(n).toLocaleString('en-AU')
 // everything is read from.
 const byPeriod = (x: { read: ReadPayslip }, y: { read: ReadPayslip }) =>
   String(x.read.periodEnd || '').localeCompare(String(y.read.periodEnd || ''))
-const theDate = (d: Date) => d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+const theDate = (d: Date) => d.toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short', year: 'numeric' })
 
 /** Everything needed to rebuild this screen. Never the totals - see onRead. */
 export type PayslipRead = {

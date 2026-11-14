@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { PAGE_WIDE } from '@/lib/page-width'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 type LoanSizeFilter = 'all' | 'under500' | '500to1m' | 'over1m'
 
@@ -65,7 +66,7 @@ export default function CheatSheetPage() {
         <div className="flex justify-between items-center mb-1">
           <p className="text-lg font-medium text-white">Rate cheat sheet</p>
           <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
-            Updated {new Date().toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
+            Updated {new Date().toLocaleString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
           </span>
         </div>
         <p className="text-xs mb-4" style={{ color: 'rgba(255,255,255,0.4)' }}>Based on lending options entered by your team — not advertised rates</p>

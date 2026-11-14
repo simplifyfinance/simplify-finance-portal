@@ -25,6 +25,7 @@ import { lenderOnTheDeal } from '@/lib/client-agreement'
 import { money, readMoney } from '@/lib/money'
 import { useBusyWhile } from '@/components/useBusy'
 import Loading from '@/components/Loading'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 type Shade = { edge: string; tint: string; ink: string }
 const SHADES: Record<Accent, Shade> = {
@@ -366,7 +367,7 @@ function CardBlock({ card, shade, done, onCopy, onValue }: {
 
         {done && (
           <div className="mt-2.5 text-[11px] text-[#8B9AA8]">
-            Copied {new Date(done.at).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
+            Copied {new Date(done.at).toLocaleString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
             {done.by ? ' by ' + done.by : ''}
           </div>
         )}

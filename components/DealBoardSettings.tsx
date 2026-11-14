@@ -10,6 +10,7 @@ import {
   AGED_PHASES, SWATCHES, WAITING_ON, readBoardSettings, draftFromThresholds,
   boardSettingsToSave, normHex, type ThresholdDraft,
 } from '@/lib/board-settings'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 // Settings -> Deal board. Two things, because they are the two things that
 // decide what a card looks like from across the room: what colour it is, and
@@ -173,7 +174,7 @@ export default function DealBoardSettings({ value, onChange }: {
           <div className="flex items-start gap-3 bg-info-bg border border-info-edge rounded-lg px-3 py-2.5 mt-3">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2"/><path d="M8 5v3.4M8 10.8v.2"/></svg>
             <span className="text-[12px] text-info leading-[1.6]">
-              Whatever you put here, ageing still starts from <b>{new Date(AGEING_FROM).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}</b>.
+              Whatever you put here, ageing still starts from <b>{new Date(AGEING_FROM).toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'long', year: 'numeric' })}</b>.
               A deal that entered its stage before that date is not aged at all - otherwise the board
               opens with a screen of red cards nobody intends to chase, and everyone learns to ignore
               the colour. Everything that has moved since then is aged immediately.

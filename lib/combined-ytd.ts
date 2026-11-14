@@ -1,4 +1,5 @@
 import { coverageOf, daysCovered, financialYearEnd, type Assessment, type AssessedLine, type PayKind } from './annualise-income'
+import { OFFICE } from './same-date-everywhere'
 
 // WHEN A PAYSLIP GIVES ONE YEAR-TO-DATE FIGURE AND NOT A BREAKDOWN.
 //
@@ -186,7 +187,7 @@ export function assessCombined(opts: {
 }
 
 const auDate = (x: Date) =>
-  x.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
+  x.toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'long', year: 'numeric' })
 
 const exact = (n: number): string =>
   '$' + n.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })

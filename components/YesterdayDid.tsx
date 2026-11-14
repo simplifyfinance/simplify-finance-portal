@@ -5,6 +5,7 @@ import {
   STAGES_DONE, keyOf, toggleRemoved, withAdded, withoutAdded, yesterdayShown,
   type Added, type Done,
 } from '@/lib/the-morning-three'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 // WHAT SHE DID YESTERDAY, AND HER CHANCE TO FIX IT.
 //
@@ -71,7 +72,7 @@ export default function YesterdayDid({
         <span className={`text-[10.5px] font-bold uppercase tracking-[0.06em] ${
           savedAt ? 'text-done' : 'text-faint'}`}>
           {savedAt
-            ? `✓ ${new Date(savedAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}`
+            ? `✓ ${new Date(savedAt).toLocaleTimeString('en-AU', { timeZone: OFFICE, hour: 'numeric', minute: '2-digit' })}`
             : dayWords}
         </span>
       </div>

@@ -18,6 +18,7 @@ import { TONE } from '@/lib/tone'
 import { type Brand, DEFAULT_BRAND, normaliseBrand } from '@/lib/brand'
 import { readNotice, noticeForMany } from '@/lib/rate-notice'
 import PasteReminder from './PasteReminder'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 // The email goes out in a broker's name, and anyone on the team may be the one
 // sending it — so the broker is chosen, not assumed from who is logged in. Name
@@ -210,7 +211,7 @@ export default function RefinanceTemplateForm() {
       brokerKey: broker.key,
       brokerName: broker.name,
       calendly: calendlyUrl,
-      sentOn: new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }),
+      sentOn: new Date().toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'long', year: 'numeric' }),
       repaymentType: input.repaymentType,
       balance: input.balance,
       currentRate: input.currentRate,

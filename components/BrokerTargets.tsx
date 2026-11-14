@@ -4,6 +4,7 @@ import { splitsTotal } from '@/lib/deal-phase'
 import { digitsOnly, compactMoney } from '@/lib/money'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { fyEndYear, todayYmd, toAuDate } from '@/lib/periods'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 const FY_MONTHS = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6]
 const NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
@@ -234,7 +235,7 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
         if (error) throw new Error(error.message)
       }
       await load()
-      setStatus('Saved at ' + new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+      setStatus('Saved at ' + new Date().toLocaleTimeString('en-AU', { timeZone: OFFICE, hour: '2-digit', minute: '2-digit' }))
     } catch (e: any) {
       setStatus('NOT SAVED - ' + (e?.message || 'the change did not reach the database'))
     } finally { setBusy(false) }

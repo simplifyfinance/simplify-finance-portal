@@ -65,6 +65,8 @@
 // Read off the original. Kept as a list so the select and the insert cannot
 // drift apart - the select asking for one column fewer than the insert writes
 // is how a clone quietly loses a form.
+import { OFFICE } from './same-date-everywhere'
+
 export const CLONE_READS = [
   // `id` and `deal_name` so a fact find can say where it came from - see
   // withProvenance. The select asking for one column fewer than the insert
@@ -166,7 +168,7 @@ export function provenanceLine(factFind: any): string {
   const c = factFind?.copiedFrom
   if (!c?.dealName) return ''
   const d = new Date(String(c.at || ''))
-  const when = isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
+  const when = isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'long', year: 'numeric' })
   return `from ${c.dealName}${when ? `, copied on ${when}` : ''}`
 }
 

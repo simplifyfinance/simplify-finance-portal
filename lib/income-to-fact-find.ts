@@ -30,6 +30,7 @@
 // sentence for the file. The form saves them the way it saves everything else,
 // through the guarded path.
 import type { Assessment, LineKey } from './annualise-income'
+import { OFFICE } from './same-date-everywhere'
 
 export type Column = 'full' | 'shaded'
 
@@ -112,7 +113,7 @@ export function toFactFind(
 const dollars = (n: number) => '$' + Math.round(n).toLocaleString('en-AU')
 
 const auDate = (d: Date) =>
-  d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
+  d.toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'long', year: 'numeric' })
 
 /**
  * THE LINE THAT GOES IN THE FILE.

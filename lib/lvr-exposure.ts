@@ -16,6 +16,8 @@
 // Nothing here touches a database. app/(app)/reports/page.tsx reads the rows
 // and hands them over.
 
+import { OFFICE } from './same-date-everywhere'
+
 export type Holding = {
   review_id: string
   address: string | null
@@ -189,7 +191,7 @@ export function shortDate(v: any): string {
   if (!/^\d{4}-\d{2}/.test(s)) return ''
   const d = new Date(`${s.slice(0, 7)}-01T00:00:00`)
   return isNaN(d.getTime()) ? ''
-    : d.toLocaleDateString('en-AU', { month: 'short', year: '2-digit' })
+    : d.toLocaleDateString('en-AU', { timeZone: OFFICE, month: 'short', year: '2-digit' })
 }
 
 /** The grey line under a figure. Short, and it never pretends to a date it has not got. */

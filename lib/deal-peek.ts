@@ -12,6 +12,7 @@
 import { phaseOf, phaseSince, amountOf, PHASE_LABEL, type Phase } from './deal-phase'
 import { chipsFor, dealTitle, type Chip } from './deal-labels'
 import { loanIdRows } from './loan-id'
+import { OFFICE } from './same-date-everywhere'
 
 export type PeekField = { key: string; value: string; muted?: boolean }
 export type PeekSection = { title: string; fields: PeekField[] }
@@ -34,7 +35,7 @@ const dash = '—'
 function auDate(v: any): string {
   if (!v) return ''
   const d = new Date(v)
-  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 export function money(n: number | null): string {

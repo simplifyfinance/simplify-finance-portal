@@ -20,6 +20,8 @@
 // So a liability nobody ticks belongs to nobody. Today it silently drops out of
 // every applicant's position - the client record ends up missing a car loan that
 // is sitting right there on the deal. That is what `unassigned` below is for.
+import { OFFICE } from './same-date-everywhere'
+
 export type Ownership = Record<string, string> | null | undefined
 
 export function ownsIt(ownership: Ownership, applicantId: string): boolean {
@@ -188,7 +190,7 @@ export function auDate(value: string | null | undefined): string {
   if (!value) return ''
   const d = new Date(value)
   if (!Number.isFinite(d.getTime())) return ''
-  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+  return d.toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 function listNames(names: string[]): string {

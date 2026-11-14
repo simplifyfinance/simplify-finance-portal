@@ -44,6 +44,79 @@ success message was displayed by code that never verified anything:
 - If a value can't be resolved, **refuse and say so**. Never fall back to a named
   person, a zero, or an estimate. "Rate not confirmed" beats a plausible number.
 
+## The clock is Sydney's
+
+The database stores UTC and that is correct. What is not correct is a date
+reaching a human without being turned back into the office's day first.
+
+- **Before saying anything about when something happened, work out the local
+  time.** 13 Nov 2026: a card saved at 10:02am Sydney is recorded as 23:02 the
+  previous day. It was read as "last night", a member of staff was nearly
+  challenged about working at eleven at night, and an hour went into an
+  investigation pointed the wrong way.
+- Every date shown to anybody goes through `lib/same-date-everywhere.ts`, which
+  resolves in `Australia/Sydney` on both the server and the browser.
+- `scripts/check-one-clock.sh` counts the places still asking the machine. The
+  number only goes down.
+- **Never a fixed offset.** Sydney is UTC+11 in November and UTC+10 in June, so
+  a hardcoded +10 is wrong for half the year — and only shows up in one season.
+
+## A typed string is never an identity
+
+The same fault, three times in two days:
+
+- A loan split filed under its typed **label**, so two splits named after the
+  house read as one loan and a client's $192,000 looked missing.
+- Compliance answers filed under an applicant's **name**, which orphans the
+  moment anyone corrects a spelling.
+- Security decided from a scenario **template** in two files that each worked it
+  out alone, so a wrong LVR reached a lender and a compliance pack by two routes.
+
+Use ids. A name is something a person types and retypes; it is a label to print,
+never a key to look up by.
+
+## A step that can fail silently is the worst kind
+
+13 Nov 2026, Jayver Varghese. The push to SalesTrekker was pressed, no email
+went, and the portal wrote nothing — so a deal somebody had pushed and a deal
+nobody had touched were identical in the database. It took three SQL queries and
+the Supabase request logs, at midnight, and it came close to being a conversation
+with a member of staff about whether she was telling the truth.
+
+- **Any step that matters leaves a mark on the record**: attempted at, by whom,
+  worked or failed. Written *before* the thing is tried, so a failure in the
+  middle leaves the attempt behind.
+- **A popup is not a record.** It vanishes when it is clicked.
+- Nobody should have to interview their staff to find out whether a button worked.
+
+## Working is not the same as clicking
+
+13 Nov 2026. A credit officer saved a compliance card at 3:11pm and the portal
+signed her out for inactivity at 3:14pm. Her tab carried on talking to the
+database with no credentials for an hour, every read came back empty, and the
+screen looked completely normal.
+
+- **A save counts as being at the desk.** It cannot happen without a person.
+- Reading, writing notes on paper and doing sums at a desk is working. A timeout
+  that can fire on a working person must lose nothing and must say so at once.
+- **The idle rule is 60 full minutes with nothing touched, typed or saved.**
+  Nothing may make it shorter.
+- When the portal signs somebody out, the tab says so within a minute and their
+  work is already written to their own browser before the message draws.
+
+## When the data and a person's account disagree
+
+Assume the software failed. Say what the record shows and what it cannot show,
+and never phrase a finding so it reads as an accusation. "The email was never
+sent" is a fact. "She did not press the button" is not the same sentence, and
+the second one costs a relationship.
+
+## Never state a cause you have not proved
+
+Say "I don't know yet" and name the one check that would settle it. Reproduce
+rather than argue. Check your own test fixtures before blaming the system — an
+empty result from a fixture you built proves nothing about production.
+
 ## Working style
 
 - One terminal command per message. A fenced block is always a runnable command and

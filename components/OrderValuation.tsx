@@ -9,6 +9,7 @@ import {
   valuationRef, PROPERTY_TYPES, ACCESS_CONTACTS, TENURES, ANCILLARY, BW_SPECIAL,
   type Answers, type Broker,
 } from '@/lib/order-a-valuation'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 // ORDER A VALUATION, ON THE SECURITY IT IS A VALUATION OF.
 //
@@ -206,7 +207,7 @@ export default function OrderValuation({ deal, security, me, onOrdered }: {
         title={ordered ? 'Ask again — a price changes and a valuation gets ordered twice'
                        : 'Order a valuation for this property'}>
         {ordered
-          ? `✓ valuation ${new Date(ordered).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} · ask again`
+          ? `✓ valuation ${new Date(ordered).toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short' })} · ask again`
           : 'order a valuation'}
       </button>
 

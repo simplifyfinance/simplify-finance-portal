@@ -5,6 +5,7 @@ import { LINE, moveInOrder, splitAtLine, noteFor, type PlanDeal } from '@/lib/th
 import { brokerLabel } from '@/lib/broker-key'
 import { reworkChip } from '@/lib/send-it-back'
 import { askChip } from '@/lib/a-slot-each'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 // A DAY THAT IS A DAY.
 //
@@ -228,7 +229,7 @@ export default function MyDay({
       <div className="flex gap-2.5 items-center mt-4 flex-wrap">
         {saved ? (
           <span className="text-[13.5px] font-semibold text-done bg-done-bg border border-done-edge rounded-[10px] px-4 py-2.5">
-            &#10003; Told the brokers &mdash; {new Date(saved).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}
+            &#10003; Told the brokers &mdash; {new Date(saved).toLocaleTimeString('en-AU', { timeZone: OFFICE, hour: 'numeric', minute: '2-digit' })}
           </span>
         ) : (
           <button onClick={onConfirm} disabled={busy || !canEdit}

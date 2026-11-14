@@ -15,6 +15,8 @@
 // does NOT count - copying is not sending, and a card that moved lane because
 // somebody looked at an email would be worse than one that did not move at all.
 
+import { OFFICE } from './same-date-everywhere'
+
 export type Lane = { key: 'preparing' | 'sent'; label: string; items: any[] }
 
 export function bcLanes(cards: any[]): Lane[] {
@@ -37,5 +39,5 @@ export function sentOn(deal: any): string {
   if (!at) return ''
   const d = new Date(at)
   if (isNaN(d.getTime())) return ''
-  return `sent ${d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`
+  return `sent ${d.toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short' })}`
 }

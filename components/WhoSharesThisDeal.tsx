@@ -6,6 +6,7 @@ import {
   termsHaveMoved, type Split,
 } from '@/lib/who-shares-this-deal'
 import { inOrder, termsShort } from '@/lib/split-order'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 // IS THIS DEAL SHARED WITH ANYBODY?
 //
@@ -210,7 +211,7 @@ export function SharedWithBox({ deal }: { deal: any }) {
       {on && !on.none && (
         <>
           <br /><b className="text-ink">Chosen by</b> &nbsp; {on.by || 'somebody'}
-          {on.at ? `, ${new Date(on.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+          {on.at ? `, ${new Date(on.at).toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
         </>
       )}
       <br />

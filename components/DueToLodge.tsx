@@ -8,6 +8,7 @@ import {
   ANSWERS, TAB_LABEL, answerOf, daysOver, onTab, patchForAnswer, standingOf,
   tabCounts, weekLabel, type AnswerKey, type Tab,
 } from '@/lib/lodging-when'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 // DUE TO LODGE, AND WHO SAID SO.
 //
@@ -183,5 +184,5 @@ function lodgedDay(deal: any): string {
   if (!t) return ''
   const d = new Date(t)
   if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleDateString('en-AU', { weekday: 'short', timeZone: 'Australia/Sydney' })
+  return d.toLocaleDateString('en-AU', { timeZone: OFFICE, weekday: 'short' })
 }

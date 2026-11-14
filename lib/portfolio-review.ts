@@ -10,6 +10,7 @@
 // "due today" has to be testable on a day that is not today.
 
 import { readMoney } from './money'
+import { OFFICE } from './same-date-everywhere'
 
 // ---------------------------------------------------------------------------
 // WHERE A REVIEW CAN BE
@@ -312,7 +313,7 @@ export function whenDue(date: any, today: Date): string {
   const day = dayFromText(date)
   if (day === null) return ''
   return new Date(day).toLocaleDateString('en-AU',
-    { day: 'numeric', month: 'short', year: 'numeric' })
+    { timeZone: OFFICE, day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 // ---------------------------------------------------------------------------

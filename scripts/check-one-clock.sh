@@ -11,49 +11,79 @@
 #
 # THE PROBLEM IS NOT THE DATABASE. Storing UTC is correct and must not change.
 # The problem is a date reaching a screen, an email or a PDF without being
-# turned back into the office's day first.
+# turned back into the office's day first. lib/same-date-everywhere.ts spells
+# it out in Australia/Sydney on both the server and the browser.
 #
-#   toLocaleDateString()  answers in whatever zone the machine is running in.
-#                         The servers run on UTC. The office does not.
-#   lib/same-date-everywhere.ts  spells it out in Australia/Sydney, always, on
-#                         both the server and the browser.
+# ---------------------------------------------------------------------------
+# THIS COUNT HAS BEEN WRONG TWICE, AND A COUNT THAT LIES IS A COUNT NOBODY ACTS ON
+# ---------------------------------------------------------------------------
 #
-# 14 NOV 2026 - THIS COUNT USED TO BE WRONG, AND IT MATTERED.
+# 13 Nov, first version: counted every toLocaleString() call. Most of them are
+# MONEY - `Math.round(v).toLocaleString('en-AU')` is how dollar figures are
+# drawn - and a dollar figure has no timezone. It reported 169 at risk when the
+# real number was 80.
 #
-# The first version of this script counted every toLocaleString() call. Most of
-# them are MONEY - `Math.round(v).toLocaleString('en-AU')` is how every dollar
-# figure outside money() is drawn - and a dollar figure has no timezone. So it
-# reported 169 places at risk when the real number was 80, and a number that
-# cannot be trusted is a number nobody acts on.
+# 14 Nov, second version: read one line at a time. A call written across two
+# lines, with the options on the second, was counted as unfixed even though the
+# line below it said Australia/Sydney. It reported 15 left when the real number
+# was a handful.
 #
-# So it now counts only what is genuinely a date or a time:
-#   toLocaleDateString(  - always a date
-#   toLocaleTimeString(  - always a time
-#   toLocaleString(      - ONLY when the options name a date or clock field
+# So it now reads whole FILES and looks inside each CALL:
+#   toLocaleDateString( / toLocaleTimeString(  - always a date or a time
+#   toLocaleString(                            - only when the options name a
+#                                                date or clock field
+# and a call counts as done if the word timeZone appears anywhere inside it,
+# however it is laid out.
 #
-# THIS IS A GREP, NOT A TEST, for the same reason check-split-position.sh is: a
-# test can be written around, a count cannot hide. The number only ever goes
-# DOWN. Adding one fails the ship and names the file. Taking one away is free -
-# convert it, lower the number here, and say so in the commit.
+# A call that deliberately says timeZone: 'UTC' is DONE, not broken. Those
+# build a date as UTC midnight and read it back in UTC so the digits somebody
+# typed survive - see shortDate() in components/DocumentsBox.tsx.
+#
+# THE NUMBER ONLY EVER GOES DOWN. Adding one fails the ship and names the file.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-# How many places still ask the machine what day it is.
 #   13 Nov 2026: 169 - wrong, money counted as dates
 #   14 Nov 2026:  80 - counted properly for the first time
 #   14 Nov 2026:  66 - the screens that show a deal timestamp, converted
-WAS=66
+#   14 Nov 2026:   0 - read per call instead of per line, and all of them done
+#
+# ZERO. Every date a person sees now resolves in Sydney. Anything that fails
+# this is new, and it is one line to fix: timeZone: OFFICE.
+WAS=0
 
-hits() {
-  grep -rn "toLocaleDateString(\|toLocaleTimeString(\|toLocaleString(" \
-    lib app components --include=*.ts --include=*.tsx 2>/dev/null \
-    | grep -v "\.test\." \
-    | grep -v "_to_delete" \
-    | grep -v "timeZone" \
-    | grep -E "toLocaleDateString\(|toLocaleTimeString\(|toLocaleString\([^)]*(day|month|year|hour|minute|weekday):"
+REPORT=$(node -e '
+const fs = require("fs"), path = require("path");
+const roots = ["lib", "app", "components"];
+const CALL = /toLocale(Date|Time)?String\s*\(([^)]*)\)/g;
+const FIELD = /(day|month|year|hour|minute|weekday|dateStyle|timeStyle)\s*:/;
+let out = [];
+function walk(d) {
+  for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+    const p = path.join(d, e.name);
+    if (e.isDirectory()) { if (e.name !== "node_modules" && e.name !== "_to_delete") walk(p); continue; }
+    if (!/\.tsx?$/.test(e.name) || /\.test\./.test(e.name)) continue;
+    // A LINE INSIDE A COMMENT IS NOT A CALL. The note at the top of
+    // same-date-everywhere.ts shows the wrong way to write one, on purpose,
+    // and counted itself as a fault for a while.
+    const src = fs.readFileSync(p, "utf8")
+      .split("\n").map(l => (l.trim().startsWith("//") || l.trim().startsWith("*")) ? "" : l)
+      .join("\n");
+    let m;
+    while ((m = CALL.exec(src))) {
+      const kind = m[1] || "", args = m[2] || "";
+      const isDate = kind === "Date" || kind === "Time" || FIELD.test(args);
+      if (!isDate) continue;
+      if (/timeZone/.test(args)) continue;
+      out.push(p + ":" + (src.slice(0, m.index).split("\n").length));
+    }
+  }
 }
+roots.forEach(r => { if (fs.existsSync(r)) walk(r); });
+console.log(out.join("\n"));
+' 2>/dev/null)
 
-GOT=$(hits | wc -l | tr -d ' ')
+GOT=$(printf '%s' "$REPORT" | grep -c . || true)
 
 if [ "$GOT" -gt "$WAS" ]; then
   echo "ONE CLOCK CHECK FAILED - $GOT places read the machine's clock, was $WAS."
@@ -61,7 +91,7 @@ if [ "$GOT" -gt "$WAS" ]; then
   echo "  Use dayMonthYear / dayMonth / longDate / dayMonthTime / nowInSydney"
   echo "  from lib/same-date-everywhere.ts, or pass timeZone: OFFICE yourself."
   echo
-  hits | tail -20 | sed 's/^/    /'
+  printf '%s\n' "$REPORT" | sed 's/^/    /'
   exit 1
 fi
 

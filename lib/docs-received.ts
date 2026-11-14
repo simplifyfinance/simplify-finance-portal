@@ -13,6 +13,8 @@
 // email is handed to Resend at the moment the button is pressed, with the time
 // it should go out. Nothing of ours has to still be awake half an hour later.
 
+import { OFFICE } from './same-date-everywhere'
+
 export const DEFAULT_DOCS_DELAY_MINUTES = 30
 
 // Bounded, because this is a number typed on a settings page and "300" would
@@ -106,5 +108,5 @@ export function stillCancellable(deal: any, now = new Date()): boolean {
 // "2:15 pm". A time, not "in 30 minutes" - a page left open for an hour would
 // otherwise keep promising half an hour.
 export function atTime(d: Date): string {
-  return d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()
+  return d.toLocaleTimeString('en-AU', { timeZone: OFFICE, hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()
 }

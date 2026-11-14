@@ -12,6 +12,7 @@ import { useSender } from '@/app/(app)/templates/useSender'
 import { SenderPanel } from '@/app/(app)/templates/TemplateFields'
 import MissingFigures from '@/components/MissingFigures'
 import { useBackdropClose } from '@/components/useBackdropClose'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 // THE CLIENT EMAILS A DEAL CAN SEND.
 //
@@ -424,7 +425,7 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
           <span className="text-[11.5px] text-faint">{deal.deal_name || ''}</span>
           {already && (
             <span className="text-[11.5px] text-chase ml-auto">
-              Already sent {new Date(already.at).toLocaleDateString('en-AU')}{already.by ? ` by ${already.by}` : ''} — this would be another one.
+              Already sent {new Date(already.at).toLocaleDateString('en-AU', { timeZone: OFFICE })}{already.by ? ` by ${already.by}` : ''} — this would be another one.
             </span>
           )}
         </div>

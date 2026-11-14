@@ -11,6 +11,7 @@ import { generateBrokerNotesPdfBuffer } from '@/app/api/generate-broker-notes-pd
 import { allocate, todaySoFar, type Person } from '@/lib/compliance-allocation'
 import { checkedWrite } from '@/lib/checked-write'
 import { documentChaseFor } from '@/lib/documents-block'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 type Trigger = 'bc_action' | 'bc_sent' | 'lo_sent' | 'lo_to_compliance' | 'push_to_salestrekker' | 'close_followup'
 
@@ -311,7 +312,7 @@ export async function POST(req: NextRequest) {
       const { data: c } = await supabase.from('deals')
         .select('close_reason, next_action, next_action_due').eq('id', dealId).maybeSingle()
       const due = c?.next_action_due
-        ? new Date(c.next_action_due).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
+        ? new Date(c.next_action_due).toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'long', year: 'numeric' })
         : 'no date set'
       const instruction =
         `Set up a follow-up task on this deal card for ${brokerName} and the support team. Due ${due}.`

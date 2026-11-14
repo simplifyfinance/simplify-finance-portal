@@ -5,6 +5,7 @@ import { TONE, money } from '@/lib/tone'
 import { sameBroker } from '@/lib/broker-key'
 import RowLimit, { STEPS } from '@/components/RowLimit'
 import { downloadCsv, stamp } from '@/lib/csv'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 // Trail that stopped arriving. Two kinds, and they are not the same thing:
 //
@@ -260,7 +261,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
         // a chase list into "ask about the arrears first".
         (() => {
           const at = arrearsBefore(g)
-          return at ? new Date(at).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' }) : ''
+          return at ? new Date(at).toLocaleDateString('en-AU', { timeZone: OFFICE, day: '2-digit', month: 'short', year: 'numeric' }) : ''
         })(),
       ]))
   }
@@ -570,7 +571,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
                     return (
                       <span className="ml-2 text-[10px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[1px] border align-middle"
                             style={{ borderColor: 'var(--color-info-edge)', color: TONE.warn, background: 'var(--color-info-bg)' }}
-                            title={`Marked in arrears on ${new Date(at).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}. Worth checking whether that is still the reason.`}>
+                            title={`Marked in arrears on ${new Date(at).toLocaleDateString('en-AU', { timeZone: OFFICE, day: '2-digit', month: 'short', year: 'numeric' })}. Worth checking whether that is still the reason.`}>
                         Was in arrears{m > 0 ? ` · ${m} month${m === 1 ? '' : 's'} ago` : ''}
                       </span>
                     )

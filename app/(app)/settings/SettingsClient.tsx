@@ -18,6 +18,7 @@ import DealBoardSettings from '@/components/DealBoardSettings'
 import { DEFAULT_DOCS_DELAY_MINUTES, MIN_DOCS_DELAY_MINUTES, MAX_DOCS_DELAY_MINUTES } from '@/lib/docs-received'
 import { useBusyWhile } from '@/components/useBusy'
 import Loading from '@/components/Loading'
+import { OFFICE } from '@/lib/same-date-everywhere'
 
 const supabase = createSupabaseBrowser()
 
@@ -604,7 +605,7 @@ export default function SettingsPage() {
                       <p className="text-[11px] text-muted m-0">
                         counted as <b className="text-[#575046]">{TREATMENT_LABEL[r.treat_as as TreatAs] || r.treat_as}</b>
                         {r.added_by ? ` · added by ${r.added_by}` : ''}
-                        {r.added_at ? ` · ${new Date(r.added_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                        {r.added_at ? ` · ${new Date(r.added_at).toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
                       </p>
                     </div>
                     <button
@@ -890,7 +891,7 @@ export default function SettingsPage() {
                       </span>
                       {flag.field_label} — {flag.deals?.deal_name || 'Unknown deal'}
                     </span>
-                    <span className="text-[10px] text-[#C9C1B4]">{flag.flagged_by} · {new Date(flag.created_at).toLocaleDateString()}</span>
+                    <span className="text-[10px] text-[#C9C1B4]">{flag.flagged_by} · {new Date(flag.created_at).toLocaleDateString('en-AU', { timeZone: OFFICE })}</span>
                   </div>
                   <p className="text-sm mb-2">{flag.note}</p>
                   <div className="flex gap-2">

@@ -22,6 +22,7 @@
 import { splitOn, linesInWords, type Line } from './who-shares-this-deal'
 import { amountOf } from './deal-phase'
 import { toAuDate } from './periods'
+import { OFFICE } from './same-date-everywhere'
 
 const txt = (v: any) => String(v ?? '').trim()
 
@@ -223,7 +224,7 @@ export function dayWords(deal: any, event: Event): string {
   if (Number.isNaN(d.getTime())) return ''
   // Sydney's weekday. Stored as Sydney midnight, a lodgement reads as the
   // day before anywhere else - which is how "lodged Tuesday" became Monday.
-  return d.toLocaleDateString('en-AU', { weekday: 'long', timeZone: 'Australia/Sydney' })
+  return d.toLocaleDateString('en-AU', { timeZone: OFFICE, weekday: 'long' })
 }
 
 export function lenderOf(deal: any): string {

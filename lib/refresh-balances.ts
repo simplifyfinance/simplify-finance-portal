@@ -21,6 +21,8 @@
 // says what would change; components/PortfolioReview.tsx shows that to a person
 // and writes only what they agree to.
 
+import { OFFICE } from './same-date-everywhere'
+
 /** A property on the list, as much of it as this needs. */
 export type Holding = {
   id: string
@@ -189,7 +191,7 @@ export function monthName(month: string): string {
   if (!/^\d{4}-\d{2}$/.test(month)) return ''
   const d = new Date(`${month}-01T00:00:00`)
   return isNaN(d.getTime()) ? ''
-    : d.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })
+    : d.toLocaleDateString('en-AU', { timeZone: OFFICE, month: 'long', year: 'numeric' })
 }
 
 /** "Aug 26", for the small line under a figure on the list. */
@@ -198,5 +200,5 @@ export function asAtShort(v: any): string {
   if (!m) return ''
   const d = new Date(`${m}-01T00:00:00`)
   return isNaN(d.getTime()) ? ''
-    : d.toLocaleDateString('en-AU', { month: 'short', year: '2-digit' })
+    : d.toLocaleDateString('en-AU', { timeZone: OFFICE, month: 'short', year: '2-digit' })
 }

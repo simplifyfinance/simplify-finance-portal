@@ -39,6 +39,7 @@
 //    asking twice costs a sentence, finding out at submission costs a week.
 import { REQUIRED_HISTORY_MONTHS, totalHistoryMonths, fullName,
          gapsInHistory, gapInWords, type HistoryGap } from './fact-find'
+import { OFFICE } from './same-date-everywhere'
 
 // ---------------------------------------------------------------------------
 // WHAT A QUESTION IS
@@ -136,7 +137,7 @@ export function reachesBackTo(entries: any[], today = new Date()): string {
     .filter(d => !isNaN(d.getTime()) && d.getTime() <= today.getTime())
   if (!starts.length) return ''
   const earliest = new Date(Math.min(...starts.map(d => d.getTime())))
-  return earliest.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })
+  return earliest.toLocaleDateString('en-AU', { timeZone: OFFICE, month: 'long', year: 'numeric' })
 }
 
 function monthsWord(n: number): string {
@@ -555,7 +556,7 @@ export function daysSince(iso: any, today = new Date()): number | null {
 export function shortDate(iso: any): string {
   const d = new Date(txt(iso))
   if (!txt(iso) || isNaN(d.getTime())) return ''
-  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+  return d.toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short' })
 }
 
 /** "Asked 14 Oct · 14 days", or empty where this is the first time. */
