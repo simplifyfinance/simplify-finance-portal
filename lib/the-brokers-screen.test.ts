@@ -54,8 +54,22 @@ describe('the Monday ask', () => {
     expect(code).not.toContain('target')
     expect(code).not.toContain('overdue')
     expect(code).not.toContain('behind')
-    // The only red on the card is a save that failed, which is not a chase.
-    expect((WEEK.match(/text-chase/g) || []).length).toBeLessThanOrEqual(1)
+    // THE ONLY RED ON THE CARD IS A SAVE THAT FAILED, which is not a chase.
+    //
+    // 14 Nov 2026: this was "at most one". The card now makes two writes - the
+    // three answers, and "That is my week" at the bottom, which until today
+    // was a <span> that saved nothing at all. Two writes means two ways to be
+    // refused, and a refused write has to be said out loud or the whole point
+    // of recording it is lost.
+    //
+    // So the count went 1 -> 2, and the rule got stricter in the same move:
+    // every red on this card must be a problem banner. A red that is not
+    // attached to a failed save fails here whatever the count says.
+    const chases = (WEEK.match(/text-chase/g) || []).length
+    const banners = (WEEK.match(/\{(?:week\.)?problem && \(/g) || []).length
+    expect(chases, 'a third red appeared on the broker\'s card').toBeLessThanOrEqual(2)
+    expect(banners, 'every red here is a save that failed, or it does not belong')
+      .toBe(chases)
   })
 })
 

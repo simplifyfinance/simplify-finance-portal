@@ -23,10 +23,24 @@
 // NEXT_PUBLIC_ is deliberate: Next.js only hands a variable to the browser when
 // it carries that prefix, and the login screen is the browser.
 
-// The address this portal is served from today. Kept as the fallback rather
-// than deleted, so that a missing setting means "carry on as before" instead of
-// sending clients to an empty string.
-export const DEFAULT_SITE_URL = 'https://simplify-finance-portal.vercel.app'
+// THE PORTAL'S OWN ADDRESS, and the fallback if the setting ever goes missing.
+//
+// 14 Nov 2026. one.simplifyfinance.com.au went live: a CNAME at Crazy Domains
+// to the project's own Vercel target, and NEXT_PUBLIC_SITE_URL set in Vercel.
+//
+// Until tonight this line read simplify-finance-portal.vercel.app, and the
+// comment at the top of this file - written on 2 Oct - described exactly what
+// was about to happen: NEXT_PUBLIC_SITE_URL had never been set, so all 59
+// places that build a link had been quietly using this fallback. Every client
+// link the portal has ever sent points at a hosting address.
+//
+// IT IS A REAL ADDRESS NOW, NOT A HOSTING ONE. If the Vercel setting is ever
+// deleted, mistyped, or missing on a new environment, links fall back to
+// somewhere that is still ours and still works, instead of somewhere that
+// looks like a developer's test site. lib/site-url.test.ts fails the ship if
+// a vercel.app address is ever written here again - which is the only way the
+// old silence could come back.
+export const DEFAULT_SITE_URL = 'https://one.simplifyfinance.com.au'
 
 export function siteUrl(): string {
   const set = String(process.env.NEXT_PUBLIC_SITE_URL || '').trim()

@@ -19,14 +19,29 @@ afterEach(() => {
   else process.env.NEXT_PUBLIC_SITE_URL = ORIGINAL
 })
 
-describe('nothing changes today', () => {
-  // THE WHOLE SAFETY OF THIS SHIP. With no setting, every link is byte for byte
-  // the address it has always been. If this ever fails, something shipped that
-  // moved the portal without anybody deciding to.
-  it('with no setting, the address is the one the portal already lives at', () => {
+describe('the fallback is ours, not the hosting company\'s', () => {
+  // 14 Nov 2026. one.simplifyfinance.com.au went live and this fallback moved
+  // off simplify-finance-portal.vercel.app.
+  //
+  // WHY IT MATTERS MORE THAN IT LOOKS. NEXT_PUBLIC_SITE_URL had never been set
+  // in Vercel - not once since 2 Oct - so every one of the 59 places that
+  // builds a link had been silently using this line. Nobody knew, because a
+  // fallback that works looks exactly like a setting that works.
+  it('with no setting, the address is the portal\'s own', () => {
     delete process.env.NEXT_PUBLIC_SITE_URL
-    expect(siteUrl()).toBe('https://simplify-finance-portal.vercel.app')
-    expect(DEFAULT_SITE_URL).toBe('https://simplify-finance-portal.vercel.app')
+    expect(siteUrl()).toBe('https://one.simplifyfinance.com.au')
+    expect(DEFAULT_SITE_URL).toBe('https://one.simplifyfinance.com.au')
+  })
+
+  // THE GUARD THAT STOPS IT COMING BACK. A hosting address here is invisible
+  // for as long as the Vercel setting is present, and the day somebody deletes
+  // that setting - or adds a new environment and forgets it - every client
+  // link goes back to looking untrustworthy, with nothing on any screen saying
+  // so. That silence is the whole fault, so it fails the ship instead.
+  it('and it is never a hosting address again', () => {
+    expect(DEFAULT_SITE_URL, 'a client link must never point at a hosting address')
+      .not.toContain('vercel.app')
+    expect(DEFAULT_SITE_URL).toMatch(/^https:\/\/[a-z0-9.-]+\.au$/)
   })
 
   it('and an empty setting is treated as no setting, not as an empty address', () => {
@@ -78,6 +93,18 @@ describe('nothing in the portal writes the address out by hand', () => {
       readFileSync(f, 'utf8').includes('simplify-finance-portal.vercel.app'))
     expect(guilty,
       `these write the address out instead of asking siteUrl():\n${guilty.join('\n')}`).toEqual([])
+  })
+
+  // AND NO OTHER HOSTING ADDRESS EITHER. 14 Nov 2026: the old one was banned
+  // by name, so a NEW vercel.app address - a renamed project, a second
+  // deployment - would have walked straight past this gate.
+  it('and no hosting address of any name is written into the portal', () => {
+    const guilty = sources.filter(f =>
+      !ALLOWED.includes(f.replace(/^\.\//, '')) &&
+      readFileSync(f, 'utf8').includes('vercel.app'))
+    expect(guilty,
+      `a client link must be built from siteUrl(), never a hosting address:\n${guilty.join('\n')}`)
+      .toEqual([])
   })
 
   // THE HALF A CARELESS MIGRATION MISSES. The invitation email had the address

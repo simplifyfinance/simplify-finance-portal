@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useSayTheWeek } from '@/lib/use-say-the-week'
 import { answerOf, type AnswerKey } from '@/lib/lodging-when'
 import { progress, progressWords, isMonday } from '@/lib/the-brokers-monday'
+import { useWentThrough } from '@/lib/use-went-through'
 import { whereItIs } from '@/lib/the-run-through'
 import { money } from '@/lib/money'
 
@@ -41,6 +42,9 @@ export default function BrokerWeek({ deals, now = new Date(), onAnswered }: {
   onAnswered?: () => void
 }) {
   const { say, busy, problem, withAnswers } = useSayTheWeek(now)
+  // The bottom button. Its own write, its own failure, nothing shared with
+  // the three answers above - see lib/use-went-through.ts.
+  const week = useWentThrough(now)
   const rows = withAnswers(deals)
   const p = progress(rows, now)
 
@@ -103,14 +107,38 @@ export default function BrokerWeek({ deals, now = new Date(), onAnswered }: {
       })}
 
       <div className="mt-3 flex flex-wrap items-center gap-2.5">
-        {/* IT IS NOT A SAVE BUTTON. Every press above has already saved. This
-            says "I have been through them", which is what the run-through
-            reads as a broker having answered rather than having ignored it. */}
-        <span className="rounded-[10px] bg-ink px-[17px] py-2 text-[13.5px] font-semibold text-page">
-          That is my week
+        {/* IT IS A REAL BUTTON, AS OF 14 NOV 2026.
+            It was a <span> for two days - text dressed as the solid dark
+            button used everywhere else in the portal. A broker pressed it,
+            believed he had told the office, and nothing was written anywhere.
+            Fabio: "Why would I leave a button fake?"
+            The three answers above each save on their own press. This one
+            saves the only thing they cannot: that he has been through the
+            whole list. It is what the Monday run-through reads to tell a
+            broker with nothing coming apart from a broker who never looked. */}
+        {week.told ? (
+          <span className="rounded-[10px] border border-done-edge bg-done-bg px-[17px] py-2
+                           text-[13.5px] font-semibold text-done">
+            Told the team
+          </span>
+        ) : (
+          <button type="button" disabled={week.busy} onClick={() => { week.say() }}
+                  className="rounded-[10px] bg-ink px-[17px] py-2 text-[13.5px] font-semibold
+                             text-page disabled:opacity-60">
+            {week.busy ? 'Saving' : 'That is my week'}
+          </button>
+        )}
+        <span className="text-[12px] text-faint">
+          {week.told && week.toldAt ? week.toldAt : progressWords(p)}
         </span>
-        <span className="text-[12px] text-faint">{progressWords(p)}</span>
       </div>
+
+      {/* A REFUSED WRITE IS SAID OUT LOUD. The whole point of the button is
+          that somebody else reads the mark it leaves. */}
+      {week.problem && (
+        <p className="mt-2 rounded-lg border border-chase-edge bg-chase-bg px-3 py-1.5
+                      text-[12.5px] text-chase">{week.problem}</p>
+      )}
     </div>
   )
 }

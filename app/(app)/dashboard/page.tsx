@@ -134,6 +134,29 @@ export default async function Dashboard(
     if (k && n) brokerNames[k] = n
   }
 
+  // HAS EACH BROKER BEEN THROUGH HIS WEEK.
+  //
+  // 14 Nov 2026. "That is my week" at the bottom of the broker's Monday screen
+  // was a <span> that saved nothing, so this question had no answer at all and
+  // a broker with nothing coming looked exactly like a broker who never opened
+  // the page. The press now writes user_profiles.week_done_at - see
+  // lib/went-through-the-week.ts - and this is the meeting reading it.
+  //
+  // Keyed by broker key, lower case, the same way brokerNames is. A key that
+  // is missing here means he has not pressed it, which is the answer.
+  const { data: brokerLogins } = await supabase.from('user_profiles')
+    .select('broker_key, week_done_at').not('broker_key', 'is', null)
+  const weekDone: Record<string, { week_done_at?: string | null }> = {}
+  for (const u of (brokerLogins || []) as any[]) {
+    const k = String(u.broker_key || '').toLowerCase()
+    if (!k) continue
+    // Somebody with two logins counts as having been through it if either of
+    // them did, and the later press is the one worth showing.
+    const had = weekDone[k]?.week_done_at || ''
+    const now = String(u.week_done_at || '')
+    if (!had || now > had) weekDone[k] = { week_done_at: u.week_done_at || null }
+  }
+
   const allowToggle = !!brokerKey && hasTeamAccess
   const defaultView: 'team' | 'mine' = creditOfficerId ? 'mine' : 'team'
 
@@ -352,6 +375,7 @@ export default async function Dashboard(
           settling={settlingThisWeek}
           overloaded={overloaded}
           stuckPushes={stuckPushes}
+          weekDone={weekDone}
           me={{ id: user.id, name: profile?.full_name || '' }}
         />
       ) : (

@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { useSayTheWeek } from '@/lib/use-say-the-week'
+import { weekMark } from '@/lib/went-through-the-week'
 import { ANSWERS, answerOf, type AnswerKey } from '@/lib/lodging-when'
 import {
   CARRIED_WORDS, SEATS, SEAT_LABEL, SHOW_AT_ONCE, STAGE_TONE, carriedOver, inTeam, isSlipping,
@@ -33,10 +34,14 @@ const money = (n: number) => n > 0 ? `$${n.toLocaleString('en-AU')}` : ''
 
 const CAP = 'text-[10.5px] font-bold tracking-[0.08em] uppercase text-muted'
 
+// THE MARK IS ONLY EVER HERE, on the people running the meeting's screen.
+// Nothing on a broker's own page goes red - see lib/the-brokers-monday.ts.
+const WEEK_MARK = 'text-[11px] font-bold rounded-lg border px-2 py-[2px] whitespace-nowrap'
+
 export default function RunThrough({
   deals, brokerNames, brokerRows, secondTeam = 'Simplify Finance Brokers',
   target: savedTarget, canSetTarget = false, firstTeam = 'Simplify Finance',
-  team = [], settling = [], overloaded = null, stuckPushes = [],
+  team = [], settling = [], overloaded = null, stuckPushes = [], weekDone = {},
   me = {},
   meName = '',
   todayWords = '', now,
@@ -71,6 +76,14 @@ export default function RunThrough({
   stuckPushes?: Array<{ id: string; name: string; line: string; at: string }>
   meName?: string
   todayWords?: string
+  /**
+   * WHETHER EACH BROKER HAS BEEN THROUGH HIS WEEK, keyed by broker key.
+   *
+   * It is the broker's own user_profiles row, which is where the press is
+   * written - see lib/went-through-the-week.ts. A missing key simply means
+   * he has not pressed it, which is the whole thing the mark exists to say.
+   */
+  weekDone?: Record<string, { week_done_at?: string | null }>
   now?: Date
 }) {
   const [ordering, setOrdering] = useState<string | null>(null)
@@ -247,7 +260,8 @@ export default function RunThrough({
   // 13 Nov 2026. Fabio: "roll the list up and down for Mark and Fabio". The
   // first version put the rest behind a "17 more" button, which is a click
   // between a meeting and the deal it is looking for.
-  const section = (list: BrokerRun[], canSearch: boolean) => list.map(r => {
+  const section = (list: BrokerRun[], canSearch: boolean,
+                   markTheWeek = false) => list.map(r => {
     const q = look[r.key] || ''
     const found = q.trim().length >= 2 ? r.all.filter(d => matches(d, q)) : null
     const deals = found ?? r.deals
@@ -264,6 +278,14 @@ export default function RunThrough({
               className="text-[11.5px] bg-page border border-line rounded-md px-2.5 py-[3px]
                 w-[190px] placeholder:text-faint" />
           )}
+          {markTheWeek && (() => {
+            const mark = weekMark(weekDone[r.key], when)
+            return (
+              <span className={`${WEEK_MARK} ${mark.done
+                ? 'border-done-edge bg-done-bg text-done'
+                : 'border-chase-edge bg-chase-bg text-chase'}`}>{mark.words}</span>
+            )
+          })()}
           <span className="ml-auto text-[11px] text-faint">
             {found ? `${found.length} found`
               : r.toDecide > 0 ? `${r.toDecide} to decide` : r.total > 0 ? `${r.total}` : '—'}
@@ -477,7 +499,7 @@ export default function RunThrough({
             ? <div className="text-[12px] text-faint pt-2">
                 Nothing from them on this list.
               </div>
-            : section(theirs, false)}
+            : section(theirs, false, true)}
         </div>
       )}
       </div>
