@@ -109,6 +109,7 @@ const live = (d: any) => !isFinished(d)
 export default function TodayPlan({
   deals, officers, plans, brokerPlans = [], meOfficerId, meName, today,
   seesAll = false, brokerKey = null, brokerNames = {}, greeting = true,
+  readOnly = false,
 }: {
   deals: any[]
   officers: Officer[]
@@ -128,6 +129,11 @@ export default function TodayPlan({
   brokerNames?: Record<string, string>
   /** False where the page has already said good morning. */
   greeting?: boolean
+  /** Somebody is LOOKING at this person's day rather than living it.
+   *  12 Nov 2026 - the three presses are an answer a credit assessor gives
+   *  management about her own morning. Pressing one as her would file a plan
+   *  she never agreed to. See lib/view-as.ts. */
+  readOnly?: boolean
 }) {
   const supabase = createSupabaseBrowser()
   const view: 'credit' | 'admin' | 'broker' = meOfficerId ? 'credit' : seesAll ? 'admin' : 'broker'
@@ -300,6 +306,10 @@ export default function TodayPlan({
   // that each have their own idea of what the key is. See
   // lib/the-morning-three.ts for why they are separate at all.
   async function save(patch: Record<string, any>): Promise<boolean> {
+    // NOT YOUR DAY, NOT YOUR ANSWER. One guard, at the single door that every
+    // press goes through, rather than a disabled attribute on each button -
+    // a disabled button is a style, and this has to be a rule.
+    if (readOnly) return false
     if (busy || (!meOfficerId && !brokerKey)) return false
     setBusy(true); setErr('')
     const row: Record<string, any> = { plan_date: today, updated_at: new Date().toISOString(), ...patch }

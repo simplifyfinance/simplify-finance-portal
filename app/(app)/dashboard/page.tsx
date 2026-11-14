@@ -11,19 +11,39 @@ import DueToLodge from '@/components/DueToLodge'
 import { todayYmd } from '@/lib/periods'
 import { needsChasing, chaseLine, latest as latestPush } from '@/lib/the-push-leaves-a-mark'
 import { OFFICE } from '@/lib/same-date-everywhere'
+import { mayViewAs, lookingAt, isSomebodyElse, type Somebody, type Seat } from '@/lib/view-as'
+import ViewAsPicker from '@/components/ViewAsPicker'
+import ViewingAsStrip from '@/components/ViewingAsStrip'
 
 export const metadata = { title: 'Today' }
 
-export default async function Dashboard() {
+export default async function Dashboard(
+  { searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }
+) {
   const supabase = await createSupabaseServer()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // LOOKING AT SOMEBODY ELSE'S TODAY.
+  //
+  // 12 Nov 2026. Fabio was approving mock-ups of screens he had no way to
+  // open: "I cant see credit and broker how do I know what it looks like."
+  // One account only - "the view as I dont want everyone to have it just me" -
+  // so the other admins do not get it. See lib/view-as.ts.
+  const params = (await searchParams) || {}
+  const canLook = mayViewAs(user.email)
+  const asked = lookingAt(Array.isArray(params.as) ? params.as[0] : params.as, canLook)
+  const viewingId = isSomebodyElse(asked, user.id) ? asked : null
+
+  // WHOSE DAY IS BEING DRAWN. Their own unless somebody is looking, and every
+  // figure below is worked out from this rather than from the signed-in user.
+  const whoseId = viewingId || user.id
+
   const { data: profile } = await supabase
     .from('user_profiles')
     .select('role, broker_key, full_name')
-    .eq('id', user.id)
+    .eq('id', whoseId)
     .single()
 
   const brokerKey = profile?.broker_key || null
@@ -31,10 +51,37 @@ export default async function Dashboard() {
   const { data: creditOfficerRecord } = await supabase
     .from('credit_officers')
     .select('id')
-    .eq('user_id', user.id)
+    .eq('user_id', whoseId)
     .eq('active', true)
     .maybeSingle()
   const creditOfficerId = creditOfficerRecord?.id || null
+
+  // THE PICKER'S LIST. Only asked for when somebody may actually look.
+  let canPick: Somebody[] = []
+  if (canLook) {
+    const [{ data: profs }, { data: offs }] = await Promise.all([
+      supabase.from('user_profiles').select('id, full_name, role, broker_key'),
+      supabase.from('credit_officers').select('user_id').eq('active', true),
+    ])
+    const creditIds = new Set((offs || []).map((o: any) => o.user_id).filter(Boolean))
+    canPick = (profs || [])
+      .filter((p: any) => p.id !== user.id && (p.full_name || '').trim())
+      .map((p: any): Somebody => {
+        const seat: Seat = creditIds.has(p.id) ? 'credit'
+          : p.broker_key ? 'broker'
+          : p.role === 'admin' ? 'admin' : 'staff'
+        return {
+          id: p.id,
+          name: p.full_name,
+          seat,
+          group: seat === 'credit' ? 'Credit'
+            : seat === 'broker' ? 'Brokers'
+            : seat === 'admin' ? 'Admin' : 'Everyone else',
+        }
+      })
+  }
+  const viewing: Somebody | null =
+    viewingId ? canPick.find(p => p.id === viewingId) || null : null
 
 
   // Who this person can see is decided by the database, not by a list in the code.
@@ -46,6 +93,15 @@ export default async function Dashboard() {
     supabase.rpc('auth_sees_all_deals'),
   ])
   const keys: string[] = (visibleKeys as string[]) || []
+  // WHICH SCREEN, AND IT IS THEIRS NOT MINE.
+  //
+  // 12 Nov 2026. auth_sees_all_deals() answers for whoever is SIGNED IN, so
+  // looking at Katie's Today as Fabio would have drawn Fabio's run-through
+  // with her name on it - the exact thing this feature exists to avoid. When
+  // somebody is being looked at, the screen is chosen from THEIR seat.
+  const theirScreen = viewingId
+    ? (!creditOfficerId && !brokerKey && profile?.role === 'admin')
+    : !!seesAll
   const hasTeamAccess = !!seesAll || keys.length > 1
 
   // EVERY DEAL, A PAGE AT A TIME, AND THE TEST DEALS LEFT WHERE THEY ARE.
@@ -227,6 +283,13 @@ export default async function Dashboard() {
         * overdue rate review would have been the one person who stopped seeing
         * it. It is only ever on screen when a notice has outstayed its review
         * date, so it is not furniture anywhere. */}
+      {/* ONLY ON ONE ACCOUNT, AND LOUD WHEN IT IS IN USE.
+        *  12 Nov 2026 - "the view as I dont want everyone to have it just me."
+        *  See lib/view-as.ts. */}
+      {viewing && <ViewingAsStrip who={viewing} />}
+      {canLook && !viewing && (
+        <div className="mb-3 flex"><ViewAsPicker people={canPick} meName="Myself" /></div>
+      )}
       <RateNoticeNag />
       {/* ADMIN'S TODAY IS THREE THINGS AND NOTHING ELSE.
         *
@@ -245,9 +308,9 @@ export default async function Dashboard() {
         *
         * A broker's page keeps them until the broker view is designed; a credit
         * assessor never had them. */}
-      {!creditOfficerId && !seesAll && <ThisWeek deals={deals || []} />}
-      {!creditOfficerId && !seesAll && (
-        <DueToLodge deals={deals || []} brokerNames={brokerNames} canSet={!!seesAll} />
+      {!creditOfficerId && !theirScreen && <ThisWeek deals={deals || []} />}
+      {!creditOfficerId && !theirScreen && (
+        <DueToLodge deals={deals || []} brokerNames={brokerNames} canSet={!!seesAll && !viewingId} />
       )}
       {/* THE MONDAY MEETING, AND IT IS THE WHOLE ADMIN PAGE.
         *
@@ -261,7 +324,7 @@ export default async function Dashboard() {
         * beside it. TodayPlan does not render at all: its own day card is a
         * credit assessor's and a broker's, and every admin panel it used to
         * carry has been taken off. */}
-      {seesAll ? (
+      {theirScreen ? (
         <RunThrough
           deals={deals || []}
           brokerNames={brokerNames}
@@ -284,13 +347,14 @@ export default async function Dashboard() {
         meOfficerId={creditOfficerId}
         meName={profile?.full_name || ''}
         today={today}
-        seesAll={!!seesAll}
+        seesAll={theirScreen}
+        readOnly={!!viewingId}
         brokerKey={brokerKey}
         brokerNames={brokerNames}
       />
       )}
     </div>
-    {!seesAll && (
+    {!theirScreen && (
       <DashboardClient
         deals={deals || []}
         fullName={profile?.full_name || null}

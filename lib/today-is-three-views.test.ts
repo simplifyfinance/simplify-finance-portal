@@ -98,11 +98,32 @@ describe('the week', () => {
 })
 
 describe('the page is given what the three views need', () => {
+  // 12 Nov 2026: seesAll={!!seesAll} became seesAll={theirScreen}.
+  //
+  // auth_sees_all_deals() answers for whoever is SIGNED IN. Once Fabio could
+  // look at somebody else's Today, that flag was his, not theirs - so opening
+  // Katie's day would have drawn HIS run-through with her name on it, which is
+  // the one thing that feature exists to avoid. theirScreen is worked out from
+  // the seat of the person being drawn. See lib/view-as.ts.
   it('the dashboard passes the flag, the key and the brokers’ plans', () => {
-    for (const want of ['seesAll={!!seesAll}', 'brokerKey={brokerKey}',
+    for (const want of ['seesAll={theirScreen}', 'brokerKey={brokerKey}',
                         'brokerNames={brokerNames}', 'brokerPlans={brokerPlans}']) {
       expect(dash, `the dashboard stopped passing ${want}`).toContain(want)
     }
+  })
+
+  // AND THE SCREEN IS CHOSEN THE SAME WAY EVERYWHERE ON THE PAGE. A page that
+  // picked the run-through from one flag and the panels from another would
+  // draw half of each.
+  it('and chooses every panel from the same flag', () => {
+    // Which PANEL is drawn comes from the seat being looked at...
+    expect(dash).toContain('{theirScreen ? (')
+    expect(dash).not.toContain('!creditOfficerId && !seesAll')
+    expect(dash).not.toContain('{!seesAll && (')
+    // ...while what the SIGNED-IN person is allowed to change still comes from
+    // their own permission, and is off entirely while they are looking at
+    // somebody else's day.
+    expect(dash).toContain('canSet={!!seesAll && !viewingId}')
   })
 
   it('and reads the brokers’ half of the plans table', () => {
