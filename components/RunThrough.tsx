@@ -11,6 +11,7 @@ import {
 } from '@/lib/the-run-through'
 import { shareOf } from '@/lib/who-gets-paid-on-this'
 import { NO_TEAM_NAME } from '@/lib/which-team'
+import { dayMonthTime } from '@/lib/same-date-everywhere'
 
 // THE MONDAY MEETING, ON A SCREEN.
 //
@@ -33,7 +34,7 @@ const CAP = 'text-[10.5px] font-bold tracking-[0.08em] uppercase text-muted'
 export default function RunThrough({
   deals, brokerNames, brokerRows, secondTeam = 'Simplify Finance Brokers',
   target: savedTarget, canSetTarget = false, firstTeam = 'Simplify Finance',
-  team = [], settling = [], overloaded = null,
+  team = [], settling = [], overloaded = null, stuckPushes = [],
   meName = '',
   todayWords = '', now,
 }: {
@@ -55,6 +56,8 @@ export default function RunThrough({
   settling?: Array<{ id: string; name: string; day: string; amount: number }>
   /** Named only when one assessor is carrying far more than the rest. */
   overloaded?: { name: string; open: number; average: number; unplanned: boolean } | null
+  /** Deals pushed to SalesTrekker over an hour ago that never arrived. */
+  stuckPushes?: Array<{ id: string; name: string; line: string; at: string }>
   meName?: string
   todayWords?: string
   now?: Date
@@ -400,23 +403,48 @@ export default function RunThrough({
         * if he needs to be there." The detail lives on Credit team workload;
         * this is the exception, and on a week where nobody is carrying far
         * more than the rest it is not on the page at all. */}
-      {overloaded && (
+      {(stuckPushes.length > 0 || overloaded) && (
         <div className="bg-chase-bg border border-chase-edge rounded-xl px-4 py-3.5 mb-3">
           <div className={`${CAP} mb-2 text-chase`}>One thing is out of shape</div>
-          <div className="bg-card border-l-4 border-chase rounded-lg px-3 py-2.5 flex
-            items-center gap-3 flex-wrap">
-            <span className="text-[13px] font-bold w-[74px] flex-none">{overloaded.name}</span>
-            <span className="text-[11.5px] text-muted leading-snug">
-              <b className="text-ink">{overloaded.open} files open</b>, against a team average
-              of {overloaded.average}.
-              {overloaded.unplanned ? <><br />None of them are on a plan today.</> : null}
-            </span>
-            <Link href="/credit-team-workload"
-              className="ml-auto text-[11px] font-semibold text-brand-ink border border-info-edge
-                bg-info-bg rounded-lg px-2.5 py-[3px] whitespace-nowrap">
-              Move some off {overloaded.name.split(' ')[0]}
-            </Link>
-          </div>
+
+          {/* A DEAL NOBODY HAS, ABOVE A HEAVY WEEK. 14 Nov 2026 - somebody
+              believes they have handed this over and nobody has it, which is
+              worse than one assessor carrying more than the rest. It leaves on
+              its own the moment the push goes. See lib/the-push-leaves-a-mark.ts. */}
+          {stuckPushes.map(s => (
+            <div key={s.id} className="bg-card border-l-4 border-chase rounded-lg px-3 py-2.5 flex
+              items-center gap-3 flex-wrap mb-[7px]">
+              <span className="text-[13px] font-bold w-[150px] flex-none">{s.name}</span>
+              <span className="text-[11.5px] text-muted leading-snug">
+                <b className="text-ink">{s.line}</b>
+                <br />Pressed {dayMonthTime(s.at)}. No email was sent.
+              </span>
+              <Link href={`/deals/${s.id}`}
+                className="ml-auto text-[11px] font-semibold text-brand-ink border border-info-edge
+                  bg-info-bg rounded-lg px-2.5 py-[3px] whitespace-nowrap">
+                Open the deal &rarr;
+              </Link>
+            </div>
+          ))}
+
+          {/* A HEAVY WEEK, UNDER A DEAL NOBODY HAS. Both can be true on the
+              same morning and the box holds both. */}
+          {overloaded && (
+            <div className="bg-card border-l-4 border-chase rounded-lg px-3 py-2.5 flex
+              items-center gap-3 flex-wrap">
+              <span className="text-[13px] font-bold w-[74px] flex-none">{overloaded.name}</span>
+              <span className="text-[11.5px] text-muted leading-snug">
+                <b className="text-ink">{overloaded.open} files open</b>, against a team average
+                of {overloaded.average}.
+                {overloaded.unplanned ? <><br />None of them are on a plan today.</> : null}
+              </span>
+              <Link href="/credit-team-workload"
+                className="ml-auto text-[11px] font-semibold text-brand-ink border border-info-edge
+                  bg-info-bg rounded-lg px-2.5 py-[3px] whitespace-nowrap">
+                Move some off {overloaded.name.split(' ')[0]}
+              </Link>
+            </div>
+          )}
         </div>
       )}
 

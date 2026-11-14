@@ -9,6 +9,7 @@ import RateNoticeNag from '@/components/RateNoticeNag'
 import ThisWeek from '@/components/ThisWeek'
 import DueToLodge from '@/components/DueToLodge'
 import { todayYmd } from '@/lib/periods'
+import { needsChasing, chaseLine, latest as latestPush } from '@/lib/the-push-leaves-a-mark'
 
 export const metadata = { title: 'Today' }
 
@@ -171,6 +172,28 @@ export default async function Dashboard() {
     }
     : null
 
+  // A PUSH THAT NEVER ARRIVED.
+  //
+  // 13 Nov 2026, Jayver Varghese. Somebody pressed the push to SalesTrekker
+  // button, no email went, and nothing was written down - so the deal sat
+  // there looking exactly like a deal nobody had touched. Credit were waiting,
+  // the broker believed it was handed over, and the client was waiting on
+  // both. It took until midnight and the Supabase request logs to find out.
+  //
+  // Fabio, 14 Nov: "run through on his own after 1 hours", and it belongs on
+  // the admin Today, for every admin - not just his own login.
+  //
+  // A DEAL NOBODY HAS PUSHED IS NEVER HERE. That is a deal that is not ready,
+  // which is not the same thing as a deal that is stuck.
+  const stuckPushes = (deals || [])
+    .filter((d: any) => needsChasing(d?.push_log, new Date()))
+    .map((d: any) => ({
+      id: String(d.id),
+      name: `${d.clients?.last_name || d.deal_name || ''}${d.clients?.first_name ? ', ' + d.clients.first_name[0] : ''}`,
+      line: chaseLine(d.push_log),
+      at: String(latestPush(d.push_log)?.at || ''),
+    }))
+
   // THIS WEEK'S SETTLEMENTS, by the date the settlements team confirmed, and
   // only the ones that have not already settled.
   const weekStart = new Date(today + 'T00:00:00')
@@ -249,6 +272,7 @@ export default async function Dashboard() {
           team={creditToday}
           settling={settlingThisWeek}
           overloaded={overloaded}
+          stuckPushes={stuckPushes}
         />
       ) : (
       <TodayPlan
