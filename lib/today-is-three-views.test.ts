@@ -13,6 +13,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { LINE, splitAtLine, startingOrder } from './the-days-plan'
+import { whichToday, showsTheBusinessDashboard } from './which-today'
 
 const page = readFileSync('components/TodayPlan.tsx', 'utf8')
 const dash = readFileSync('app/(app)/dashboard/page.tsx', 'utf8')
@@ -21,25 +22,79 @@ const dash = readFileSync('app/(app)/dashboard/page.tsx', 'utf8')
 const day = readFileSync('components/MyDay.tsx', 'utf8')
 
 describe('three views, and admin wins', () => {
+  // 15 Nov 2026. These used to read the rule as a string out of TodayPlan.tsx,
+  // because that is where it lived. It now lives in lib/which-today.ts, so the
+  // dashboard page can ask the same question instead of inventing its own -
+  // which is exactly how a broker ended up with the business dashboard bolted
+  // under his Today. The rule is now exercised, not spelled.
   it('picks the view from who is looking', () => {
-    expect(page).toContain(
-      "const view: 'credit' | 'admin' | 'broker' = meOfficerId ? 'credit' : seesAll ? 'admin' : 'broker'")
+    expect(page).toContain('whichToday(meOfficerId, seesAll)')
+    expect(whichToday('officer-1', false)).toBe('credit')
+    expect(whichToday(null, true)).toBe('admin')
+    expect(whichToday(null, false)).toBe('broker')
   })
 
   it('an admin who is also a broker gets the business, not their own list', () => {
-    // seesAll is read BEFORE brokerKey in that line. If the order is ever
-    // swapped, Fabio gets a broker's page again and the business view is
-    // unreachable for the five people it was built for.
-    // lastIndexOf, because 'broker' also appears in the type annotation at
-    // the front of the same line. The first version of this test read that one
-    // and failed on correct code.
-    const line = page.split('\n').find(l => l.includes("meOfficerId ? 'credit'"))!
-    expect(line.indexOf('seesAll')).toBeLessThan(line.lastIndexOf("'broker'"))
+    // Fabio, 23 Oct 2026: "a broker /admin, admin view supersedes". If admin
+    // ever stopped beating broker he would get a broker's page again and the
+    // business view would be unreachable for the five people it was built for.
+    expect(whichToday(null, true)).toBe('admin')
   })
 
   it('and a credit assessor who is also an admin still gets their own day', () => {
-    const line = page.split('\n').find(l => l.includes("meOfficerId ? 'credit'"))!
-    expect(line.indexOf('meOfficerId')).toBeLessThan(line.indexOf('seesAll'))
+    // She has a day to agree to and nobody else can do it for her.
+    expect(whichToday('officer-1', true)).toBe('credit')
+  })
+
+  // ---------------------------------------------------------------------
+  // WHAT A BROKER'S TODAY MUST NOT HAVE UNDER IT
+  // ---------------------------------------------------------------------
+  //
+  // 15 Nov 2026. Keanen's Today carried the whole business dashboard beneath
+  // it: a second greeting, Deals by broker across every broker in the firm,
+  // Needs your action, five stage tiles and Recent deals - plus This week and
+  // Due to lodge. None of it was in the screen approved on 12 Nov.
+  //
+  // It happened because the page asked "is this an admin" where it meant "is
+  // this a credit assessor". Fabio had said it more than once before it was
+  // found: "come on all this still showing in broker view I SAID multiple
+  // types remove it."
+  // 15 Nov 2026. The View as picker had its own seat ladder and it asked about
+  // the broker key before the role, so Alan, Mark and Kylie - who have a broker
+  // key AND are admins - were listed as brokers, and looking at one of them
+  // drew a broker's screen they have never seen.
+  describe('the picker seats people the same way Today does', () => {
+    it('admin beats broker there too', () => {
+      expect(dash).toContain("p.role === 'admin' ? 'admin'")
+      const line = dash.split('\n').findIndex(l => l.includes("p.role === 'admin' ? 'admin'"))
+      const brokerLine = dash.split('\n').findIndex(l => l.includes("p.broker_key ? 'broker'"))
+      expect(line, 'admin must be asked before the broker key').toBeLessThan(brokerLine)
+    })
+
+    it('and looking at a broker/admin draws the screen they actually see', () => {
+      expect(dash, 'this said "an admin, but only if not also a broker"')
+        .not.toContain("!creditOfficerId && !brokerKey && profile?.role === 'admin'")
+      expect(dash).toContain("!creditOfficerId && profile?.role === 'admin'")
+    })
+  })
+
+  describe('and a broker gets his three boxes and nothing bolted underneath', () => {
+    it('the business dashboard is for credit only', () => {
+      expect(showsTheBusinessDashboard('credit')).toBe(true)
+      expect(showsTheBusinessDashboard('broker')).toBe(false)
+      expect(showsTheBusinessDashboard('admin')).toBe(false)
+    })
+
+    it('and the page asks that, not "is this an admin"', () => {
+      expect(dash).toContain('showsTheBusinessDashboard(todayView)')
+      expect(dash, 'the old guard let every non-admin through')
+        .not.toContain('{!theirScreen && (\n      <DashboardClient')
+    })
+
+    it('This week and Due to lodge are credit\'s, not a broker\'s', () => {
+      expect(dash).toContain("{todayView === 'credit' && <ThisWeek")
+      expect(dash, 'this let brokers through').not.toContain('!creditOfficerId && !theirScreen')
+    })
   })
 
   it('each view draws something of its own', () => {

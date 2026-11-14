@@ -58,7 +58,29 @@ done
 # Nothing clever. The tree is fingerprinted now and again at the end, and a run
 # that finds them different refuses to commit rather than committing something
 # nobody checked.
-TREE_AT_START=$(git status --porcelain | shasum -a 256 | cut -d' ' -f1)
+# WHAT THE TREE LOOKED LIKE WHEN THE CHECKING STARTED.
+#
+# 15 Nov 2026. A ship passed every check - 8301 tests, the build, 42 browser
+# tests, 8 minutes - and then refused to commit, because one tracked file had
+# changed while it ran:
+#
+#     docs/last-audit.txt   -2026-11-12   +2026-11-14
+#
+# That is the two-day sweep's own date stamp, written by scripts/audit.sh when
+# the scheduled task fired at 7:49pm, mid-run. Nobody touched the code. The
+# guard was right to stop - it cannot tell one file from another - but the
+# eight minutes were spent for nothing, and the answer "run it again" invites
+# somebody to start deleting guards.
+#
+# So the stamp is excluded, and ONLY the stamp. It is a date written by a
+# reporting script that ship.sh does not call and that changes no behaviour.
+# Everything else in the tree still counts, including docs and scripts.
+TREE_IGNORES='^docs/last-audit\.txt$'
+tree_now() {
+  git status --porcelain | awk '{ print $NF }' | grep -vE "$TREE_IGNORES" \
+    | sort | shasum -a 256 | cut -d' ' -f1
+}
+TREE_AT_START=$(tree_now)
 
 echo "Checking broker keys..."
 if ! ./scripts/check-broker-keys.sh; then
@@ -226,7 +248,7 @@ if [ -z "$(git status --porcelain)" ]; then
   exit 0
 fi
 
-TREE_NOW=$(git status --porcelain | shasum -a 256 | cut -d' ' -f1)
+TREE_NOW=$(tree_now)
 if [ "$TREE_NOW" != "$TREE_AT_START" ]; then
   echo
   echo "NOT COMMITTED - files changed while this was running."

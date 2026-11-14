@@ -10,6 +10,7 @@ import { askAbout } from '@/lib/the-brokers-monday'
 import TheOrderCame from '@/components/TheOrderCame'
 import { whoHasIt } from '@/lib/who-has-it'
 import { isFinished } from '@/lib/deal-phase'
+import { whichToday, type TodayView } from '@/lib/which-today'
 // A broker is never matched by lower-casing a name - brokerKey() takes the
 // first word, so "Fabio De Castro".toLowerCase() never equals "fabio".
 // See scripts/check-broker-keys.sh, which failed this file on the first run.
@@ -140,7 +141,11 @@ export default function TodayPlan({
   readOnly?: boolean
 }) {
   const supabase = createSupabaseBrowser()
-  const view: 'credit' | 'admin' | 'broker' = meOfficerId ? 'credit' : seesAll ? 'admin' : 'broker'
+  // THE RULE IS IN ONE PLACE NOW - lib/which-today.ts. It used to live on
+  // this line, and the dashboard page could not reach it, so it guessed with
+  // a different question and bolted the business dashboard under a broker's
+  // Today. 15 Nov 2026.
+  const view: TodayView = whichToday(meOfficerId, seesAll)
   const myPlan = brokerKey ? brokerPlans.find(p => p.brokerKey === brokerKey) : undefined
   // THE ROW THAT IS THEIRS, whichever table it came from.
   const myRow: any = meOfficerId ? plans.find(p => p.officerId === meOfficerId) : myPlan

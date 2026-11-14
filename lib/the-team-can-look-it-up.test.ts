@@ -118,7 +118,13 @@ describe('the one thing that is automatic', () => {
   it('reports and never blocks', () => {
     const audit = readFileSync('scripts/audit.sh', 'utf8')
     expect(audit).toContain('Scenarios the knowledge base has never mentioned')
-    expect(readFileSync('scripts/ship.sh', 'utf8')).not.toContain('audit.sh')
+    // IT READS THE SHELL, NOT THE COMMENTS. 15 Nov 2026: a comment in ship.sh
+    // explaining why the sweep's date stamp is excluded from its tree check
+    // NAMED the script, and this failed on correct code - the same way the
+    // clock guard did twice. What matters is that ship.sh never RUNS it.
+    const ship = readFileSync('scripts/ship.sh', 'utf8')
+      .split('\n').filter(l => !l.trim().startsWith('#')).join('\n')
+    expect(ship, 'the sweep reports, it never blocks a ship').not.toContain('audit.sh')
   })
 })
 

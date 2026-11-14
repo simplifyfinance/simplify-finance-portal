@@ -3,6 +3,7 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { realDealsOnly, REAL_DEALS_OR } from '@/lib/test-deal'
 import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
+import { whichToday, showsTheBusinessDashboard } from '@/lib/which-today'
 import TodayPlan from '@/components/TodayPlan'
 import RunThrough from '@/components/RunThrough'
 import RateNoticeNag from '@/components/RateNoticeNag'
@@ -68,9 +69,15 @@ export default async function Dashboard(
     canPick = (profs || [])
       .filter((p: any) => p.id !== user.id && (p.full_name || '').trim())
       .map((p: any): Somebody => {
+        // ADMIN BEATS BROKER, the same order as lib/which-today.ts.
+        //
+        // 15 Nov 2026. This asked about the broker key first, so Alan, Mark
+        // and Kylie - who have one AND are admins - were listed under Brokers.
+        // Fabio: "alan catherine not brokers admin". Keanen and Justin are
+        // brokers and nothing else, so they are unaffected.
         const seat: Seat = creditIds.has(p.id) ? 'credit'
-          : p.broker_key ? 'broker'
-          : p.role === 'admin' ? 'admin' : 'staff'
+          : p.role === 'admin' ? 'admin'
+          : p.broker_key ? 'broker' : 'staff'
         return {
           id: p.id,
           name: p.full_name,
@@ -100,10 +107,18 @@ export default async function Dashboard(
   // looking at Katie's Today as Fabio would have drawn Fabio's run-through
   // with her name on it - the exact thing this feature exists to avoid. When
   // somebody is being looked at, the screen is chosen from THEIR seat.
+  //
+  // 15 Nov 2026: `!brokerKey` was in this line, which said "an admin, but only
+  // if they are not also a broker". So looking at Mark drew a broker's screen
+  // - a screen Mark has never seen, because when he signs in he gets the
+  // run-through. Admin supersedes broker here too.
   const theirScreen = viewingId
-    ? (!creditOfficerId && !brokerKey && profile?.role === 'admin')
+    ? (!creditOfficerId && profile?.role === 'admin')
     : !!seesAll
   const hasTeamAccess = !!seesAll || keys.length > 1
+  // WHICH OF THE THREE TODAYS THIS IS. The same answer TodayPlan draws from,
+  // asked once - see lib/which-today.ts and the note at the top of it.
+  const todayView = whichToday(creditOfficerId, theirScreen)
 
   // EVERY DEAL, A PAGE AT A TIME, AND THE TEST DEALS LEFT WHERE THEY ARE.
   // 2 Nov 2026 - this asked once and got the newest thousand of 1165 without
@@ -346,8 +361,12 @@ export default async function Dashboard(
         *
         * A broker's page keeps them until the broker view is designed; a credit
         * assessor never had them. */}
-      {!creditOfficerId && !theirScreen && <ThisWeek deals={deals || []} />}
-      {!creditOfficerId && !theirScreen && (
+      {/* NOT ON A BROKER'S TODAY EITHER. 15 Nov 2026 - these asked "is this an
+        * admin", which let them through to Keanen and Justin alongside the
+        * business dashboard. A broker's screen is the Monday ask, where his
+        * deals are, and a New deal card. Nothing else. */}
+      {todayView === 'credit' && <ThisWeek deals={deals || []} />}
+      {todayView === 'credit' && (
         <DueToLodge deals={deals || []} brokerNames={brokerNames} canSet={!!seesAll && !viewingId} />
       )}
       {/* THE MONDAY MEETING, AND IT IS THE WHOLE ADMIN PAGE.
@@ -394,7 +413,7 @@ export default async function Dashboard(
       />
       )}
     </div>
-    {!theirScreen && (
+    {showsTheBusinessDashboard(todayView) && (
       <DashboardClient
         deals={deals || []}
         fullName={profile?.full_name || null}
