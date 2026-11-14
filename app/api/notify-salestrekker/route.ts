@@ -550,7 +550,14 @@ export async function POST(req: NextRequest) {
           error: 'The documents were sent, but the deal was not marked as compliance sent. Mark it on the deal so it does not fall off the board.',
         }, { status: 500 })
       }
-      return NextResponse.json({ ok: true })
+      // WHO IT WENT TO AND WHAT WENT WITH IT, back to the screen, so the deal
+      // card can record it rather than say "sent" and leave you guessing which
+      // mailbox. 14 Nov 2026. See lib/the-push-leaves-a-mark.ts.
+      return NextResponse.json({
+        ok: true,
+        to: [packEmail, packName].filter(Boolean).join(' and ') || 'the compliance team',
+        packs: attachments.length,
+      })
     }
 
     return NextResponse.json({ ok: false, error: 'Unknown trigger' }, { status: 400 })

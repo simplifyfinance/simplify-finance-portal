@@ -62,6 +62,8 @@ import { useLiveColumn } from '@/components/useLiveColumn'
 import { newOwnership, focusField, blurField, markDirty, keepOwned, settleSaved } from '@/lib/field-ownership'
 import { useSaveIndicator } from '@/components/useSaveIndicator'
 import { useDraft } from '@/components/useDraft'
+import { startPush, appended, settled, type Push } from '@/lib/the-push-leaves-a-mark'
+import PushLog from '@/components/PushLog'
 import { merge3 } from '@/lib/deal-merge'
 import { tabIsBehind, keepWhatTheyTyped, type TabBehind } from '@/lib/tab-behind'
 import TabBehindNotice from '@/components/TabBehindNotice'
@@ -1491,12 +1493,47 @@ Use the security address exactly as recorded. On a pre-approval it will already 
     window.location.reload()
   }
 
+  // THE ATTEMPT IS WRITTEN DOWN BEFORE ANYTHING IS TRIED.
+  //
+  // 13 Nov 2026, Jayver Varghese. The button was pressed, nothing happened,
+  // and the only record of it was a message box that vanished when it was
+  // clicked. It took three SQL queries and the Supabase request logs to
+  // establish that no email had ever been asked for. Fabio should never have
+  // to interview his staff to find out whether a button worked.
+  //
+  // Written FIRST, so a failure in the middle leaves the attempt behind. The
+  // outcome is written on top of it. See lib/the-push-leaves-a-mark.ts.
+  //
+  // A FAILURE TO RECORD NEVER STOPS THE PUSH. The pack going out matters more
+  // than the note about it, and a database without the column yet must behave
+  // exactly as it did yesterday.
+  async function notePush(patch: any) {
+    try {
+      // fire-and-forget: the pack going out matters more than the note about
+      // it, and a database where docs/the-push-leaves-a-mark.sql has not been
+      // run yet must behave exactly as it did yesterday. A note that does not
+      // land is logged and nothing else changes.
+      const { error } = await supabase.from('deals').update(patch).eq('id', deal.id)
+      if (error) console.error('[push log] not recorded', error.message)
+    } catch (e) { console.error('[push log] not recorded', e) }
+  }
+
   async function markComplianceComplete() {
     const nowIso = new Date().toISOString()
+    const attempt = startPush(me?.name || '', new Date(), me?.id || undefined)
+    const log = appended((deal as any).push_log, attempt)
+    await notePush({ push_log: log })
+    const outcome = (o: Partial<Push>) =>
+      notePush({ push_log: settled(log, attempt.at, o) })
+
     const { data: rows, error } = await supabase.from('deals')
       .update({ compliance_completed_at: nowIso }).eq('id', deal.id).select('id')
-    if (error) { alert('Error marking compliance complete: ' + error.message); return }
+    if (error) {
+      await outcome({ state: 'failed', why: `Not saved - ${error.message}. No email sent.` })
+      alert('Error marking compliance complete: ' + error.message); return
+    }
     if (!rows || rows.length === 0) {
+      await outcome({ state: 'failed', why: 'Not saved - signed out. No email sent.' })
       alert('NOT SAVED - compliance was not marked complete and the notification was not sent. Do not close this tab.')
       return
     }
@@ -1510,13 +1547,19 @@ Use the security address exactly as recorded. On a pre-approval it will already 
       })
       if (!res.ok) {
         const detail = await res.text().catch(() => '')
+        await outcome({ state: 'failed',
+          why: 'The email failed to send' + (detail ? ` (${detail.slice(0, 120)})` : '') + '.' })
         alert('Compliance is marked complete, but the notification email FAILED to send'
           + (detail ? ' (' + detail.slice(0, 200) + ')' : '')
           + '. Please tell the compliance team directly.')
         return
       }
+      const said = await res.json().catch(() => ({} as any))
+      await outcome({ state: 'sent', to: said?.to, packs: said?.packs })
       alert('Compliance complete - the compliance team has been notified that this deal is ready to be issued.')
     } catch (e: any) {
+      await outcome({ state: 'failed',
+        why: `The email failed to send (${e?.message || 'network error'}).` })
       alert('Compliance is marked complete, but the notification email FAILED to send ('
         + (e?.message || 'network error') + '). Please tell the compliance team directly.')
     }
@@ -1750,6 +1793,12 @@ Use the security address exactly as recorded. On a pre-approval it will already 
           <p className="mt-2 mb-0 text-[12.5px] text-chase bg-chase-bg border border-chase-edge rounded-lg px-3 py-1.5 inline-block">{handErr}</p>
         )}
       </div>
+
+      {/* WHO PRESSED THE PUSH, WHEN, AND WHETHER IT ARRIVED.
+          13 Nov 2026 - Jayver Varghese was pushed, no email went, and nothing
+          was written down. Draws nothing on a deal nobody has pushed.
+          See components/PushLog.tsx. */}
+      <PushLog pushLog={(deal as any).push_log} />
 
       {past && (
         <div className="bg-card border border-done-edge rounded-xl px-4 py-3.5">
