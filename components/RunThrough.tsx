@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { useSayTheWeek } from '@/lib/use-say-the-week'
@@ -10,6 +10,9 @@ import {
   matches, notInTeam, readTarget, runThrough, seatCounts, theirOwnBook, unansweredDays,
   weekSoFar, whereItIs, worthOf, type BrokerRun, type Seat,
 } from '@/lib/the-run-through'
+import { monthOf, monthName, monthLodged, lodgedTarget,
+         money as compactMoney } from '@/lib/the-month-so-far'
+import { todayYmd } from '@/lib/periods'
 import { shareOf } from '@/lib/who-gets-paid-on-this'
 import { NO_TEAM_NAME } from '@/lib/which-team'
 import { dayMonthTime, OFFICE } from '@/lib/same-date-everywhere'
@@ -160,6 +163,19 @@ export default function RunThrough({
     [all, seat, teamOf, ourBrokers, lastBrokers])
   const mine = useMemo(() => notInTeam(everyone, secondTeam), [everyone, secondTeam])
   const theirs = useMemo(() => inTeam(everyone, secondTeam), [everyone, secondTeam])
+
+  // THE MONTH'S DOLLARS, BESIDE THE WEEK'S DEALS. See lib/the-month-so-far.ts.
+  const thisMonth = useMemo(() => monthOf(todayYmd()), [])
+  const monthLodgedNow = useMemo(() => monthLodged(deals, thisMonth), [deals, thisMonth])
+  const [monthTarget, setMonthTarget] = useState<number | null>(null)
+  useEffect(() => {
+    let alive = true
+    // The row Settings already keeps under Targets. Nothing is written here.
+    supabase.from('pipeline_targets').select('metric, month, broker_key, amount')
+      .then(({ data }: any) => { if (alive) setMonthTarget(lodgedTarget(data || [], thisMonth)) })
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thisMonth])
 
   const [savingTarget, setSavingTarget] = useState(false)
 
@@ -318,7 +334,21 @@ export default function RunThrough({
       </div>
 
       {/* ARE WE GOING TO MAKE TWELVE. The only question a Monday asks. */}
-      <div className="bg-[#17140F] rounded-xl px-4 py-3.5 mb-3 flex items-center gap-6 flex-wrap">
+      {/* WHICH BAR IS THIS.
+        *
+        * 17 Nov 2026. Settlements gets a black bar of its own under this one,
+        * and Fabio: "I know the bars are black, but just make sure it's pretty
+        * clear that this is settlements and this is lodgement."
+        *
+        * A square, a word and the period. Nothing in the numbers has to carry
+        * it, so neither bar has to explain itself. */}
+      <div className="bg-[#17140F] rounded-xl mb-3 overflow-hidden">
+      <div className="flex items-center gap-2.5 px-4 py-2 bg-white/[0.055] border-b border-white/10">
+        <span className="inline-block w-[8px] h-[8px] rounded-sm bg-[#6FD3FF]" />
+        <span className="text-[11px] font-extrabold tracking-[0.12em] uppercase text-page">Lodging</span>
+        <span className="text-[11px] text-[#9A948C]">this week</span>
+      </div>
+      <div className="px-4 py-3.5 flex items-center gap-6 flex-wrap">
         <div>
           <div className="text-[10px] font-extrabold tracking-[0.13em] uppercase text-[#9A948C]">
             Lodged</div>
@@ -393,7 +423,30 @@ export default function RunThrough({
           ) : (
             <div className="text-[11px] text-[#9A948C] mt-1">a week</div>
           )}
+          {/* AND THE MONTH, QUIETLY.
+            *
+            * Fabio, 17 Nov 2026: "we always focus on a weekly basis how many
+            * deals are we lodging, because we can control that. Okay, but it's
+            * also good to know how are we tracking against our target, which is
+            * a dollar figure."
+            *
+            * So the week stays the hero and the month is one line under it. A
+            * second full-size number would compete with the thing he asked to
+            * be the focus.
+            *
+            * THE TARGET IS THE ONE IN SETTINGS. Monthly, in dollars, under
+            * Targets - the same row the settlements screen and the pipeline
+            * read. Nothing is kept here. */}
+          {monthTarget !== null && (
+            <div className="text-[11px] text-[#9A948C] mt-1.5">
+              {monthName(thisMonth)} so far{' '}
+              <span className="text-page font-bold">{compactMoney(monthLodgedNow)}</span>
+              {' '}of {compactMoney(monthTarget)}
+              {monthTarget > 0 && <> &middot; {Math.round((monthLodgedNow / monthTarget) * 100)}%</>}
+            </div>
+          )}
         </div>
+      </div>
       </div>
 
       <div className="flex gap-4 items-start flex-wrap lg:flex-nowrap">

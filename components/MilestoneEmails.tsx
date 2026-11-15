@@ -10,7 +10,6 @@ import { SENT_WITH } from '@/lib/offer-accepted-email'
 import { menuFor, menuToBrowse, lastSent, templateById, type MenuItem, type TemplateId } from '@/lib/milestone-emails'
 import { useSender } from '@/app/(app)/templates/useSender'
 import { SenderPanel, BrandPanel } from '@/app/(app)/templates/TemplateFields'
-import { brandOnDeal } from '@/lib/which-business'
 import MissingFigures from '@/components/MissingFigures'
 import { useBackdropClose } from '@/components/useBackdropClose'
 import { OFFICE } from '@/lib/same-date-everywhere'
@@ -63,6 +62,8 @@ type Preview = {
   picksSender: boolean
   /** Picks the trading name only - see picksBrand in lib/milestone-emails.ts. */
   picksBrand?: boolean
+  /** The brand this deal's broker is ticked for - see brandForDeal in the API route. */
+  dealBrand?: string
   /** Everyone who can be introduced, settlements first. */
   staff?: { id: string; name: string; settlements?: boolean }[]
   /** Who is ticked right now. */
@@ -308,7 +309,7 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
   // See app/(app)/templates/useSender.ts.
   // WHOSE DEAL IT IS, not whoever was last picked in this browser.
   // 27 Oct 2026 - see the note on useSender.
-  const sender = useSender('sf_milestone_sender_v1', deal?.assigned_broker, brandOnDeal(deal))
+  const sender = useSender('sf_milestone_sender_v1', deal?.assigned_broker, preview?.dealBrand || '')
   const picksSender = Boolean(preview?.picksSender)
   // THE BRAND IS A SEPARATE DECISION FROM THE SENDER. Without this the brand
   // never reached the API for any template but the final check-in, so every

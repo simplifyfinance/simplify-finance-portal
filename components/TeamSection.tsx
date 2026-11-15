@@ -74,6 +74,8 @@ export default function TeamSection() {
   const [keyInput, setKeyInput] = useState('')
   const [phoneInput, setPhoneInput] = useState('')
   const [accessMsg, setAccessMsg] = useState('')
+  // Not remembered. The team list opens as the team every time.
+  const [showPast, setShowPast] = useState(false)
   const [inviteKey, setInviteKey] = useState('')
 
   const supabase = createSupabaseBrowser()
@@ -168,6 +170,21 @@ export default function TeamSection() {
     setUsers(users.map(u => u.id === user.id ? { ...u, [field]: next } : u))
     setAccessMsg('Saved.')
   }
+
+  // WHO IS STILL HERE, AND WHO WAS.
+  //
+  // 17 Nov 2026. Fabio, after switching a leaver off: "lets buiold an acrvice
+  // view so we dont have too look at the names we deleted".
+  //
+  // DEACTIVATED, NOT DELETED, AND THAT IS THE POINT. A person who has worked a
+  // deal is on its trail, its snapshots and its notes for as long as the deal
+  // exists. Deleting the account either fails on those references - which is
+  // what happened - or quietly takes the name off work somebody did. So they
+  // stay, switched off, and this folds them out of the way instead: the list
+  // reads as the team, and the history keeps its names.
+  const here = users.filter(u => u.active)
+  const past = users.filter(u => !u.active)
+  const shown = showPast ? [...here, ...past] : here
 
   async function toggleActive(id: string, active: boolean) {
     const problem = await checkedWrite(
@@ -309,7 +326,7 @@ export default function TeamSection() {
 
       {loading ? <p className="text-sm text-gray-400">Loading team...</p> : (
         <div className="space-y-2">
-          {users.map(user => (
+          {shown.map(user => (
             <div key={user.id} className={!user.active ? 'opacity-50' : ''}>
             <div className={`border border-gray-200 ${accessId === user.id ? 'rounded-t-xl' : 'rounded-xl'} px-5 py-3 bg-card flex items-center justify-between gap-4`}>
               <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -488,6 +505,15 @@ export default function TeamSection() {
             )}
             </div>
           ))}
+          {past.length > 0 && (
+            <button type="button" onClick={() => setShowPast(v => !v)}
+              className="mt-1 w-full rounded-xl border border-dashed border-gray-200 px-5 py-2.5
+                         text-left text-xs text-gray-400 hover:bg-gray-50">
+              {showPast
+                ? `Hide past team members (${past.length})`
+                : `${past.length} past team member${past.length === 1 ? '' : 's'} \u2014 show`}
+            </button>
+          )}
         </div>
       )}
       {/* CHANGING A LOGIN IS ASKED ABOUT, NOT SAVED.

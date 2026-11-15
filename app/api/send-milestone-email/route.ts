@@ -3,7 +3,7 @@ import { bccForDeal, bccGap, cleanBcc, bccIsSendable } from '@/lib/files-itself-
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
 import { resolveBrand } from '@/lib/brand'
-import { brandOnDeal } from '@/lib/which-business'
+import { businessOfDeal } from '@/lib/which-business'
 import { suggestedContacts, pickOrder, type Person } from '@/lib/who-has-you-now'
 import { menuFor, templateById, withSent, type TemplateId, type SentEmail } from '@/lib/milestone-emails'
 import { assembleMilestoneEmail, SETTLEMENTS_EMAIL } from '@/lib/milestone-send'
@@ -289,6 +289,37 @@ function contactsFrom(raw: string | null, staff: Person[]): Person[] {
   return ids.map(id => staff.find(p => p.id === id)).filter(Boolean) as Person[]
 }
 
+/**
+ * WHICH BRAND THIS DEAL'S EMAIL GOES OUT UNDER.
+ *
+ * 17 Nov 2026, and this is the SECOND go at it.
+ *
+ * The first fix read the brand stored on the deal. That was wrong, and
+ * lib/which-business.ts says exactly why: on 12 November every lodged deal in
+ * the book read "simplify" - all 58 of them - because the old code matched a
+ * broker's full name against a deal's key, never matched, and fell back to
+ * `|| ['simplify']`. The stored brand is evidence of that bug, not of a
+ * business. A Navigate deal would still have sent a Simplify email, and the
+ * only thing that changed was that I had told Fabio it was fixed.
+ *
+ * So it asks the same question the business reports ask: which brands has this
+ * broker actually been ticked for in Settings. One brand and the deal cannot be
+ * anything else. Two or more and the deal's own brand decides, but only if it
+ * names one the broker really holds.
+ *
+ * NOT_SAID COMES BACK AS THE DEFAULT, which is what resolveBrand does with any
+ * id it cannot find. A brand nobody has established is not a reason to refuse
+ * to send a formal approval.
+ */
+async function brandForDeal(supabase: any, deal: any): Promise<string> {
+  try {
+    const { data } = await supabase.from('brokers').select('broker_key, name, brand_ids')
+    return businessOfDeal(deal, data || [])
+  } catch {
+    return ''
+  }
+}
+
 export async function GET(req: NextRequest) {
   const supabase = await createSupabaseServer()
   const sender = await senderOf(supabase)
@@ -338,7 +369,8 @@ export async function GET(req: NextRequest) {
     //
     // brandOnDeal reads lo_data.brandId and falls back to the BC's, which is
     // where the forms put it. A pick on the screen still wins.
-    brand: await resolveBrand(txt(req.nextUrl.searchParams.get('brandId')) || brandOnDeal(deal)),
+    brand: await resolveBrand(
+      txt(req.nextUrl.searchParams.get('brandId')) || await brandForDeal(supabase, deal)),
     sender: { name: who.name, email: who.email, phone: who.phone },
     // Typed on the screen wins for this one email; otherwise the broker's own
     // link. Neither, and the email simply has no button.
@@ -411,6 +443,9 @@ export async function GET(req: NextRequest) {
     // ever go out as the default brand.
     picksBrand: tpl?.picksBrand ?? false,
     // THE TEAM, AND WHO IS TICKED. Settlements first - see pickOrder.
+    // THE BROKER'S BRAND, so the picker opens on it rather than on whichever
+    // brand happens to be first in the list.
+    dealBrand: await brandForDeal(supabase, deal),
     staff: pickOrder(staff),
     contactIds: introduced.map(p => p.id),
     // Empty unless the chosen broker is missing contact details - see
@@ -474,7 +509,7 @@ export async function POST(req: NextRequest) {
     rules: lender.rules,
     rateNotice: await loadRateNotice(lender.row),
     // Same fallback as the preview, so what was read is what is sent.
-    brand: await resolveBrand(txt(form.get('brandId')) || brandOnDeal(deal)),
+    brand: await resolveBrand(txt(form.get('brandId')) || await brandForDeal(supabase, deal)),
     sender: { name: who.name, email: who.email, phone: who.phone },
     calendlyUrl: template.picksSender ? (typedCalendly || (chosen?.calendly || '')) : '',
     overrides,

@@ -40,20 +40,37 @@ describe('where the brand is written', () => {
 })
 
 // THE FIX, IN ONE LINE EACH.
+// THE SECOND GO, AND WHY THE FIRST WAS WRONG.
+//
+// The first fix read the brand stored on the deal. lib/which-business.ts says
+// why that is not a business: on 12 Nov 2026 every lodged deal in the book read
+// "simplify" - all 58 - because the old code fell back to `|| ['simplify']`
+// without anybody choosing. So a Navigate deal would still have sent a Simplify
+// email, and the only thing that had changed was that somebody had been told it
+// was fixed.
 describe('every email reads it', () => {
-  it('the preview falls back to the deal, not to the default brand', () => {
+  it('the preview asks which brands the broker is ticked for', () => {
     expect(ROUTE).toContain(
-      "resolveBrand(txt(req.nextUrl.searchParams.get('brandId')) || brandOnDeal(deal))")
+      "resolveBrand(\n      txt(req.nextUrl.searchParams.get('brandId')) || await brandForDeal(supabase, deal))")
+    expect(ROUTE).toContain('return businessOfDeal(deal, data || [])')
   })
 
   // WHAT WAS READ MUST BE WHAT IS SENT. A preview under one brand and a send
   // under another is the worst version of this bug, not the fixed one.
-  it('and the send falls back the same way', () => {
-    expect(ROUTE).toContain("resolveBrand(txt(form.get('brandId')) || brandOnDeal(deal))")
+  it('and the send asks the same question', () => {
+    expect(ROUTE).toContain("resolveBrand(txt(form.get('brandId')) || await brandForDeal(supabase, deal))")
   })
 
-  it('the send screen opens on the deal brand rather than the broker default', () => {
-    expect(SCREEN).toContain("brandOnDeal(deal)")
+  // THE STORED BRAND IS EVIDENCE OF A BUG. It is still read, but only inside
+  // businessOfDeal and only to break a tie between brands the broker really
+  // holds - never on its own.
+  it('and never reads the stored brand on its own', () => {
+    expect(ROUTE, 'brandOnDeal alone is the bug this replaced').not.toContain('brandOnDeal(deal)')
+  })
+
+  it('the send screen opens on that same answer', () => {
+    expect(SCREEN).toContain("preview?.dealBrand || ''")
+    expect(ROUTE).toContain('dealBrand: await brandForDeal(supabase, deal)')
     expect(SENDER).toContain('preferBrandId')
   })
 

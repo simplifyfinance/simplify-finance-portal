@@ -34,8 +34,11 @@ describe('a client email signs as the broker on the deal', () => {
     // And which brand the DEAL is under, added 17 Nov 2026 - the brand starts
     // on the borrowing capacity and is carried to the lending options, so the
     // send screen opens on it rather than on the broker's first.
+    // The brand comes from the API, which works it out from the brands the
+    // broker is ticked for - not from the value stored on the deal. See
+    // lib/the-brand-comes-off-the-deal.test.ts.
     expect(SCREEN).toContain(
-      "useSender('sf_milestone_sender_v1', deal?.assigned_broker, brandOnDeal(deal))")
+      "useSender('sf_milestone_sender_v1', deal?.assigned_broker, preview?.dealBrand || '')")
   })
 
   it('and the deal beats what the browser remembered', () => {
