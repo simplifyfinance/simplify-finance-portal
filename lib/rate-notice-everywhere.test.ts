@@ -75,6 +75,13 @@ const NOT_CLIENT_FACING: Record<string, string> = {
   'lib/assessment-content.ts':      'the assessment is for the lender and the file, not the client',
   'lib/handover-view.ts':           'internal handover to the credit team',
   'lib/broker-notes.ts':            'goes into the lender portal, not to a client',
+  // 16 Nov 2026, and caught by this guard on its first run, which is what it
+  // is for. It builds the product section of the Broker Submission Notes -
+  // the product that was ticked on Lending options, its rate, and how long it
+  // is fixed or interest only for. That sheet goes to the lender and onto the
+  // file; it is the one a credit assessor reads before submitting. No client
+  // is ever sent it. See app/api/generate-broker-notes-pdf/route.tsx.
+  'lib/the-product-on-the-notes.ts': 'the submission notes go to the lender and onto the file, never to a client',
   'lib/deal-facts.ts':              'what the model is told about the deal',
   'lib/factfind-form-content.ts':   'the fact find sheet, filled in with the client in front of you',
   'lib/self-employed-facts.ts':     'income working, internal',

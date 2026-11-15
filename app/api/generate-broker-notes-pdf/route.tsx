@@ -17,6 +17,8 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { renderToBuffer, Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer'
 import React from 'react'
 import { dealRow, splitsOf, purposeSummary, repaymentLine, PURPOSE_LABEL } from '@/lib/deal-structure'
+import { recommendedOption } from '@/lib/recommended-option'
+import { productLines, hasProduct, NOTHING_TICKED } from '@/lib/the-product-on-the-notes'
 import { fundsToComplete } from '@/lib/funds-to-complete'
 import { relationshipLine } from '@/lib/relationship'
 import { securityAddressOf } from '@/lib/security-address'
@@ -103,6 +105,20 @@ export async function generateBrokerNotesPdfBuffer(dealId: string, supabase: any
   const funds = fundsToComplete(deal)
   const notes = String(c.applicationSubmissionComment || '').trim()
 
+  // THE PRODUCT THAT WAS TICKED ON LENDING OPTIONS.
+  //
+  // 16 Nov 2026. The sheet carried a column headed PRODUCT TYPE printing
+  // "Prime" - the category, not the product. Fabio: "I want to show the actual
+  // product, which is what we're ticking on lending options... if it's P&I,
+  // the interest rates, I want all those details."
+  //
+  // recommendedOption() is the portal's single answer to which one was chosen,
+  // and returns null rather than guessing between two. Nothing here is typed a
+  // second time. See lib/the-product-on-the-notes.ts.
+  const chosen = recommendedOption(deal.lo_data || {})
+  const product = productLines(chosen)
+  const gotProduct = hasProduct(chosen)
+
   const who = apps.length ? apps.map(fullName).join(' & ')
     : String(deal.deal_name || 'Deal').replace(/_/g, ' ')
   const purpose = [purposeSummary(deal), templateLabel(deal.bc_data?.template)].filter(Boolean).join(' — ')
@@ -148,6 +164,40 @@ export async function generateBrokerNotesPdfBuffer(dealId: string, supabase: any
           </View>
         </View>
 
+        {/* THE PRODUCT. It prints whether or not one was ticked - a missing
+            section tells a credit assessor nothing at all, while an empty one
+            tells them to go and look at Lending options. 16 Nov 2026. */}
+        <Bar>THE PRODUCT</Bar>
+        <View style={s.panel}>
+          {gotProduct ? (
+            <>
+              <View style={s.row}>
+                <F label="Product" value={product.product || 'Not recorded'}
+                   bold gap={!product.product} flex={2.4} />
+                <F label="Rate type" value={product.rateType || 'Not recorded'}
+                   bold gap={!product.rateType} />
+              </View>
+              <View style={s.row}>
+                <F label="Repayments" value={product.repayments || 'Not recorded'}
+                   bold gap={!product.repayments} />
+                <F label="Rate" value={product.rate || 'Not recorded'}
+                   bold gap={!product.rate} />
+                <F label="Comparison rate" value={product.comparison || 'Not recorded'}
+                   gap={!product.comparison} />
+              </View>
+              <View style={[s.row, { marginBottom: 0 }]}>
+                <F label="Term" value={product.term || 'Not recorded'} gap={!product.term} />
+                <F label="Offset account" value={product.offset || 'Not recorded'}
+                   gap={!product.offset} />
+                <F label="Annual fee" value={product.annualFee || 'Not recorded'}
+                   gap={!product.annualFee} />
+              </View>
+            </>
+          ) : (
+            <Text style={s.v}>{NOTHING_TICKED}</Text>
+          )}
+        </View>
+
         {splits.length > 0 && (
           <>
             <Bar>LOAN SPLITS</Bar>
@@ -159,7 +209,7 @@ export async function generateBrokerNotesPdfBuffer(dealId: string, supabase: any
                 <Text style={[s.thc, { flex: .7 }]}>RATE</Text>
                 <Text style={[s.thc, { flex: 1.25 }]}>P&amp;I / IO</Text>
                 <Text style={[s.thc, { flex: 1.1 }]}>PURPOSE</Text>
-                <Text style={[s.thc, { flex: 1.5 }]}>PRODUCT TYPE</Text>
+                <Text style={[s.thc, { flex: 1.5 }]}>PRODUCT</Text>
               </View>
               {splits.map((sp, i) => (
                 <View key={sp.id} style={s.tr}>
@@ -171,7 +221,13 @@ export async function generateBrokerNotesPdfBuffer(dealId: string, supabase: any
                       and ten years printed identically. See repaymentLine. */}
                   <Text style={[s.td, { flex: 1.25 }]}>{repaymentLine(sp) || '—'}</Text>
                   <Text style={[s.td, { flex: 1.1 }]}>{sp.purpose ? PURPOSE_LABEL[sp.purpose] : '—'}</Text>
-                  <Text style={[s.td, { flex: 1.5 }]}>{sp.productType || '—'}</Text>
+                  {/* THE PRODUCT, NOT ITS CATEGORY. "Prime" told a credit
+                      assessor nothing about which product was recommended.
+                      The split's own type is the fallback when no option was
+                      ticked. 16 Nov 2026. */}
+                  <Text style={[s.td, { flex: 1.5 }]}>
+                    {product.product || sp.productType || '—'}
+                  </Text>
                 </View>
               ))}
               {/* One per deal, not one per split. */}
