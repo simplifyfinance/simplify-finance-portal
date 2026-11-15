@@ -31,7 +31,11 @@ const codeOnly = (src: string) =>
 
 describe('a client email signs as the broker on the deal', () => {
   it('the screen tells the sender whose deal it is', () => {
-    expect(SCREEN).toContain("useSender('sf_milestone_sender_v1', deal?.assigned_broker)")
+    // And which brand the DEAL is under, added 17 Nov 2026 - the brand starts
+    // on the borrowing capacity and is carried to the lending options, so the
+    // send screen opens on it rather than on the broker's first.
+    expect(SCREEN).toContain(
+      "useSender('sf_milestone_sender_v1', deal?.assigned_broker, brandOnDeal(deal))")
   })
 
   it('and the deal beats what the browser remembered', () => {
@@ -59,7 +63,8 @@ describe('a client email signs as the broker on the deal', () => {
 
   it('but the templates screens still remember, because there is no deal there', () => {
     // Picking who is writing is the whole job on those screens.
-    expect(SENDER).toContain('export function useSender(storageKey: string, preferBrokerKey?: string)')
+    expect(SENDER).toContain(
+      'export function useSender(storageKey: string, preferBrokerKey?: string, preferBrandId?: string)')
     expect(codeOnly(SENDER)).toContain('window.localStorage.setItem(storageKey')
   })
 })

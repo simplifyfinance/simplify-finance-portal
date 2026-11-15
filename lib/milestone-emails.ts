@@ -61,6 +61,22 @@ export type MilestoneTemplate = {
   // broker, brand, Calendly - see app/(app)/templates/useSender.ts. A template
   // without this keeps the old behaviour untouched.
   picksSender: boolean
+  // WHICH TRADING NAME IT GOES OUT UNDER, without handing over the broker.
+  //
+  // 17 Nov 2026. Fabio: "make sure multi brand is on navigate etc" - and it was
+  // not. brandId was only ever sent to the API when a template picked its
+  // SENDER, which only the final check-in does, so every other template
+  // resolved to the default and a settlement email could only ever go out as
+  // Simplify Finance.
+  //
+  // A deal has no brand column, so the brand cannot be read off the record -
+  // somebody has to say. The settlement five say it with this and nothing else:
+  // the sender is whoever is logged in, because a settlements officer sends
+  // their own email, but the brand follows the client.
+  //
+  // picksSender implies this. A template that chooses a broker has always
+  // chosen the brand with them.
+  picksBrand?: boolean
 }
 
 export const TEMPLATES: MilestoneTemplate[] = [
@@ -83,11 +99,11 @@ export const TEMPLATES: MilestoneTemplate[] = [
   //
   // Settlements are copied on all but the last: there is a settlement running.
   // A month after it has gone there is nothing for them to act on.
-  { id: 'loan_documents', name: 'Loan documents', letterRequired: false, copySettlements: true, picksSender: false },
-  { id: 'settlement_numbers', name: 'Settlement numbers', letterRequired: false, copySettlements: true, picksSender: false },
-  { id: 'settlement_booked', name: 'Settlement booked', letterRequired: false, copySettlements: true, picksSender: false },
-  { id: 'settled', name: 'Settled', letterRequired: false, copySettlements: true, picksSender: false },
-  { id: 'month_in', name: 'One month in', letterRequired: false, copySettlements: false, picksSender: false },
+  { picksBrand: true, id: 'loan_documents', name: 'Loan documents', letterRequired: false, copySettlements: true, picksSender: false },
+  { picksBrand: true, id: 'settlement_numbers', name: 'Settlement numbers', letterRequired: false, copySettlements: true, picksSender: false },
+  { picksBrand: true, id: 'settlement_booked', name: 'Settlement booked', letterRequired: false, copySettlements: true, picksSender: false },
+  { picksBrand: true, id: 'settled', name: 'Settled', letterRequired: false, copySettlements: true, picksSender: false },
+  { picksBrand: true, id: 'month_in', name: 'One month in', letterRequired: false, copySettlements: false, picksSender: false },
 ]
 
 export function templateById(id: any): MilestoneTemplate | null {

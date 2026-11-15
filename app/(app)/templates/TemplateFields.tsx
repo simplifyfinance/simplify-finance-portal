@@ -14,6 +14,34 @@ const h3 = 'text-[11px] font-bold tracking-[.08em] uppercase mb-3'
 const lab = 'text-[11.5px] mb-1 block'
 const hint = 'text-[11px] mt-1'
 
+// THE BRAND ON ITS OWN.
+//
+// For a template that goes out under a trading name but is signed by whoever is
+// sending it - the settlement emails, where the settlements officer is the
+// sender and the brand follows the client. Same wording and same hint as the
+// brand control inside SenderPanel, because it is the same decision.
+export function BrandPanel({ brands, brandId, setBrandId }: {
+  brands: { id: string; name: string }[]
+  brandId: string
+  setBrandId: (v: string) => void
+}) {
+  if (!brands || brands.length === 0) return null
+  return (
+    <div className={panel} style={panelS}>
+      <h3 className={h3} style={{ color: TONE.label }}>Sending as</h3>
+      <label className={lab} style={{ color: TONE.label }}>Brand</label>
+      <select className={inp} style={inpS} value={brandId || ''} onChange={e => setBrandId(e.target.value)}>
+        {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+      </select>
+      <p className={hint} style={{ color: TONE.faint }}>
+        {brands.length > 1
+          ? 'Sets the logo, the header colour and the licence in the footer.'
+          : 'The only brand on your profile. Add more in Settings, Brokers.'}
+      </p>
+    </div>
+  )
+}
+
 export function SenderPanel({
   brokers, brokerKey, setBrokerKey, broker, calendlyUrl, setCalendlyOverride,
   brands, brandId, setBrandId,

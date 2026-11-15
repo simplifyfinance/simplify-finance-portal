@@ -33,7 +33,7 @@ export type Broker = { key: string; name: string; calendly: string; brandIds: st
  * must not quietly become the default on the next one. That is the fault,
  * worn differently.
  */
-export function useSender(storageKey: string, preferBrokerKey?: string) {
+export function useSender(storageKey: string, preferBrokerKey?: string, preferBrandId?: string) {
   const supabase = createSupabaseBrowser()
   const [brokers, setBrokers] = useState<Broker[]>([])
   const [brokerKey, setBrokerKey] = useState('')
@@ -42,6 +42,8 @@ export function useSender(storageKey: string, preferBrokerKey?: string) {
   // has had this for a long time; the templates were hardcoded to Simplify.
   const [brandList, setBrandList] = useState<Brand[]>([])
   const [brandId, setBrandId] = useState('')
+  // Once somebody picks, the deal stops overriding them.
+  const [brandPicked, setBrandPicked] = useState(false)
   const [loaded, setLoaded] = useState(false)
 
   const wanted = brokerKeyOf(preferBrokerKey)
@@ -112,15 +114,27 @@ export function useSender(storageKey: string, preferBrokerKey?: string) {
     : brandList
   const availableBrands = allowed.length ? allowed : brandList
 
+  // THE DEAL'S OWN BRAND LEADS, THEN THE BROKER'S FIRST.
+  //
+  // 17 Nov 2026. The brand starts on the borrowing capacity and is carried to
+  // the lending options - see brandOnDeal in lib/which-business.ts. A send
+  // screen that opened on the broker's first brand instead would quietly put a
+  // Navigate deal under the Simplify logo, and the person sending it has no
+  // reason to look at a control that already says something.
   useEffect(() => {
     if (!availableBrands.length) return
+    const want = String(preferBrandId || '').trim().toLowerCase()
+    const onTheDeal = want ? availableBrands.find(b => String(b.id).toLowerCase() === want) : null
+    if (onTheDeal && !brandPicked) { setBrandId(onTheDeal.id); return }
     if (!availableBrands.some(b => b.id === brandId)) setBrandId(availableBrands[0].id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brokerKey, brandList])
+  }, [brokerKey, brandList, preferBrandId, brandPicked])
 
   const brand = availableBrands.find(b => b.id === brandId) || availableBrands[0] || DEFAULT_BRAND
   const calendlyUrl = calendlyOverride.trim() || broker?.calendly || ''
 
+  const chooseBrand = (v: string) => { setBrandPicked(true); setBrandId(v) }
+
   return { brokers, brokerKey, setBrokerKey, broker, calendlyUrl, setCalendlyOverride,
-           brands: availableBrands, brandId: brand.id, setBrandId, brand }
+           brands: availableBrands, brandId: brand.id, setBrandId: chooseBrand, brand }
 }

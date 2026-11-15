@@ -21,6 +21,9 @@ import {
   loanDocumentsEmail, settlementNumbersEmail, settlementBookedEmail, settledEmail,
   monthInEmail, settlementWords, outstandingLines, isIoDeal,
 } from './settlement-emails'
+import {
+  settlementRows, settlementNumbersGaps, numbersWorthSending, surplusGoesTo,
+} from './the-settlement-numbers'
 import { securitiesOf } from './box-security'
 import { isPurchase, isRefinance, settlementDate } from './settlement'
 import { templateById, type TemplateId, type MilestoneTemplate } from './milestone-emails'
@@ -364,15 +367,24 @@ export function assembleMilestoneEmail(input: AssembleInput): Assembled | null {
     if (template.id === 'loan_documents') {
       built = loanDocumentsEmail(ctx)
     } else if (template.id === 'settlement_numbers') {
-      // THE BREAKDOWN IS NOT BUILT YET, AND THE EMAIL SAYS SO RATHER THAN
-      // INVENTING ONE. The spec gives a different set of figures per
-      // transaction type - payout, surplus, contribution, equity released -
-      // and none of them is worked out anywhere in the portal yet. An email
-      // that quotes a made-up surplus is the exact thing this whole build
-      // refuses to do, so it goes out with no table and the screen says why.
-      problems.push('The settlement figures are not worked out by the portal yet, so this email has no '
-        + 'breakdown in it. Type the numbers into the box below, or send it once that is built.')
-      built = settlementNumbersEmail({ ...ctx, rows: [] })
+      // THE FIGURES COME OFF THE DEAL, through the same code the funds to
+      // complete strip and every other email already use - see
+      // lib/the-settlement-numbers.ts for why a second set of sums would be a
+      // second place for the old double-counting bugs to live.
+      const rows = settlementRows(deal)
+      for (const gap of settlementNumbersGaps(deal)) problems.push(gap)
+      if (rows.length === 0) {
+        problems.push('There is no breakdown on this email. Type the figures into the box below, or '
+          + 'record what is missing above and come back.')
+      }
+      // NOT SENT AT ALL ON A DOLLAR-FOR-DOLLAR REFINANCE. Said here rather than
+      // hidden, because the person has already chosen this template and a
+      // button that quietly does nothing is worse than a sentence.
+      if (!numbersWorthSending(deal)) {
+        problems.push('Nothing is moving that the client will see, so this email is not normally sent '
+          + 'on this deal.')
+      }
+      built = settlementNumbersEmail({ ...ctx, rows, surplusTo: surplusGoesTo(deal) })
     } else if (template.id === 'settlement_booked') {
       if (!txt(ctx.settlementDate)) {
         problems.push('No settlement date is recorded, so the email cannot name the day.')

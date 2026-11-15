@@ -3,6 +3,7 @@ import { bccForDeal, bccGap, cleanBcc, bccIsSendable } from '@/lib/files-itself-
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
 import { resolveBrand } from '@/lib/brand'
+import { brandOnDeal } from '@/lib/which-business'
 import { menuFor, templateById, withSent, type TemplateId, type SentEmail } from '@/lib/milestone-emails'
 import { assembleMilestoneEmail, SETTLEMENTS_EMAIL } from '@/lib/milestone-send'
 import { rulesOf } from '@/lib/lender-rules'
@@ -261,7 +262,18 @@ export async function GET(req: NextRequest) {
     deal, templateId,
     rules: lender.rules,
     rateNotice: await loadRateNotice(lender.row),
-    brand: await resolveBrand(txt(req.nextUrl.searchParams.get('brandId'))),
+    // THE DEAL'S OWN BRAND WHEN NOBODY HAS PICKED ONE.
+    //
+    // 17 Nov 2026. Fabio: "the brand starts in bc than lo come on weve been
+    // doing this for a while now". He is right, and this line was not doing it:
+    // brandId only ever reached here from a template that picks its SENDER,
+    // which is one of ten, so every other template resolved to the default and
+    // a Navigate deal sent a Simplify email. Nobody would see it - the email is
+    // correct in every other way.
+    //
+    // brandOnDeal reads lo_data.brandId and falls back to the BC's, which is
+    // where the forms put it. A pick on the screen still wins.
+    brand: await resolveBrand(txt(req.nextUrl.searchParams.get('brandId')) || brandOnDeal(deal)),
     sender: { name: who.name, email: who.email, phone: who.phone },
     // Typed on the screen wins for this one email; otherwise the broker's own
     // link. Neither, and the email simply has no button.
@@ -328,6 +340,10 @@ export async function GET(req: NextRequest) {
     // The screen draws its own Sending as panel off this rather than keeping a
     // second list of which templates have one.
     picksSender: tpl?.picksSender ?? false,
+    // AND WHETHER IT PICKS ONLY THE BRAND. See picksBrand in
+    // lib/milestone-emails.ts - without this the settlement emails could only
+    // ever go out as the default brand.
+    picksBrand: tpl?.picksBrand ?? false,
     // Empty unless the chosen broker is missing contact details - see
     // brokerSender above. Printed on the screen, not swallowed.
     senderNote: chosen?.note || '',
@@ -388,7 +404,8 @@ export async function POST(req: NextRequest) {
     deal, templateId: template.id,
     rules: lender.rules,
     rateNotice: await loadRateNotice(lender.row),
-    brand: await resolveBrand(txt(form.get('brandId'))),
+    // Same fallback as the preview, so what was read is what is sent.
+    brand: await resolveBrand(txt(form.get('brandId')) || brandOnDeal(deal)),
     sender: { name: who.name, email: who.email, phone: who.phone },
     calendlyUrl: template.picksSender ? (typedCalendly || (chosen?.calendly || '')) : '',
     overrides,

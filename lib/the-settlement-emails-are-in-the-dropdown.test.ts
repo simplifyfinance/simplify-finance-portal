@@ -93,10 +93,11 @@ describe('the assembler builds all five', () => {
     }
   })
 
-  // NOTHING IS INVENTED, AND THE SCREEN SAYS SO.
-  it('the numbers email says its breakdown is not built yet', () => {
+  // NOTHING IS INVENTED, AND THE SCREEN SAYS SO. This deal is a refinance
+  // with no equity release, so there is nothing moving the client will see.
+  it('the numbers email says when there is nothing worth sending', () => {
     const out = assembleMilestoneEmail(input('settlement_numbers'))!
-    expect(out.problems.join(' ')).toContain('not worked out by the portal yet')
+    expect(out.problems.join(' ')).toContain('not normally sent')
   })
 
   it('and the month-in email says the four checks were never written down', () => {

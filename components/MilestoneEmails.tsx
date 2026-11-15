@@ -9,7 +9,8 @@ import { type DocRow } from '@/lib/document-progress'
 import { SENT_WITH } from '@/lib/offer-accepted-email'
 import { menuFor, menuToBrowse, lastSent, templateById, type MenuItem, type TemplateId } from '@/lib/milestone-emails'
 import { useSender } from '@/app/(app)/templates/useSender'
-import { SenderPanel } from '@/app/(app)/templates/TemplateFields'
+import { SenderPanel, BrandPanel } from '@/app/(app)/templates/TemplateFields'
+import { brandOnDeal } from '@/lib/which-business'
 import MissingFigures from '@/components/MissingFigures'
 import { useBackdropClose } from '@/components/useBackdropClose'
 import { OFFICE } from '@/lib/same-date-everywhere'
@@ -60,6 +61,8 @@ type Preview = {
   // see lib/milestone-emails.ts and the route that reads it.
   letterRequired: boolean
   picksSender: boolean
+  /** Picks the trading name only - see picksBrand in lib/milestone-emails.ts. */
+  picksBrand?: boolean
   // Empty unless the chosen broker has no login linked, and so no email or
   // mobile for the signature. Said on screen rather than discovered in a sent
   // email.
@@ -301,10 +304,15 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
   // See app/(app)/templates/useSender.ts.
   // WHOSE DEAL IT IS, not whoever was last picked in this browser.
   // 27 Oct 2026 - see the note on useSender.
-  const sender = useSender('sf_milestone_sender_v1', deal?.assigned_broker)
+  const sender = useSender('sf_milestone_sender_v1', deal?.assigned_broker, brandOnDeal(deal))
   const picksSender = Boolean(preview?.picksSender)
+  // THE BRAND IS A SEPARATE DECISION FROM THE SENDER. Without this the brand
+  // never reached the API for any template but the final check-in, so every
+  // settlement email went out as the default - see picksBrand in
+  // lib/milestone-emails.ts.
+  const picksBrand = Boolean(preview?.picksBrand)
   const brokerKey = picksSender ? sender.brokerKey : ''
-  const brandId = picksSender ? sender.brandId : ''
+  const brandId = (picksSender || picksBrand) ? sender.brandId : ''
   const calendly = picksSender ? sender.calendlyUrl : ''
 
   const already = lastSent(deal, templateId)
@@ -476,6 +484,15 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
                 {!!preview?.senderNote && (
                   <p className="mt-1.5 text-[11px] text-chase leading-snug">{preview.senderNote}</p>
                 )}
+              </div>
+            )}
+
+            {/* BRAND ONLY. The settlement emails are signed by whoever is
+                sending them and go out under the client's brand. */}
+            {!picksSender && picksBrand && (
+              <div className="mt-5">
+                <BrandPanel brands={sender.brands} brandId={sender.brandId}
+                  setBrandId={sender.setBrandId} />
               </div>
             )}
 

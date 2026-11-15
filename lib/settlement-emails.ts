@@ -40,7 +40,14 @@ const DISCLAIMER =
   + 'The figures in it are based on information available at the time of sending and may change '
   + 'before settlement.'
 
-export type MoneyRow = { label: string; value: string; note?: boolean }
+export type MoneyRow = {
+  label: string
+  value: string
+  /** A quiet line under the figures rather than a figure itself. */
+  note?: boolean
+  /** Ruled off above and below - the one line they are looking for. */
+  total?: boolean
+}
 
 export type SettlementEmailContext = {
   brand?: Brand
