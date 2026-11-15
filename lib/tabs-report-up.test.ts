@@ -84,7 +84,12 @@ describe('what Compliance composes from', () => {
     // say what a box was written from; the fingerprint says whether anybody has
     // reworded it since, which is the only thing that makes rebuilding one
     // safe. See lib/keeping-up.ts.
-    expect(src()).toMatch(/textHash: fingerprint\(r\.text\)/)
+    // 17 Nov 2026: the fingerprint is taken of the words the box ACTUALLY
+    // carries, which is the text with the warnings lifted out of it - see
+    // lib/the-note-is-not-the-warning.ts. Fingerprinting the unstripped text
+    // would make every freshly written box read as having been reworded.
+    expect(src()).toMatch(/const clean = noteText\(r\.text\)/)
+    expect(src()).toMatch(/textHash: fingerprint\(clean\)/)
   })
 
   it('still writes the box when the record cannot be reached, and says so', () => {

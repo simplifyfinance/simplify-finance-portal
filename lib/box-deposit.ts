@@ -2,6 +2,7 @@ import { money, readMoney } from './money'
 import { lmiAmount, lmiTreatment } from './lmi'
 import { dutyStateOf } from './duty-state'
 import { fundsToComplete, refinancedDebt, isConstruction } from './funds-to-complete'
+import { isInternalRefinance, INTERNAL_REFINANCE, payoutAgrees } from './an-internal-refinance'
 import { dutyApplies } from './construction'
 import { dealRow, splitsOf, isMixed } from './deal-structure'
 import { applicantsOf } from './applicants'
@@ -321,11 +322,35 @@ export function boxSeven(deal: any): Box {
   }
 
   else if (shape === 'refinance') {
-    parts.push(v === 3
-      ? `This refinances the existing debt dollar for dollar. No deposit or contribution is required, as the new lending of ${money(lending)} replaces the existing balance of ${money(payout)} being paid out.`
-      : `This is a refinance of the existing debt dollar for dollar. No deposit or contribution is required, as the new lending of ${money(lending)} replaces the existing balance of ${money(payout)} being paid out.`)
-    parts.push(EXPOSURE[v])
-    take(lvrLine(deal))
+    // NOTHING IS MOVING, SO THERE IS NOTHING TO DESCRIBE.
+    //
+    // 17 Nov 2026. On a refinance that stays with the same lender this wrote
+    // sixty words about a deposit nobody is paying and a payout nobody is
+    // receiving. See lib/an-internal-refinance.ts.
+    if (isInternalRefinance(deal)) {
+      parts.push(INTERNAL_REFINANCE)
+      take(lvrLine(deal))
+    } else {
+      // THE TYPED PAYOUT AGAINST THE RECORDED BALANCE.
+      //
+      // "the new lending of $398,200 replaces the existing balance of $57,200
+      // being paid out" went onto a file whose fact find recorded $395,899.35
+      // owing on that security. Where the two disagree this box asserts
+      // neither, and the disagreement goes on the list above the note.
+      const check = payoutAgrees(deal)
+      if (check.agree) {
+        parts.push(v === 3
+          ? `This refinances the existing debt dollar for dollar. No deposit or contribution is required, as the new lending of ${money(lending)} replaces the existing balance of ${money(payout)} being paid out.`
+          : `This is a refinance of the existing debt dollar for dollar. No deposit or contribution is required, as the new lending of ${money(lending)} replaces the existing balance of ${money(payout)} being paid out.`)
+      } else {
+        parts.push(`This refinances the existing debt dollar for dollar. No deposit or contribution is required.`)
+        parts.push(shout(`PAYOUT FIGURE DOES NOT MATCH — the borrowing capacity records ${money(check.typed)} being paid out and the fact find records ${money(check.recorded)} owing on the security.`))
+        gaps.push({ what: `Payout figure (${money(check.typed)}) does not match the balance on the fact find (${money(check.recorded)})`,
+                    where: 'Borrowing capacity → owes now' })
+      }
+      parts.push(EXPOSURE[v])
+      take(lvrLine(deal))
+    }
   }
 
   else if (shape === 'cashout') {

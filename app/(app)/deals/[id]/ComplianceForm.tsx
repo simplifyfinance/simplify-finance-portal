@@ -51,6 +51,7 @@ import { creditHistoryFacts, creditHistoryBlock } from '@/lib/credit-history-fac
 import { boxOne, type Gap } from '@/lib/box-one'
 import { boxTwo, boxThree } from '@/lib/box-goals'
 import { boxFour } from '@/lib/box-four'
+import { noteText, toFix } from '@/lib/the-note-is-not-the-warning'
 import { boxSeven } from '@/lib/box-deposit'
 import { boxEight } from '@/lib/box-credit'
 import { boxNine } from '@/lib/box-security'
@@ -282,6 +283,33 @@ function ToggleRow({ label, value, onChange, options, colors, required }: { labe
 // THE NINE AI NOTES, NAMED ONCE. Two of the lists that used to hold these
 // disagreed with each other, which is how a field can quietly stop being
 // included in "Generate all fields" and nobody notices for a month.
+// WHAT IS MISSING, ABOVE THE NOTE RATHER THAN INSIDE IT.
+//
+// 17 Nov 2026. These used to print into the prose as "** NOT RECORDED — ... **"
+// on a document that goes to a lender, and a broker deleted them by hand before
+// sending. They sit here instead, word for word, each with the box it is fixed
+// in. See lib/the-note-is-not-the-warning.ts.
+//
+// IT WARNS AND IT NEVER BLOCKS. Fabio, asked straight: "No, I don't want to
+// block it because it makes it hard, but just put a warning on top."
+function ToFixList({ items }: { items?: { what: string; where: string }[] }) {
+  const list = items || []
+  if (list.length === 0) return null
+  return (
+    <div data-tofix="1" className="mt-2 rounded-lg border border-chase-edge border-l-[3px] border-l-chase bg-chase-bg px-3 py-2">
+      <p className="mb-1 text-xs font-semibold text-chase">
+        {list.length === 1 ? 'One thing to fix before this goes anywhere'
+          : `${list.length} things to fix before this goes anywhere`}
+      </p>
+      {list.map(g => (
+        <p key={g.what} className="text-xs leading-relaxed text-body">
+          &middot; {g.what}{g.where ? <> &mdash; <span className="text-muted">{g.where}</span></> : null}
+        </p>
+      ))}
+    </div>
+  )
+}
+
 const AI_FIELDS = [
   { key: 'needsPrimary', label: 'Primary reasons for seeking credit' },
   { key: 'needsImmediate', label: 'Immediate needs & objectives' },
@@ -1135,8 +1163,20 @@ export default function ComplianceForm({ deal, onSaveStatus, onDataChange, onDea
       const { deal: from, fromRecord } = await freshDeal()
       const r = COMPOSERS[field](from)
       const facts = factsOf(from)
-      setBoxGaps(prev => ({ ...prev, [field]: r.gaps }))
-      setD(prev => ({ ...prev, [field]: r.text,
+      // THE WARNINGS COME OUT OF THE NOTE AND GO ABOVE IT.
+      //
+      // 17 Nov 2026. "** NOT RECORDED — ... **" was printing inside a document
+      // that goes to a lender, and a broker was deleting them by hand before
+      // sending. They go to the red list under this box instead, word for word,
+      // and nothing is lost - see lib/the-note-is-not-the-warning.ts. The list
+      // warns and never blocks: Fabio, asked straight, "I don't want to block
+      // it because it makes it hard, but just put a warning on top."
+      //
+      // A BOX THAT IS ONLY A WARNING KEEPS IT. Emptying it would have somebody
+      // press this button and watch nothing happen - see noteText().
+      const clean = noteText(r.text)
+      setBoxGaps(prev => ({ ...prev, [field]: toFix(r.text, r.gaps) }))
+      setD(prev => ({ ...prev, [field]: clean,
         aiMeta: { ...prev.aiMeta, [field]: {
           confidence: r.gaps.length === 0 ? 'High' : 'Medium',
           source: (r.gaps.length === 0
@@ -1150,7 +1190,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDataChange, onDea
           // recorded what it SAID, so nothing could tell an untouched box from
           // one somebody had reworded - and that is the only thing that makes
           // rebuilding one safe. See lib/keeping-up.ts.
-          textHash: fingerprint(r.text) } } }))
+          textHash: fingerprint(clean) } } }))
     } finally {
       setGenerating(prev => ({ ...prev, [field]: false }))
     }
@@ -2015,14 +2055,8 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                     </div>
                   </div>
                 )}
-                {(boxGaps[key] || []).length > 0 && (
-                  <div className="mt-2 bg-red-50 border border-red-200 border-l-[3px] border-l-red-600 rounded-lg px-3 py-2">
-                    <p className="text-xs font-semibold text-red-800 mb-1">Recorded nowhere — these must be filled in before this file is submitted</p>
-                    {(boxGaps[key] || []).map(g => (
-                      <p key={g.what} className="text-xs text-red-700">· {g.what} — <span className="text-red-500">{g.where}</span></p>
-                    ))}
-                  </div>
-                )}
+                <ToFixList items={boxGaps[key]} />
+                <ToFixList items={boxGaps[key]} />
                 <NoteMeta meta={d.aiMeta?.[key]} freshness={freshnessOf(key)} onAccept={() => acceptNote(key)} />
               </div>
             ))}
@@ -2279,6 +2313,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                     </div>
                   </div>
                 )}
+                <ToFixList items={boxGaps[key]} />
                 <NoteMeta meta={d.aiMeta?.[key]} freshness={freshnessOf(key)} onAccept={() => acceptNote(key)} />
               </div>
             ))}
@@ -2309,6 +2344,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                     </div>
                   </div>
                 )}
+                <ToFixList items={boxGaps[key]} />
                 <NoteMeta meta={d.aiMeta?.[key]} freshness={freshnessOf(key)} onAccept={() => acceptNote(key)} />
                 </div>
               ))}
@@ -2419,6 +2455,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                     </div>
                   </div>
                 )}
+                <ToFixList items={boxGaps['securityComment']} />
                 <NoteMeta meta={d.aiMeta?.['securityComment']} freshness={freshnessOf('securityComment')} onAccept={() => acceptNote('securityComment')} />
               </div>
               {/* THE ONLY BOX ON THIS TAB THAT LEAVES THE BUILDING.

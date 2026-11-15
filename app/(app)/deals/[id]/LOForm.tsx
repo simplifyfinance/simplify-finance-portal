@@ -46,6 +46,8 @@ import { useSaveIndicator } from '@/components/useSaveIndicator'
 import { useDraft } from '@/components/useDraft'
 import DraftBanner from '@/components/DraftBanner'
 import { recommendedOption, isRecommended, recommendedLabel, recommendationIsAmbiguous } from '@/lib/recommended-option'
+import { optionsOf } from '@/lib/lender-comparison'
+import { WHY_ONE_LENDER, blockedForNoReason, ASK_FOR_IT } from '@/lib/only-one-lender'
 import { isTopUp, recommendExistingLender, existingLenderOn, whyTheExistingLender } from '@/lib/top-up'
 import type { SaveStatus } from '@/lib/save-indicator'
 import { useKeepalive } from '@/components/useKeepalive'
@@ -246,6 +248,14 @@ type LOData = {
   recommendedOptionId: string
   recommendedLender: string
   recommendationNote: string
+  // WHY THERE IS ONLY ONE PRODUCT ON THIS LENDING OPTION.
+  //
+  // 17 Nov 2026. Fabio: "if we are issuing a lending option that only has one
+  // lender, we need to force my credit team to give me an answer, because that
+  // answer then goes into the compliance notes." It is asked here, once, and
+  // both compliance boxes that used to shout about it read it from here.
+  // See lib/only-one-lender.ts.
+  oneLenderReason?: string
   // WHAT MADE THIS DEAL HARD, as taps rather than prose.
   //
   // 12 Oct 2026. Everything else about the choice is already on this tab - the
@@ -748,6 +758,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       recommendedOptionId: '',
       recommendedLender: '',
       recommendationNote: '',
+      oneLenderReason: '',
       dealTags: [],
       internalNotes: '',
       emailHtml: '',
@@ -1983,6 +1994,15 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     setSendingToCreditTeam(false)
   }
 
+  // ONE PRODUCT ON THIS LENDING OPTION, AND WHETHER THE REASON IS RECORDED.
+  //
+  // Counted the way the compliance boxes count it - optionsOf() ignores a row
+  // nobody has named a lender on - so the screen and the notes can never
+  // disagree about whether this deal has a comparison on it.
+  const productCount = optionsOf(d).length
+  const oneProduct = productCount === 1
+  const needsReason = blockedForNoReason(d, productCount)
+
   const inp = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand"
   const sel = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand"
   const isBridging = d.template === 'lo_bridging'
@@ -2021,21 +2041,25 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         actions={[
           ...(deal.assigned_credit_officer && !loCompletedAt ? [{
             label: markingLoComplete ? 'Marking...' : 'Done',
-            onClick: () => setHandingOver(true),
+            onClick: () => { if (needsReason) return; setHandingOver(true) },
             primary: true,
-            title: 'Tells the broker the lending options are ready for their review',
+            // THE ONE THING ON THIS TAB THAT REFUSES. See the "Only one
+            // product — why?" box above, 17 Nov 2026.
+            waiting: needsReason,
+            title: needsReason ? ASK_FOR_IT
+              : 'Tells the broker the lending options are ready for their review',
           }] : []),
           {
             label: sending ? 'Copying...' : 'Send to client',
             doneLabel: 'Sent to client',
             onClick: () => {
-              if (!canSendToClient) return
+              if (!canSendToClient || needsReason) return
               if (loCompletedAt) { sendEmail(); return }
               setThenSend(true); setHandingOver(true)
             },
             primary: !(deal.assigned_credit_officer && !loCompletedAt),
             done: !!deal.lo_sent_at,
-            waiting: !canSendToClient || !emailHtml,
+            waiting: !canSendToClient || !emailHtml || needsReason,
             since: deal.lo_sent_at ? dayMonth(deal.lo_sent_at) : undefined,
             // SENDING IT AGAIN. The green tick is a fact, not a lock.
             again: canSendAgain(deal, 'lo') && canSendToClient && emailHtml ? {
@@ -2051,7 +2075,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 await sendEmail(true)
               },
             } : undefined,
-            title: !canSendToClient ? 'Only a broker can send this to the client'
+            title: needsReason ? ASK_FOR_IT
+                 : !canSendToClient ? 'Only a broker can send this to the client'
                  : emailNeedsAttention ? 'Heads up: this email was written for a different scenario.' : '',
           },
           // DOCS RECEIVED. The lending options has one action the BC does not,
@@ -3138,6 +3163,58 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             <button onClick={addLender} className="w-full py-3 border border-dashed border-gray-300 rounded-xl text-sm text-gray-400 hover:border-brand hover:text-brand-ink transition">
               + Add another lender option
             </button>
+          )}
+
+          {/* ONE PRODUCT, AND WHY.
+            *
+            * 17 Nov 2026. The compliance notes carried this, in capitals,
+            * inside a document that goes to a lender: "** ONLY ONE LENDER
+            * OPTION RECORDED — there is not enough on this deal to write this
+            * box. Please write it yourself. **" A broker deleted it and typed
+            * the reason by hand on every file like it.
+            *
+            * Fabio: "if we are issuing a lending option that only has one
+            * lender, we need to force my credit team to give me an answer,
+            * because that answer then goes into the compliance notes."
+            *
+            * SO THIS ONE STOPS THE SEND, and it is the only thing in the notes
+            * that does. Every other gap is a warning on the list above the
+            * note. This is different because the answer has to exist BEFORE
+            * the option goes out - that is the moment it is true and the
+            * moment the person who knows it is sitting here. */}
+          {oneProduct && (
+            <div className={`rounded-xl border-2 p-5 ${
+              needsReason ? 'border-chase-edge bg-chase-bg' : 'border-card-line bg-card'}`}>
+              <div className="mb-1 text-xs font-medium uppercase tracking-widest text-gray-400">
+                Only one product &mdash; why?
+              </div>
+              <p className="mb-3 text-[12.5px] leading-relaxed text-body">
+                {needsReason ? ASK_FOR_IT
+                  : 'This goes into the compliance notes word for word.'}
+              </p>
+              <div className="mb-3 flex flex-wrap gap-2">
+                {WHY_ONE_LENDER.map(why => {
+                  const on = d.oneLenderReason === why
+                  return (
+                    <button key={why} type="button"
+                      onClick={() => { markDirty(ownRef.current, 'oneLenderReason'); setD({ ...d, oneLenderReason: on ? '' : why }) }}
+                      className={`rounded-lg border px-3 py-1.5 text-[12.5px] font-semibold ${
+                        on ? 'border-ink bg-ink text-page' : 'border-field-line bg-card text-ink hover:bg-page'}`}>
+                      {why}
+                    </button>
+                  )
+                })}
+              </div>
+              {/* ANYTHING ELSE, IN THEIR OWN WORDS. A broker explaining an
+                * unusual deal is not improved by being paraphrased, so what
+                * is typed here reaches the notes exactly as typed. */}
+              <input className={inp}
+                placeholder="Or type the reason — it goes into the compliance notes as written"
+                value={WHY_ONE_LENDER.includes(d.oneLenderReason as any) ? '' : (d.oneLenderReason || '')}
+                onFocus={() => focusField(ownRef.current, 'oneLenderReason')}
+                onBlur={() => blurField(ownRef.current, 'oneLenderReason')}
+                onChange={e => { markDirty(ownRef.current, 'oneLenderReason'); setD({ ...d, oneLenderReason: e.target.value }) }} />
+            </div>
           )}
 
           {/* Recommendation */}

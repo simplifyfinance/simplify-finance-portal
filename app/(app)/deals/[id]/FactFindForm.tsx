@@ -1,5 +1,6 @@
 'use client'
 import RunServiceability from '@/components/RunServiceability'
+import { inDateOrder, outOfOrder } from '@/lib/employment-in-order'
 import DropZone from '@/components/DropZone'
 import { isLowDoc } from '@/lib/low-doc'
 import WhoSharesThisDeal from '@/components/WhoSharesThisDeal'
@@ -1777,10 +1778,39 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       {stage === 'employment' && applicant && (
         <div className="bg-card border border-gray-100 rounded-xl p-5 space-y-3">
           <SectionHeader title={`Employment — ${applicant.firstName || 'applicant'}`} />
-          {applicant.employment.map((emp, i) => (
+          {/* IN DATE ORDER, NEWEST FIRST.
+            *
+            * 17 Nov 2026. These sat in the order somebody typed them, under
+            * headings numbered "Previous employer #1" and "#2" - and on a file
+            * where the 2023-2025 job had been entered before the 2025-2026 one,
+            * #1 was the OLDER job. A person reading the fact find got the wrong
+            * impression, and so did the compliance note, which took #1 and
+            * called it "a previous role ending in May 2025" when the role
+            * before this one ended in November 2026.
+            *
+            * Fabio: "the portal is not adjusting cjronoloigcally so AI notes
+            * confused the previous employment supposed to be 2026", and on how
+            * to fix it: "A puts itself in order".
+            *
+            * NOTHING IS SAVED BY THE SORT. The record keeps whatever order it
+            * had; this is how it is READ, here and in the note, which is the
+            * only place the order ever meant anything. See
+            * lib/employment-in-order.ts. */}
+          {outOfOrder(applicant.employment) && (
+            <div className="rounded-xl border border-info-edge border-l-[4px] border-l-info bg-info-bg px-4 py-2.5 text-[12.5px] text-body">
+              <b className="text-info">Put in date order.</b> Most recent first. Nothing was changed
+              except how they are listed.
+            </div>
+          )}
+          {inDateOrder(applicant.employment).map((emp: any, i: number, shown: any[]) => (
             <div key={emp.id} className="border border-gray-100 rounded-lg p-4 mb-2">
               <div className="flex justify-between items-center mb-3">
-                <span className="text-xs font-medium text-gray-500">{emp.isCurrent ? 'Current employer' : `Previous employer #${i}`}</span>
+                {/* NAMED BY WHERE IT SITS IN THE HISTORY, which is a fact,
+                  * rather than by when it was typed, which is not. */}
+                <span className="text-xs font-medium text-gray-500">{emp.isCurrent ? 'Current employer'
+                  : shown.filter((x: any) => !x.isCurrent).indexOf(emp) === 0 ? 'The role before this one'
+                  : shown.filter((x: any) => !x.isCurrent).indexOf(emp) === 1 ? 'Before that'
+                  : 'Earlier'}</span>
                 {applicant.employment.length > 1 && (
                   <button onClick={() => removeEmployment(emp.id)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
                 )}

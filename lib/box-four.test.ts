@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { boxFour, retirementStrategy, creditHistorySentences, REPAYMENT_METHOD_WORDS } from './box-four'
+import { boxFour, retirementStrategy, creditHistorySentences, REPAYMENT_METHOD_WORDS, FINISHES_FIRST } from './box-four'
+import { boxFive } from './box-options'
 import { DEAL } from './box-fixture'
 import { readFileSync } from 'fs'
 
@@ -61,13 +62,20 @@ describe('the retirement strategy is on every file', () => {
     expect(r.gaps.map(g => g.what)).toContain('Rachel retires before the loan ends — exit strategy required')
   })
 
-  it('says the term finishes in time when it does', () => {
+  // 17 Nov 2026. This used to write a paragraph per applicant - the age, the
+  // method, and the arithmetic landing inside it - to say the one thing that
+  // matters: the loan ends first. Fabio's broker cut the lot to one line, and
+  // the ages come back the moment somebody's term runs past their retirement.
+  it('says the loan finishes first in one line, and drops the arithmetic', () => {
     const d = deal()
     d.bc_data.loanTerm = '20'
     d.compliance_data.splitDetail = {}
     const t = boxFour(d).text
     expect(t).not.toMatch(/EXIT STRATEGY/)
-    expect(t).toMatch(/runs to age 67, within that/)
+    expect(t).toContain(FINISHES_FIRST)
+    expect(t, 'the arithmetic is only worth printing when it is a problem')
+      .not.toMatch(/within that/)
+    expect(t).not.toMatch(/has given a retirement age/)
   })
 
   it('has words for every method the form actually offers', () => {
@@ -194,10 +202,16 @@ describe('the client’s agreement', () => {
     expect(r.gaps.map(g => g.what)).toContain("The clients' agreement to the recommendation")
   })
 
-  it('states it plainly when they agreed', () => {
+  // 17 Nov 2026. "The clients agreed with the recommendation and proceeded
+  // with it." was printed word for word in BOTH this box and Options presented
+  // & recommended. It now appears once, in the box about the recommendation.
+  it('leaves the agreement to the box about the recommendation', () => {
     const d = deal()
     d.lo_data.clientAgreedLender = 'Yes'
-    expect(boxFour(d).text).toMatch(/agreed with the recommendation and proceeded/)
+    const t = boxFour(d).text
+    expect(t).not.toMatch(/agreed with the recommendation and proceeded/)
+    expect(t, 'and it must not shout about it instead').not.toMatch(/agreement to the recommendation/)
+    expect(boxFive(d).text).toMatch(/agreed with the recommendation and proceeded/)
   })
 
   it('names the lender they chose instead, the one it replaced, and their reason', () => {
@@ -244,8 +258,11 @@ describe('the client’s agreement', () => {
     d.compliance_data.clientChosenLender = 'AMP'
     d.lo_data.clientAgreedLender = 'Yes'
     const t = boxFour(d).text
-    expect(t).toMatch(/agreed with the recommendation and proceeded/)
+    // The stale copy said they went to AMP. Neither box repeats it, and the
+    // box that carries the decision says they agreed.
     expect(t).not.toContain('AMP')
+    expect(t).not.toMatch(/did not proceed/)
+    expect(boxFive(d).text).toMatch(/agreed with the recommendation and proceeded/)
   })
 })
 

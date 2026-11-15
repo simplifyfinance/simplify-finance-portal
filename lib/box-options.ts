@@ -3,6 +3,7 @@ import { compareLenders, type Option } from './lender-comparison'
 import { dealRow } from './deal-structure'
 import { variantOf, andList, type Gap } from './box-one'
 import { clientAgreement } from './client-agreement'
+import { whyOneLenderSentence } from './only-one-lender'
 
 // BOX FIVE — OPTIONS PRESENTED & RECOMMENDATION.
 //
@@ -114,6 +115,9 @@ export function boxFive(deal: any): Box {
 
   const rec = c.options.find(o => o.recommended) || null
   const others = c.options.filter(o => !o.recommended)
+  // The one option on a one-option deal is the one the reason is about, whether
+  // or not anybody ticked it as recommended.
+  const rec0 = rec || (c.options.length === 1 ? c.options[0] : null)
 
   // --- 1. what else was looked at, rate only --------------------------------
   //
@@ -121,11 +125,22 @@ export function boxFive(deal: any): Box {
   // Fabio, 15 Sep 2026: "flag to broker only one product selected so THEY need
   // to elaborate that particular box as we dont have enough data to automate."
   if (others.length === 0) {
-    parts.push(shout('ONLY ONE LENDER OPTION RECORDED — there is not enough on this deal to write '
-      + 'this box. Please write it yourself, setting out what else was considered and why this '
-      + 'product was chosen.'))
-    gaps.push({ what: 'Only one lender option — this box has to be written by hand',
-                where: 'Lending options' })
+    // AND FROM 17 Nov 2026 THERE IS AN ANSWER TO READ.
+    //
+    // Credit is asked why before a one-product lending option can be issued,
+    // so the reason exists by the time this box is written. A broker was
+    // deleting the shout below and typing that sentence by hand on every file
+    // like this one. See lib/only-one-lender.ts.
+    const why = whyOneLenderSentence(lo, rec0 ? rec0.name : '')
+    if (why) {
+      parts.push(why)
+    } else {
+      parts.push(shout('ONLY ONE LENDER OPTION RECORDED — there is not enough on this deal to write '
+        + 'this box. Please write it yourself, setting out what else was considered and why this '
+        + 'product was chosen.'))
+      gaps.push({ what: 'Only one lender option — this box has to be written by hand',
+                  where: 'Lending options' })
+    }
   } else {
     parts.push(`Lender options compared include ${andList(others.map(namedRate))}.`)
   }

@@ -29,13 +29,17 @@ import { article } from './article'
 import { loanAmount, lvrOf, fundsToComplete } from './funds-to-complete'
 import { drawnLoan } from './lmi'
 import { splitsOf, dealRow } from './deal-structure'
-import { fullName, currentEmployment, notWorking, selfEmployed, monthsBetween } from './fact-find'
+import { fullName, notWorking, selfEmployed, monthsBetween } from './fact-find'
 import { annualIncomeOfApplicant } from './income-calculations'
 import { applicantsOf } from './applicants'
 import { variantOf, andList, structureOf, flexibilityPassage, type Gap } from './box-one'
 import { lendingBySplit } from './lending-by-split'
 import { securitiesOf } from './box-security'
 import { retirementPicture } from './box-goals'
+import { roleBefore, currentRole, currentRoles, when } from './employment-in-order'
+import { ownersOf, ownsOpener, plainAddress } from './who-owns-what'
+import { whyOneLenderSentence } from './only-one-lender'
+import { shapeOf } from './box-deposit'
 import { CREDIT_QUESTIONS } from './credit-history-facts'
 import { clientAgreement, optionOnTheDeal, optionGap, lenderOnTheDeal } from './client-agreement'
 import { OFFICE } from './same-date-everywhere'
@@ -76,11 +80,51 @@ export const REPAYMENT_METHOD_WORDS: Record<string, string> = {
 // THE RETIREMENT STRATEGY — on every file, whatever the ages
 // ---------------------------------------------------------------------------
 
+/** What the note says when nobody's loan runs past their retirement. */
+export const FINISHES_FIRST =
+  'No exit strategy will be required as the loan will be completed prior to retirement.'
+
 export function retirementStrategy(deal: any, v: 1 | 2 | 3): { parts: string[]; gaps: Gap[] } {
   const { term, people } = retirementPicture(deal)
   const parts: string[] = []
   const gaps: Gap[] = []
   const missing: string[] = []
+
+  // ---------------------------------------------------------------------
+  // WHEN THE LOAN FINISHES FIRST, THAT IS ONE SENTENCE
+  // ---------------------------------------------------------------------
+  //
+  // 17 Nov 2026. This wrote a paragraph per applicant - the age they gave, how
+  // they intend to repay, and the arithmetic showing the term lands inside it -
+  // on a file where the answer was simply that the loan ends before anybody
+  // retires. Fabio's broker replaced the lot with one line, and credit's word
+  // for the notes was "repetitive".
+  //
+  // The ages and the arithmetic come back the moment they matter, which is when
+  // somebody's term runs PAST their retirement age. That is the case that needs
+  // an evidenced exit strategy and it is still spelled out in full below.
+  //
+  // A MISSING RETIREMENT AGE IS STILL CHASED. Fabio, asked straight: "You
+  // always need to put a retirement age. It's on the compliance... just put a
+  // warning on top saying you don't have a retirement age." It is a warning on
+  // the list above the note, it does not stop anybody working, and it goes to
+  // the team as an instruction.
+  const recorded = people.filter(p => p.retiresAt !== null)
+  const quiet = recorded.length > 0 && !people.some(p => p.outlives)
+  if (quiet) {
+    parts.push(FINISHES_FIRST)
+    for (const p of recorded) {
+      if (!(REPAYMENT_METHOD_WORDS[p.method] || '')) {
+        gaps.push({ what: `Repayment method for ${p.who}`, where: 'Compliance → Risks → Exit strategy' })
+      }
+    }
+    for (const p of people) if (p.retiresAt === null) missing.push(p.who)
+    if (missing.length) {
+      parts.push(shout(`NOT RECORDED — no retirement age has been recorded for ${andList(missing)}, so the loan cannot be measured against retirement.`))
+      gaps.push({ what: `Retirement age for ${andList(missing)}`, where: 'Compliance → Risks → Exit strategy' })
+    }
+    return { parts, gaps }
+  }
 
   for (const p of people) {
     if (p.retiresAt === null) { missing.push(p.who); continue }
@@ -133,11 +177,22 @@ const RAISED_WORDS: Record<string, string> = {
   officerInLiquidation: 'has been an officer of a company placed in liquidation',
 }
 
+/** The five answers for one person, sorted into the three things they can be. */
+type Declared = { first: string; raised: string[]; clean: string[]; blank: string[] }
+
+/** "have never been declared bankrupt, have no unsatisfied judgements and ..." */
+function cleanWords(keys: string[]): string {
+  return CLEAN_ORDER.filter(k => keys.includes(k)).map(k => CLEAN_WORDS[k])
+    .map(x => x.replace(/^has /, 'have '))
+    .join(', ').replace(/, ([^,]*)$/, ' and $1')
+}
+
 export function creditHistorySentences(deal: any): { parts: string[]; gaps: Gap[] } {
   const risks = deal?.compliance_data?.risks || {}
   const parts: string[] = []
   const gaps: Gap[] = []
   const noRow: string[] = []
+  const all: Declared[] = []
 
   for (const a of applicantsOf(deal, deal?.bc_data || {})) {
     const r = risks[a.name]
@@ -152,18 +207,49 @@ export function creditHistorySentences(deal: any): { parts: string[]; gaps: Gap[
       if (ans.toLowerCase() === 'no') clean.push(q.key)
       else raised.push(`${RAISED_WORDS[q.key] || q.label.toLowerCase()}${/discharged/i.test(ans) ? ', since discharged' : ''}`)
     }
-    if (raised.length) {
-      parts.push(`${first} ${andList(raised)}. This must be addressed with the lender.`)
-      gaps.push({ what: `${first} has disclosed an adverse credit answer`, where: 'Compliance → Risks → Credit history' })
-    }
-    if (clean.length) {
-      const said = CLEAN_ORDER.filter(k => clean.includes(k)).map(k => CLEAN_WORDS[k])
-      parts.push(`${first} has confirmed that they ${said.map(x => x.replace(/^has /, 'have ')).join(', ').replace(/, ([^,]*)$/, ' and $1')}.`)
-    }
-    if (blank.length) {
-      parts.push(shout(`NOT RECORDED — ${andList(blank)} not answered for ${first}.`))
-      gaps.push({ what: `Credit history not complete for ${first}`, where: 'Compliance → Risks → Credit history' })
-    }
+    all.push({ first, raised, clean, blank })
+  }
+
+  // AN ADVERSE ANSWER LEADS, and it is always said about one named person.
+  for (const d of all) {
+    if (!d.raised.length) continue
+    parts.push(`${d.first} ${andList(d.raised)}. This must be addressed with the lender.`)
+    gaps.push({ what: `${d.first} has disclosed an adverse credit answer`, where: 'Compliance → Risks → Credit history' })
+  }
+
+  // ---------------------------------------------------------------------
+  // THE CLEAN DECLARATION, SAID ONCE
+  // ---------------------------------------------------------------------
+  //
+  // 17 Nov 2026. On a clean joint file this wrote the same five things twice,
+  // once per applicant, identical apart from the name - about eighty words of
+  // a compliance note saying nothing the sentence above it had not. Fabio's
+  // broker merged them by hand; credit's word for the notes was "repetitive".
+  //
+  // IT ONLY MERGES PEOPLE WHOSE ANSWERS ARE THE SAME. Anybody with an adverse
+  // answer or an unanswered question keeps their own sentence, so a sentence
+  // with one name on it is itself the signal that this person is different.
+  const together = new Map<string, Declared[]>()
+  for (const d of all) {
+    if (!d.clean.length || d.raised.length || d.blank.length) continue
+    const key = CLEAN_ORDER.filter(k => d.clean.includes(k)).join('|')
+    together.set(key, [...(together.get(key) || []), d])
+  }
+  for (const [key, who] of together) {
+    const names = andList(who.map(d => d.first))
+    parts.push(`${names} ${who.length > 1 ? 'have' : 'has'} confirmed that they ${cleanWords(key.split('|'))}.`)
+  }
+
+  // And anybody the merge left out still says what they did answer.
+  for (const d of all) {
+    if (!d.clean.length || (!d.raised.length && !d.blank.length)) continue
+    parts.push(`${d.first} has confirmed that they ${cleanWords(d.clean)}.`)
+  }
+
+  for (const d of all) {
+    if (!d.blank.length) continue
+    parts.push(shout(`NOT RECORDED — ${andList(d.blank)} not answered for ${d.first}.`))
+    gaps.push({ what: `Credit history not complete for ${d.first}`, where: 'Compliance → Risks → Credit history' })
   }
 
   if (noRow.length) {
@@ -226,7 +312,7 @@ export function boxFour(deal: any): Box {
   // securitiesOf() is the same list box nine uses and in the same order, so the
   // two cannot name different properties. The old line stays as the fallback
   // for a deal with nothing recorded at all.
-  const named = securitiesOf(deal).map(x => txt(x.address)).filter(Boolean)
+  const named = securitiesOf(deal).map(x => plainAddress(x.address)).filter(Boolean)
   open += isPurchase
     ? ` to purchase an owner-occupied property${txt(bc.suburb) ? ` in ${txt(bc.suburb)}` : ''}`
     : ` against ${named.length > 0 ? andList(named) : (txt(row.securityAddress) || 'the security recorded on this deal')}`
@@ -247,9 +333,12 @@ export function boxFour(deal: any): Box {
     const name = fullName(a)
     if (!name) continue
     const first = name.split(' ')[0]
-    const jobs = currentEmployment(a)
+    // IN DATE ORDER, NOT IN TYPING ORDER. 17 Nov 2026 - see
+    // lib/employment-in-order.ts. This used to take whichever row had been
+    // filled in first and call it their job.
+    const jobs = currentRoles(a)
     const idle = jobs.length > 0 && jobs.every((e: any) => notWorking(e))
-    const job = jobs.find((e: any) => !notWorking(e))
+    const job = currentRole(a)
     if (idle || !job) {
       const occ = txt(jobs[0]?.occupation)
       people.push(`${first} is not working${occ ? `, with an occupation recorded as ${occ.toLowerCase()}` : ''}`)
@@ -263,8 +352,19 @@ export function boxFour(deal: any): Box {
     if (months > 0) bits.push(`and has held the role for ${months} month${months === 1 ? '' : 's'}`)
     let line = bits.join(' ')
     if (inc > 0) line += `, on a gross salary of ${money(inc)} a year`
-    const prev = (a.employment || []).find((e: any) => !e?.isCurrent && txt(e?.endDate))
-    if (prev) line += `, with a previous role ending in ${new Date(prev.endDate).toLocaleDateString('en-AU', { timeZone: OFFICE, month: 'long', year: 'numeric' })}`
+    // THE ROLE BEFORE THIS ONE, AND IT MEANS THE MOST RECENT ONE.
+    //
+    // 17 Nov 2026. This was `.find(e => !e.isCurrent && e.endDate)`, which
+    // takes the first row in the list - and the list is in the order somebody
+    // typed it. On a file with two previous roles the note named the older
+    // one. Fabio: "the portal is not adjusting cjronoloigcally so AI notes
+    // confused the previous employment supposed to be 2026".
+    const prev = roleBefore(a)
+    const prevEnd = prev ? when(prev.endDate) : null
+    // A date that cannot be read prints nothing rather than "Invalid Date".
+    if (prevEnd !== null) {
+      line += `, with a previous role ending in ${new Date(prevEnd).toLocaleDateString('en-AU', { timeZone: 'UTC', month: 'long', year: 'numeric' })}`
+    }
     people.push(line)
   }
   if (people.length) analysis.push(people.join('. ').replace(/^(.)/, c => c.toUpperCase()) + '.')
@@ -275,8 +375,17 @@ export function boxFour(deal: any): Box {
   }
 
   // --- what they own ---
+  //
+  // WHOSE HOUSE IT IS, AND NOT THE SAME OPENER THREE TIMES RUNNING.
+  //
+  // 17 Nov 2026. Every property sentence began "They own", on a file where one
+  // applicant owned all three on his own. The fact find records an ownership
+  // percentage per applicant per property and nothing here was reading it. See
+  // lib/who-owns-what.ts - and note that the pronoun comes off the recorded
+  // gender or is not used at all.
+  let lastOwners: string[] | null = null
   for (const p of (ff.properties || [])) {
-    const addr = txt(p?.address)
+    const addr = plainAddress(p?.address)
     if (!addr) continue
     const val = readMoney(p?.value)
     const owing = (p?.loans || []).reduce((t: number, l: any) => t + (readMoney(l?.balance) ?? 0), 0)
@@ -284,7 +393,9 @@ export function boxFour(deal: any): Box {
     const rate = (p?.loans || []).map((l: any) => txt(l?.interestRate)).filter(Boolean)[0]
     const sub = txt(p?.propertySubtype).toLowerCase()
     const selling = /sold|sell/i.test(txt(p?.futureUse))
-    let line = `They own ${addr}${sub ? `, ${article(sub)} ${sub}` : ''}`
+    const owners = ownersOf(p, ff.applicants || [])
+    let line = `${ownsOpener(owners, ff.applicants || [], lastOwners)} ${addr}${sub ? `, ${article(sub)} ${sub}` : ''}`
+    lastOwners = owners
     if (selling) line += ', which the fact find records as being sold'
     if (val) line += `. It is valued at ${money(val)}`
     if (owing > 0) line += `, with ${money(owing)} owing${lender ? ` to ${lender}` : ''}${rate ? ` on a rate of ${rate}%` : ''}`
@@ -400,7 +511,7 @@ export function boxFour(deal: any): Box {
     }
 
     for (const g of perSplit.groups) {
-      if (g.security) assessment.push(`Secured by ${g.security.address || 'a property whose address is not recorded'}:`)
+      if (g.security) assessment.push(`Secured by ${plainAddress(g.security.address) || 'a property whose address is not recorded'}:`)
       else if (perSplit.securityCount > 1) assessment.push('Not recorded against any of the securities above:')
       for (const l of g.lines) assessment.push(l.text)
     }
@@ -409,7 +520,15 @@ export function boxFour(deal: any): Box {
     // writes down is the "Original purpose of funds" box and the split's
     // purpose; a split with neither is a gap on the form, not a gap in the
     // wording to be filled in here.
-    const blind = perSplit.lines.filter(l => l.unexplained)
+    //
+    // AND A DOLLAR-FOR-DOLLAR REFINANCE IS NOT ASKED. 17 Nov 2026, Fabio: "the
+    // purpose recorded for the splits, we don't really care because it's a
+    // refinance." He is right, and the paragraph a few lines above already
+    // says why - on a refinance the existing split structure is kept BECAUSE
+    // each split reflects what those funds were originally used for. Nothing
+    // new is being advanced, so there is no new purpose to record, and the
+    // portal was asking a question it had already answered itself.
+    const blind = shapeOf(deal) === 'refinance' ? [] : perSplit.lines.filter(l => l.unexplained)
     if (blind.length > 0) {
       assessment.push(shout(`NOT RECORDED \u2014 nothing has been recorded to explain ` +
         `${blind.length === 1 ? 'the' : 'the following'} split${blind.length === 1 ? '' : 's'}: ` +
@@ -496,8 +615,19 @@ export function boxFour(deal: any): Box {
   const others = names.filter(n => n !== onTheDeal)
   if (others.length) assessment.push(`${onTheDeal} was recommended after comparing them against ${andList(others)}.`)
   else {
-    assessment.push(shout(`ONLY ONE LENDER RECORDED — the recommendation has not been compared against any alternative.`))
-    gaps.push({ what: 'Only one lender option recorded', where: 'Lending options → lender options' })
+    // ONE LENDER, AND THE REASON CREDIT RECORDED FOR IT.
+    //
+    // 17 Nov 2026. This shouted at a broker from inside a document that goes to
+    // a lender, and the broker deleted it and typed the reason by hand every
+    // time. The reason is now asked for on Lending options before the option
+    // can be issued, so by the time this box is written it exists. See
+    // lib/only-one-lender.ts.
+    const why = whyOneLenderSentence(lo, onTheDeal)
+    if (why) assessment.push(why)
+    else {
+      assessment.push(shout(`ONLY ONE LENDER RECORDED — the recommendation has not been compared against any alternative.`))
+      gaps.push({ what: 'Only one lender option recorded', where: 'Lending options → lender options' })
+    }
   }
 
   const ret = retirementStrategy(deal, v)
@@ -516,8 +646,19 @@ export function boxFour(deal: any): Box {
 
   const agreement = clientAgreement(lo)
   const agreed = agreement.agreed
-  if (agreed === 'Yes') assessment.push('The clients agreed with the recommendation and proceeded with it.')
-  else if (agreed === 'No') {
+  // SAID ONCE, IN THE BOX THE DECISION BELONGS TO.
+  //
+  // 17 Nov 2026. "The clients agreed with the recommendation and proceeded with
+  // it." was printed word for word at the end of this box AND at the end of
+  // Options presented & recommended. It stays there, because that box is about
+  // the recommendation and what was decided about it. Credit's word for the
+  // notes was "repetitive", and this was the plainest example in them: the same
+  // sentence, twice, on one page.
+  //
+  // A DISAGREEMENT IS NOT A DUPLICATE. Where the clients went elsewhere this
+  // box still says so and names the lender, because the paragraph above it
+  // reads as though the recommendation stood.
+  if (agreed === 'No') {
     const chosen = agreement.chosen
     const why = agreement.reason
     // NAMED, so the two sentences do not read as contradicting each other.
@@ -528,7 +669,7 @@ export function boxFour(deal: any): Box {
     assessment.push(
       `The clients did not proceed with the original recommendation${original ? ` of ${original}` : ''} ` +
       `and chose ${chosen || 'another lender'}${why ? `, for the following stated reason: "${why}"` : ''}.`)
-  } else {
+  } else if (agreed !== 'Yes') {
     assessment.push(shout(`NOT RECORDED — the clients' agreement to the recommendation has not been captured.`))
     gaps.push({ what: "The clients' agreement to the recommendation", where: 'Lending options → client agreement' })
   }

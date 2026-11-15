@@ -1,4 +1,5 @@
 import { isBeingDischarged } from './security-figures'
+import { plainAddress } from './who-owns-what'
 import { money, readMoney } from './money'
 import { buildsSomething } from './sale-build'
 import { dutyStateOf } from './duty-state'
@@ -183,7 +184,11 @@ export function securitiesOf(deal: any): Security[] {
       futureUse: '', mortgagee: '', owing: 0,
     })
   }
-  return out
+  // EVERY SECURITY ADDRESS WITHOUT THE COUNTRY. 17 Nov 2026, Fabio, on a
+  // compliance note that wrote ", Australia" four times: off every address.
+  // Done here because this is the one list box one, box four and box nine all
+  // read, so none of them has to remember.
+  return out.map(s => ({ ...s, address: plainAddress(s.address) }))
 }
 
 // "owner occupied townhouse", or nothing at all. Never a description assembled

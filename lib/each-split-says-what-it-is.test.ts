@@ -137,17 +137,37 @@ describe('it reads like a sentence', () => {
 describe('a split with no reason recorded', () => {
   const bare = SIX.map(s => ({ ...s, fundsUsedFor: '' }))
 
+  // MONEY IS BEING ADVANCED, SO THERE IS A NEW PURPOSE TO RECORD.
+  // See the refinance case at the bottom of this block, added 17 Nov 2026.
+  const releasing = (splits: any[]) => {
+    const d = deal(splits, TWO_HOUSES)
+    d.bc_data.equityRelease = '200000'
+    return d
+  }
+
   it('is flagged rather than explained', () => {
-    const r = boxFour(deal(bare, TWO_HOUSES))
+    const r = boxFour(releasing(bare))
     expect(r.text).toMatch(/NOT RECORDED — nothing has been recorded to explain/)
     expect(r.gaps.map(g => g.what)).toContain('Purpose of funds on each split')
   })
 
   it('names which splits are missing it', () => {
     const one = [...SIX.slice(0, 3), { ...SIX[3], fundsUsedFor: '' }]
-    const r = boxFour(deal(one, TWO_HOUSES))
+    const r = boxFour(releasing(one))
     expect(r.text).toContain('Investment equity loan split')
     expect(r.text).toMatch(/explain the split:/)
+  })
+
+  // 17 Nov 2026. Fabio, on a dollar-for-dollar refinance: "the purpose
+  // recorded for the splits, we don't really care because it's a refinance."
+  // Nothing new is advanced, and the paragraph above this warning already
+  // says the split structure was kept BECAUSE each split reflects what those
+  // funds were originally used for. The portal was asking a question it had
+  // answered itself two sentences earlier.
+  it('and a dollar-for-dollar refinance is never asked', () => {
+    const r = boxFour(deal(bare, TWO_HOUSES))
+    expect(r.text).not.toMatch(/nothing has been recorded to explain/)
+    expect(r.gaps.map(g => g.what)).not.toContain('Purpose of funds on each split')
   })
 
   it('says nothing at all when every split has its reason', () => {

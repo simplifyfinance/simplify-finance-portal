@@ -62,10 +62,23 @@ test.describe('box one — primary reasons for seeking credit', () => {
     //
     // This asked flatly for a dollar amount, and failed on 10 Sep against a test
     // deal that has no loan amount recorded - where saying so loudly is the
-    // correct answer and a figure would have been invented. So: a figure, or the
-    // shout explaining its absence. Never silence.
-    if (/NOT RECORDED — no loan amount/.test(text)) expect(text).toContain('** NOT RECORDED')
-    else expect(text).toMatch(/\$[\d,]{5,}/)
+    // correct answer and a figure would have been invented. So: a figure, or
+    // the reason there is not one. Never silence.
+    //
+    // 17 Nov 2026: THE REASON MOVED. It used to print inside the paragraph as
+    // "** NOT RECORDED — ... **" on a document that goes to a lender, and a
+    // broker was deleting those by hand before sending. It is now on the red
+    // list under the box - see lib/the-note-is-not-the-warning.ts - so this
+    // reads the list rather than the prose, which is also what a person does.
+    if (!/\$[\d,]{5,}/.test(text)) {
+      const list = box.locator('xpath=following::*[@data-tofix][1]')
+      await expect(list).toBeVisible({ timeout: 5_000 })
+      await expect(list).toContainText(/loan amount|NOT RECORDED/i)
+    }
+
+    // AND THE WARNING IS NOT IN THE WORDS ANY MORE, on a box that says
+    // something without it.
+    expect(text).not.toContain('**')
   })
 
   test('the same deal writes the same words every time', async ({ page }) => {
