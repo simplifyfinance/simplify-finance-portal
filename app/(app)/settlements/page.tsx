@@ -16,6 +16,7 @@ import {
 } from '@/lib/settlement'
 import { useBusyWhile } from '@/components/useBusy'
 import Loading from '@/components/Loading'
+import MorningList from '@/components/MorningList'
 
 const num = (v: any): number | null => {
   if (v === null || v === undefined || v === '') return null
@@ -464,6 +465,12 @@ export default function SettlementsPage() {
         Every deal expected to settle, grouped by how far along it is. The grouping comes from the deal itself,
         so nobody moves rows between blocks.
       </p>
+
+      {/* EVERYTHING THAT NEEDS SOMEBODY, before the month at all. It reads the
+          whole book rather than the month on screen - a deal that went quiet in
+          October does not stop needing a chase because somebody clicked into
+          November. See components/MorningList.tsx. */}
+      <MorningList deals={deals} />
 
       <div className="bg-page border border-line rounded-xl p-3 flex items-center gap-3 flex-wrap mb-4">
         <button onClick={() => setMonth(addMonths(month, -1))} className="w-[26px] h-[26px] rounded-lg border border-line bg-card text-muted">‹</button>
