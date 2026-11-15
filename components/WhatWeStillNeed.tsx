@@ -6,6 +6,8 @@ import {
   newHandQuestion, closeByHandPatch, reopenPatch,
   type Question,
 } from '@/lib/what-we-still-need'
+import { FoldLine, HideIt } from '@/components/Fold'
+import { questionsFoldLine, questionsCount, questionsStartOpen } from '@/lib/what-folds-away'
 
 // THE QUESTIONS, AS THE BROKER SEES THEM BEFORE THEY GO.
 //
@@ -26,6 +28,16 @@ import {
 // EVERYTHING IS TICKED TO START WITH. A broker in a hurry sends the lot, which
 // is the right default: asking one question too many costs a sentence, and
 // asking none costs two weeks.
+//
+// AND IT FOLDS ONCE THERE IS NOTHING TO DO WITH IT. 17 Nov 2026, Fabio: "the
+// purple section is there a way we can make it expandable so we only see when
+// we want to?" It was the tallest thing on a deal and, once all of its
+// questions had gone out, there was nothing in it to press.
+//
+// SHUT, IT IS STILL PURPLE and it still says how many went, when, and whether
+// anybody answered - so nothing has to be opened to be known. And it opens
+// itself whenever a question is new, unticked, or has just been answered. A
+// fold must never hide something nobody has seen; see lib/what-folds-away.ts.
 
 const PILL = 'text-[10px] font-bold rounded-full px-2 py-[2px] whitespace-nowrap border ml-2 align-middle'
 const INP = 'w-full text-[13px] border border-field-line rounded-lg px-3 py-2 text-ink bg-card focus:outline-none focus:border-brand'
@@ -50,6 +62,10 @@ export default function WhatWeStillNeed({ deal, me, dropped, onDropped, onChange
   const closed = closedQuestions(deal)
   const off = new Set(dropped)
   const going = open.filter(q => !off.has(q.key))
+
+  // WHATEVER SHE PRESSES WINS. Until she presses anything, the rule decides.
+  const [pressed, setPressed] = useState<boolean | null>(null)
+  const showing = pressed ?? questionsStartOpen(deal, open, dropped, closed)
 
   // NO BLOCK WHERE THERE IS NOTHING TO ASK, and no "nothing outstanding"
   // either - except the one line that lets somebody add a question anyway.
@@ -109,18 +125,28 @@ export default function WhatWeStillNeed({ deal, me, dropped, onDropped, onChange
     )
   }
 
+  const heading = going.length
+    ? 'Questions going out with this email'
+    : 'No questions are going out with this email'
+
+  if (!showing) {
+    return (
+      <FoldLine tone="waiting" title={heading}
+        line={questionsFoldLine(deal, open, closed)}
+        count={questionsCount(going, open)}
+        onShow={() => setPressed(true)} />
+    )
+  }
+
   return (
     <div className="border border-waiting-edge bg-waiting-bg rounded-xl px-4 py-3.5 mb-3">
       <div className="flex items-baseline gap-2.5 flex-wrap mb-1">
-        <b className="text-[13.5px] text-waiting">
-          {going.length
-            ? `Questions going out with this email`
-            : 'No questions are going out with this email'}
-        </b>
+        <b className="text-[13.5px] text-waiting">{heading}</b>
         <span className="text-[11.5px] text-waiting/80">
           {going.length ? `${going.length} of ${open.length} · untick anything you already know` : ''}
           {closed.length ? `${going.length ? ' · ' : ''}${closed.length} already answered` : ''}
         </span>
+        <HideIt tone="waiting" onHide={() => setPressed(false)} />
       </div>
       <p className="text-[11.5px] text-muted mt-0 mb-2.5 leading-relaxed max-w-[720px]">
         Every one of these is here because the fact find has a gap. Fill the gap and it disappears.

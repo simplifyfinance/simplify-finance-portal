@@ -705,8 +705,11 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           once somebody has answered; the red "not recorded" state lives on
           the fact find and on compliance, which are the two screens where
           somebody can do something about it. */}
+      {/* ONE LINE, NOT A BLOCK. 17 Nov 2026: three tall coloured slabs sat
+          above the work on every deal and this was the one with the least in
+          it. Quiet is refused when nobody has answered - see SharedWithBox. */}
       {answeredSplit(dealData) && (
-        <div className="mb-3"><SharedWithBox deal={dealData} /></div>
+        <div className="mb-3"><SharedWithBox deal={dealData} quiet /></div>
       )}
 
       {/* A lodged deal is being TRACKED, not written, and the tracking blocks

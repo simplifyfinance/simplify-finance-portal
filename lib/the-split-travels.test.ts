@@ -40,8 +40,12 @@ describe('it is answered on the fact find and nowhere else', () => {
       .not.toContain('<WhoSharesThisDeal')
   })
 
+  // 17 Nov 2026 it became ONE LINE there - quiet. The answer and where to
+  // change it are word for word what the box said; what went is the blue
+  // slab around them. Quiet is refused when nobody has answered, which is
+  // guarded in lib/the-deal-card-folds.test.ts.
   it('and so does the deal page, once somebody has answered', () => {
-    expect(DEAL_PAGE).toContain('<SharedWithBox deal={dealData} />')
+    expect(DEAL_PAGE).toContain('<SharedWithBox deal={dealData} quiet />')
     expect(codeOnly(DEAL_PAGE)).not.toContain('<WhoSharesThisDeal')
   })
 

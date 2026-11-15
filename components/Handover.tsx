@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { FoldLine, HideIt } from '@/components/Fold'
+import { noteFoldLine, noteStartsOpen } from '@/lib/what-folds-away'
 import {
   WHY, empty, tidy, saidSomething, whatPacoKeeps, theShortVersion,
   whatIsMissing, readyToSend, type Handover as Note, type Stage,
@@ -243,9 +245,17 @@ export default function HandoverBox({ dealId, stage, lenders, toWhom, onSent, on
 //
 // The note first, because that is what they need. The taps underneath, because
 // the short version of "why Bankwest" is worth reading before they ring a client.
+//
+// AND IT FOLDS ONCE IT IS A RECORD RATHER THAN NEWS. 17 Nov 2026, Fabio, on a
+// deal carrying three tall coloured blocks above the work: "finding the deal
+// cards too busy". The newest note is open for two days and everything older
+// is one blue line, in the same blue, saying who wrote it, when, and how it
+// starts. See lib/what-folds-away.ts - nothing is stored to make this work.
 export function HandoverNotes({ dealId }: { dealId: string }) {
   const supabase = createSupabaseBrowser()
   const [rows, setRows] = useState<any[]>([])
+  // Shut unless noteStartsOpen() says otherwise, and whatever she presses wins.
+  const [pressed, setPressed] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     let alive = true
@@ -265,15 +275,27 @@ export function HandoverNotes({ dealId }: { dealId: string }) {
 
   return (
     <div className="mb-3">
-      {rows.map(r => {
+      {rows.map((r, i) => {
         const short = theShortVersion(tidy({
           stage: r.stage, hard: r.hard, easier: r.easier, why: r.why,
         }, Object.keys(r.why || {})))
+        const who = r.said_by_name || 'Credit'
+        const what = `${who} sent you the ${r.stage === 'bc' ? 'borrowing capacity' : 'lending options'}`
+        const open = pressed[r.id] ?? noteStartsOpen(r.created_at, i === 0)
+
+        if (!open) {
+          return (
+            <FoldLine key={r.id} tone="info" title={what} line={noteFoldLine(r)}
+              onShow={() => setPressed(p => ({ ...p, [r.id]: true }))} />
+          )
+        }
+
         return (
           <div key={r.id} className="mb-2 border-l-[3px] border-info bg-info-bg rounded-r-xl px-4 py-3">
-            <b className="block text-[12.5px] text-ink mb-1">
-              {r.said_by_name || 'Credit'} sent you the {r.stage === 'bc' ? 'borrowing capacity' : 'lending options'}
-            </b>
+            <div className="mb-1 flex items-start gap-3">
+              <b className="block flex-1 text-[12.5px] text-ink">{what}</b>
+              <HideIt tone="info" onHide={() => setPressed(p => ({ ...p, [r.id]: false }))} />
+            </div>
             {r.note && (
               <p className="m-0 text-[12.5px] text-body leading-relaxed">&ldquo;{r.note}&rdquo;</p>
             )}
@@ -284,7 +306,7 @@ export function HandoverNotes({ dealId }: { dealId: string }) {
               </p>
             )}
             <span className="block text-[11px] text-faint mt-1.5">
-              {r.said_by_name || 'Credit'} · {when(r.created_at)} · internal, the client never sees this
+              {who} · {when(r.created_at)} · internal, the client never sees this
             </span>
           </div>
         )

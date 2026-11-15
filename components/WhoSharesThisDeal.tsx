@@ -201,17 +201,41 @@ export default function WhoSharesThisDeal({ deal, byName, onChanged }: {
 // that we can select commissions for that deal". It is shown there, not
 // chosen there - one answer, one place it is given, every other screen reads
 // it. A second place to set it is a second answer waiting to disagree.
-export function SharedWithBox({ deal }: { deal: any }) {
+export function SharedWithBox({ deal, quiet = false }: { deal: any; quiet?: boolean }) {
   const on = splitOn(deal)
   const unanswered = !on
+  const chosen = on && !on.none
+    ? `${on.by || 'somebody'}${on.at ? `, ${new Date(on.at).toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short', year: 'numeric' })}` : ''}`
+    : ''
+
+  // ONE ANSWER IS ONE LINE.
+  //
+  // 17 Nov 2026, Fabio, on the deal card: "finding the deal cards too busy".
+  // This was a full blue block, two inches tall, under another full blue
+  // block, to say a thing that is almost always "nobody". On the deal it is
+  // now a sentence.
+  //
+  // IT IS NEVER QUIET WHEN NOBODY HAS ANSWERED. The red state is the whole
+  // point of the box and it only ever shows on the two screens where somebody
+  // can do something about it - the fact find and compliance - so quiet is
+  // refused outright rather than passed through.
+  if (quiet && !unanswered) {
+    return (
+      <p className="m-0 text-[12.5px] leading-relaxed text-muted">
+        <b className="text-ink">Shared with</b> {sharedWithLine(deal)}
+        {chosen ? ` · chosen by ${chosen}` : ''}
+        {' · '}Change it on the fact find.
+      </p>
+    )
+  }
+
   return (
     <div className={`rounded-xl px-4 py-3 text-[12.5px] leading-relaxed border ${
       unanswered ? 'bg-chase-bg border-chase-edge text-chase' : 'bg-info-bg border-info-edge text-body'}`}>
       <b className="text-ink">Shared with</b> &nbsp; {sharedWithLine(deal)}
-      {on && !on.none && (
+      {chosen && (
         <>
-          <br /><b className="text-ink">Chosen by</b> &nbsp; {on.by || 'somebody'}
-          {on.at ? `, ${new Date(on.at).toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+          <br /><b className="text-ink">Chosen by</b> &nbsp; {chosen}
         </>
       )}
       <br />
