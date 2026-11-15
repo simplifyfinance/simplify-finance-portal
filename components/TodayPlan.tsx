@@ -11,6 +11,7 @@ import TheOrderCame from '@/components/TheOrderCame'
 import { whoHasIt } from '@/lib/who-has-it'
 import { isFinished } from '@/lib/deal-phase'
 import { whichToday, type TodayView } from '@/lib/which-today'
+import { creditDay, openWithSuggestion, SUGGEST } from '@/lib/the-credit-order'
 import { daysWaiting, waitedWords, oldestFirst } from '@/lib/how-long-waiting'
 // A broker is never matched by lower-casing a name - brokerKey() takes the
 // first word, so "Fabio De Castro".toLowerCase() never equals "fabio".
@@ -28,6 +29,7 @@ import {
   type PlanDeal, type Plan,
 } from '@/lib/the-days-plan'
 import MyDay, { type DayDeal } from '@/components/MyDay'
+import PickTheDay from '@/components/PickTheDay'
 
 // THE MORNING, WITHOUT THE EMAIL.
 //
@@ -216,11 +218,36 @@ export default function TodayPlan({
       .filter(x => x.stage))
   }, [deals, meOfficerId, brokerKey])
 
+  // CREDIT'S DRAFT IS ORDERED BY HOW CLOSE EACH FILE IS TO LODGING.
+  //
+  // 16 Nov 2026. Fabio: "if someone is at compliance, I want that to be
+  // sitting on the top of the list for credit, because that means we're going
+  // to get a deal that week... everything that we do in this business is to
+  // get deals that particular week."
+  //
+  // A rework sent back and a broker's ask keep their place above it - those
+  // are people giving instructions, and this is the portal making a
+  // suggestion. See lib/the-credit-order.ts.
+  //
+  // A BROKER'S DRAFT IS UNTOUCHED. His day is his own book in the order
+  // draftDay() already puts it in.
+  const drafted = useMemo(
+    () => (meOfficerId ? creditDay(mine) : mine), [mine, meOfficerId])
+
   // THE DRAFT, THEN WHATEVER THEY HAVE DONE TO IT SINCE.
   // A CREDIT ASSESSOR'S DAY OPENS EMPTY and she pulls up what she is doing.
   // See startingOrder() - 12 Nov 2026, on an assessor holding fourteen files.
-  const dayOrder = order ?? startingOrder(
-    mine.map(d => d.id), mySaved?.deals?.map(d => d.id) || null, view === 'credit')
+  // WHERE THE DAY OPENS. 16 Nov 2026.
+  //
+  // It used to open EMPTY for credit - everything below the line, and she
+  // pulled up what she was doing. That was right while nothing could say which
+  // ten were worth pulling up. Now lib/the-credit-order.ts can, so the portal
+  // offers ten and she unticks what she is not doing.
+  //
+  // A DAY SHE HAS ALREADY SAID YES TO STILL WINS, in both of these.
+  const dayOrder = order ?? (view === 'credit'
+    ? openWithSuggestion(drafted.map(d => d.id), mySaved?.deals?.map(d => d.id) || null, SUGGEST)
+    : startingOrder(drafted.map(d => d.id), mySaved?.deals?.map(d => d.id) || null, false))
   const todayIds = splitAtLine(dayOrder).today
 
   // YESTERDAY IS THE LAST DAY ANYBODY WAS AT WORK, which on a Monday is
@@ -420,9 +447,20 @@ export default function TodayPlan({
   const noPlanToday = whyNoPlan(today)
 
 
+  // TWO BOXES FOR CREDIT, ONE LIST FOR EVERYBODY ELSE.
+  //
+  // 16 Nov 2026. Fabio, watching the single list with a line through it as a
+  // credit assessor would: "it's going to confuse my staff... as the credit
+  // assessor is selecting the ones that they're doing today, that generates
+  // the actual box that becomes, this is my day."
+  //
+  // Same order, same storage, same save - ticked still means above the line.
+  // See components/PickTheDay.tsx.
+  const DayComponent = view === 'credit' ? PickTheDay : MyDay
+
   const dayCard = (
-    <MyDay
-      deals={mine.map(d => ({ ...d, days: daysSince(d.since) })) as DayDeal[]}
+    <DayComponent
+      deals={drafted.map(d => ({ ...d, days: daysSince(d.since) })) as DayDeal[]}
       order={dayOrder}
       setOrder={setOrder}
       notes={notes}
@@ -432,7 +470,7 @@ export default function TodayPlan({
       saved={saved}
       busy={busy}
       onConfirm={confirm}
-      heading={view === 'credit' ? '2 — Today, in this order' : 'Today, in this order'}
+      heading={view === 'credit' ? '2 — Everything with you' : 'Today, in this order'}
     />
   )
 

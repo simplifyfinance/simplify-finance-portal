@@ -14,6 +14,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { LINE, splitAtLine, startingOrder } from './the-days-plan'
 import { whichToday } from './which-today'
+import { openWithSuggestion } from './the-credit-order'
 
 const page = readFileSync('components/TodayPlan.tsx', 'utf8')
 const dash = readFileSync('app/(app)/dashboard/page.tsx', 'utf8')
@@ -301,19 +302,39 @@ describe('it is still the portal’s own colours', () => {
 describe('the line', () => {
   it('the day is drawn from one order with the line in it', () => {
     expect(page).toContain('startingOrder(')
-    expect(page).toContain('mine.map(d => d.id)')
+    expect(page).toContain('drafted.map(d => d.id)')
     expect(page).toContain('splitAtLine(dayOrder).today')
   })
 
-  // 12 Nov 2026. Fabio, on an assessor holding fourteen files: "14 is too
-  // many... they will pick the ones that they're doing today." Opening with
-  // all fourteen above the line is a day nobody believes, and a day nobody
-  // believes is one nobody edits before pressing the button.
-  it('a credit assessor opens with nothing above the line', () => {
-    expect(page).toContain("view === 'credit')")
-    expect(startingOrder(['a', 'b'], null, true)).toEqual([LINE, 'a', 'b'])
-    expect(splitAtLine(startingOrder(['a', 'b'], null, true)))
-      .toEqual({ today: [], queue: ['a', 'b'] })
+  // 12 Nov 2026, on an assessor holding fourteen files: "14 is too many...
+  // they will pick the ones that they're doing today." So her day opened with
+  // NOTHING above the line and she pulled up what she was doing.
+  //
+  // 16 Nov 2026 it opens with TEN, and the reason the first rule existed is
+  // the reason this one can: back then nothing could say which ten were worth
+  // pulling up. Now lib/the-credit-order.ts can - compliance first, because a
+  // file at compliance is the closest one to a deal this week.
+  //
+  //   "If someone is at compliance, I want that to be sitting on the top of
+  //    the list for credit, because that means we're going to get a deal that
+  //    week."
+  //
+  // She unticks what she is not doing. The number she is offered is still the
+  // number she can finish.
+  it('a credit assessor opens with ten ticked, chosen by stage', () => {
+    expect(page).toContain("view === 'credit'")
+    expect(page).toContain('openWithSuggestion(')
+    expect(page).toContain('creditDay(mine)')
+    expect(openWithSuggestion(['a', 'b', 'c'], null, 2))
+      .toEqual(['a', 'b', LINE, 'c'])
+    expect(splitAtLine(openWithSuggestion(['a', 'b', 'c'], null, 2)))
+      .toEqual({ today: ['a', 'b'], queue: ['c'] })
+  })
+
+  // AND A DAY SHE HAS ALREADY CONFIRMED IS NEVER REOPENED BY THE SUGGESTION.
+  it('her saved day still wins over anything the portal would offer', () => {
+    expect(splitAtLine(openWithSuggestion(['a', 'b', 'c'], ['c'], 2)))
+      .toEqual({ today: ['c'], queue: ['a', 'b'] })
   })
 
   // AND A BROKER'S DAY IS UNCHANGED. Only the credit view asked for this.
