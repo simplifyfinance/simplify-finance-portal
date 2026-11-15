@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite } from '@/lib/checked-write'
 import { OFFICE } from '@/lib/same-date-everywhere'
-import { STEPS, stepOf, type Step } from '@/lib/the-seven-steps'
+import { reached } from '@/lib/the-seven-steps'
 import { securitiesOf } from '@/lib/box-security'
 import { settlementDate } from '@/lib/settlement'
 import { recommendedOption } from '@/lib/recommended-option'
@@ -48,12 +48,6 @@ const when = (iso: string) => {
     { timeZone: OFFICE, day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
 }
 
-/** True once the deal has reached this step, and from then on. */
-function reached(deal: any, step: Step): boolean {
-  const now = stepOf(deal)
-  if (!now) return false
-  return STEPS.indexOf(now) >= STEPS.indexOf(step)
-}
 
 function Box({
   title, note, hint, saved, rows, ask, noun, busy, msg, onDrop, onAnswer,

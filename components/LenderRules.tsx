@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import {
-  RULES, rulesOf, answerTo, optionLabel, rememberedLine, isTyped, type LenderRule,
+  RULES, rulesOf, answerTo, optionLabel, rememberedLine, isTyped, isLong, type LenderRule,
 } from '@/lib/lender-rules'
 import { dayMonth } from '@/lib/same-date-everywhere'
 import { useBusyWhile } from '@/components/useBusy'
@@ -131,7 +131,7 @@ export default function LenderRules() {
                           or press Enter - never on every keystroke, which would
                           write a row per letter typed. */}
                       {isTyped(q.key) ? (
-                        <TypedCell value={v} lender={l.name} ask={q.ask}
+                        <TypedCell value={v} lender={l.name} ask={q.ask} long={isLong(q.key)}
                           onSave={next => { if (next !== v) setAnswer(l.id, q.key, next) }} />
                       ) : (
                       <select value={v} onChange={e => setAnswer(l.id, q.key, e.target.value)}
@@ -177,15 +177,43 @@ export default function LenderRules() {
 // straight to the saved value would write a row every time somebody pressed a
 // key, and 52 writes to record "Bankwest, a division of Commonwealth Bank of
 // Australia" is 51 more than anybody wants in an audit trail.
-function TypedCell({ value, lender, ask, onSave }: {
+function TypedCell({ value, lender, ask, long, onSave }: {
   value: string
   lender: string
   ask: string
+  /** A paragraph rather than a name - see isLong in lib/lender-rules.ts. */
+  long?: boolean
   onSave: (next: string) => void
 }) {
   const [draft, setDraft] = useState(value)
   // Somebody else changing it elsewhere still wins while this box is untouched.
   useEffect(() => { setDraft(value) }, [value])
+
+  const look = `text-[12px] border rounded-md px-1.5 py-1 bg-card ${
+    draft.trim()
+      ? 'border-done-edge text-done font-semibold'
+      : 'border-dashed border-field-line text-muted placeholder:text-muted'}`
+
+  // A PARAGRAPH GETS A TEXTAREA, AND ENTER MAKES A NEW LINE.
+  //
+  // Belle's registration instructions run to four paragraphs. In the one-line
+  // box they shared with the insurance name, Enter blurred the field and saved
+  // halfway through a sentence - so the first thing anybody tried to type would
+  // have been the thing that broke. Saved on leaving the box, same as the
+  // short one.
+  if (long) {
+    return (
+      <textarea
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={() => onSave(draft.trim())}
+        aria-label={`${lender} — ${ask}`}
+        placeholder="not recorded"
+        rows={draft.trim() ? 6 : 2}
+        className={`${look} w-[320px] leading-snug resize-y`}
+      />
+    )
+  }
 
   return (
     <input
@@ -196,10 +224,7 @@ function TypedCell({ value, lender, ask, onSave }: {
       aria-label={`${lender} — ${ask}`}
       placeholder="not recorded"
       title={draft || ask}
-      className={`text-[12px] border rounded-md px-1.5 py-1 bg-card w-[230px] ${
-        draft.trim()
-          ? 'border-done-edge text-done font-semibold'
-          : 'border-dashed border-field-line text-muted placeholder:text-muted'}`}
+      className={`${look} w-[230px]`}
     />
   )
 }

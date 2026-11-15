@@ -71,3 +71,6 @@ playwright-report/
 # The browser robot keeps its output here. Playwright empties test-results/,
 # so it cannot live there.
 .robot-logs/
+
+# Local email previews - rendered from the real builders to look at, never shipped.
+.preview-out/

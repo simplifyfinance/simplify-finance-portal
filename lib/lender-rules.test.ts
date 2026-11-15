@@ -36,8 +36,14 @@ describe('no answer means ask, never assume', () => {
   })
 
   it('lists everything still to ask, once rather than five times', () => {
+    // Everything the catalogue asks that these rows have not answered. The
+    // settlement questions joined it on 17 Nov 2026 and are unanswered here,
+    // which is the point - a lender nobody has been asked about shows the whole
+    // list, not a shortened one.
     expect(unanswered(rulesOf(rows)).map(q => q.key))
-      .toEqual(['postcode_restrictions', 'insurance_interested_party'])
+      .toEqual(['postcode_restrictions', 'insurance_interested_party',
+        'netbanking_steps', 'first_repayment_io', 'strata_on_refinance',
+        'direct_debit_guidance'])
     expect(unanswered(rulesOf(rows), ['contracts_issued_by'])).toEqual([])
   })
 })
@@ -111,7 +117,9 @@ describe('the catalogue itself', () => {
     for (const q of RULES) {
       // A TYPED QUESTION HAS NO OPTIONS, and must not pretend to. What a bank
       // wants to be called on an insurance policy is not a list.
-      if (q.kind === 'text') {
+      // A TYPED QUESTION IS EITHER KIND. Belle's instructions are paragraphs
+      // and the insurance name is a name; neither is a list of options.
+      if (q.kind === 'text' || q.kind === 'longtext') {
         expect(q.options).toEqual([])
         expect(q.ask.endsWith('?')).toBe(true)
         expect(q.short.length).toBeGreaterThan(0)
@@ -129,14 +137,32 @@ describe('the catalogue itself', () => {
     }
   })
 
-  it('covers the four things the templates need', () => {
+  it('covers everything the templates need', () => {
     expect(RULES.map(r => r.key).sort()).toEqual([
-      'contracts_issued_by', 'insurance_interested_party',
-      'postcode_restrictions', 'preapproval_extensions',
+      'contracts_issued_by', 'direct_debit_guidance', 'first_repayment_io',
+      'insurance_interested_party', 'netbanking_steps',
+      'postcode_restrictions', 'preapproval_extensions', 'strata_on_refinance',
     ])
     // Twice and more-than-twice were cut on 30 Sep 2026.
     expect(ruleQuestion('preapproval_extensions')!.options.map(o => o.value))
       .toEqual(['none', 'once'])
+  })
+
+  // BELLE'S INSTRUCTIONS ARE PARAGRAPHS. 160 would cut "Now that your
+  // application has progressed with..." off mid-sentence.
+  it('takes a whole set of instructions for the longer ones, and still caps them', () => {
+    // Trimmed, like every other answer - the trailing space on a pasted
+    // paragraph is not part of the instruction.
+    const steps = ('Now that your application has progressed with ANZ its important that you '
+      + 'action the registration of your online banking. '.repeat(4)).trim()
+    expect(ruleWrite('lender-1', 'netbanking_steps', steps, 'Belle', 'lender')!.value)
+      .toBe(steps)
+    expect(ruleWrite('lender-1', 'netbanking_steps', 'x'.repeat(9000), 'Belle', 'lender')!.value)
+      .toHaveLength(4000)
+    // And it is still a typed answer, so the screen gives it a box rather than
+    // a dropdown.
+    expect(isTyped('netbanking_steps')).toBe(true)
+    expect(isTyped('strata_on_refinance')).toBe(false)
   })
 
   // THE TYPED ONE, WHICH IS A DIFFERENT KIND OF QUESTION.

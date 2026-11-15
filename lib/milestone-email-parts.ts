@@ -30,6 +30,11 @@ export const RULE = '#EFEAE0'
 export const SAND = '#FAF8F4'
 export const AMBER_EDGE = '#E8C98A'
 
+// THE PALE BLUE THE SETTLEMENTS SCREENS ALREADY USE. Same two tokens as the
+// board, the deal panel and every mock: a wash, not an outline.
+export const INFO_BG = '#EAF7FE'
+export const INFO_EDGE = '#BFE4F7'
+
 export const p = (t: string) =>
   `<p style="margin:0 0 14px;font-family:${FONT};font-size:15px;color:${BODY};line-height:1.62;"><span style="color:${BODY};">${t}</span></p>`
 
@@ -39,19 +44,30 @@ export const hero = (t: string) =>
 
 // A section heading. A rule under it rather than a coloured band, because a band
 // needs light text on dark and Word will not keep the light text.
-export const heading = (t: string) =>
+export const heading = (t: string, bg: string = '#ffffff') =>
   `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 10px;"><tr>
-<td bgcolor="#ffffff" style="background-color:#ffffff;border-bottom:1px solid ${RULE};padding:0 0 7px;font-family:${FONT};font-size:11px;font-weight:bold;letter-spacing:.09em;text-transform:uppercase;color:${MUTED};"><span style="color:${MUTED};">${t}</span></td>
+<td bgcolor="${bg}" style="background-color:${bg};border-bottom:1px solid ${RULE};padding:0 0 7px;font-family:${FONT};font-size:11px;font-weight:bold;letter-spacing:.09em;text-transform:uppercase;color:${MUTED};"><span style="color:${MUTED};">${t}</span></td>
 </tr></table>`
 
 // THE MONEY. Label left, figure right, the total ruled off above and below and
 // the loan amount the one thing in colour.
-export function moneyTable(rows: { label: string; value: string; note?: boolean }[]): string {
+export function moneyTable(
+  rows: { label: string; value: string; note?: boolean; total?: boolean }[],
+): string {
   const cells = rows.map(r => {
     if (r.note) {
       return `<tr><td colspan="2" bgcolor="#ffffff" style="background-color:#ffffff;padding:2px 0 8px;font-family:${FONT};font-size:12.5px;color:${MUTED};line-height:1.5;"><span style="color:${MUTED};">${r.value}</span></td></tr>`
     }
-    const total = r.label.startsWith('Total cost')
+    // RULED OFF BECAUSE THE CALLER SAID SO, or because the label is the one the
+    // purchase emails have always used.
+    //
+    // The label match came first and was the only way to get a ruled-off row,
+    // so the settlement numbers email had to call a refinance SURPLUS "Total
+    // cost to you" to make the line appear. A surplus is not a cost, and a
+    // client reading "total cost: surplus of $46,440" is a phone call. The flag
+    // is the honest way to ask for the styling; the old match stays so nothing
+    // that already works has to change.
+    const total = r.total === true || r.label.startsWith('Total cost')
     const loan = r.label === 'Loan amount'
     const colour = loan ? GREEN : INK
     const weight = total || loan ? 'bold' : 'normal'
@@ -85,14 +101,16 @@ export function detailTable(items: { label: string; value: string }[]): string {
 
 // A NUMBERED OR TICKED LIST, as a table. The marker sits in its own narrow cell
 // so a wrapped second line lines up under the first instead of under the tick.
-export function markedList(items: string[], marker: 'number' | 'tick'): string {
+export function markedList(
+  items: string[], marker: 'number' | 'tick', bg: string = '#ffffff',
+): string {
   if (items.length === 0) return ''
   const rows = items.map((t, i) => {
     const m = marker === 'number' ? `${i + 1}.` : '&#10003;'
     const colour = marker === 'number' ? MUTED : GREEN
     return `<tr>
-<td bgcolor="#ffffff" width="22" valign="top" style="background-color:#ffffff;padding:0 8px 12px 0;font-family:${FONT};font-size:15px;font-weight:bold;color:${colour};line-height:1.62;"><span style="color:${colour};">${m}</span></td>
-<td bgcolor="#ffffff" valign="top" style="background-color:#ffffff;padding:0 0 12px;font-family:${FONT};font-size:15px;color:${BODY};line-height:1.62;"><span style="color:${BODY};">${t}</span></td>
+<td bgcolor="${bg}" width="22" valign="top" style="background-color:${bg};padding:0 8px 12px 0;font-family:${FONT};font-size:15px;font-weight:bold;color:${colour};line-height:1.62;"><span style="color:${colour};">${m}</span></td>
+<td bgcolor="${bg}" valign="top" style="background-color:${bg};padding:0 0 12px;font-family:${FONT};font-size:15px;color:${BODY};line-height:1.62;"><span style="color:${BODY};">${t}</span></td>
 </tr>`
   }).join('')
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>`
@@ -100,10 +118,53 @@ export function markedList(items: string[], marker: 'number' | 'tick'): string {
 
 // A note the client should not skim past. Sand rather than yellow, because a
 // warning colour on a congratulations email reads as bad news.
-export const noteBox = (t: string) =>
+//
+// THE EDGE COLOUR IS A PARAMETER, and defaults to what it has always been.
+//
+// 17 Nov 2026. Amber is out of the settlements build - Fabio has said so about
+// every screen in it, and an email is not an exception. But this box also
+// carries the RBA rate notice on the formal approval and the pre-approval,
+// where it has looked like this since September, and quietly restyling two
+// emails nobody asked about is not a colour fix.
+//
+// So the settlement emails pass the brand's own blue and everything else keeps
+// the sand and amber it already has.
+export const noteBox = (t: string, edge: string = AMBER_EDGE) =>
   `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 14px;"><tr>
-<td bgcolor="${SAND}" style="background-color:${SAND};border-left:3px solid ${AMBER_EDGE};padding:11px 14px;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.55;"><span style="color:${BODY};">${t}</span></td>
+<td bgcolor="${SAND}" style="background-color:${SAND};border-left:3px solid ${edge};padding:11px 14px;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.55;"><span style="color:${BODY};">${t}</span></td>
 </tr></table>`
+
+// WHAT WE ARE STILL WAITING ON, IN A BOX THAT POPS.
+//
+// 17 Nov 2026. Fabio, on the loan documents email: "Still outstandings, make a
+// light blue line around it to make sure it pops."
+//
+// He is right that it needs to stand out. It is the only part of that email
+// that is a job for the person reading it - everything above it is what we are
+// doing. A ticked list under a grey heading reads as more of the same.
+//
+// THE LINE IS THE BRAND'S OWN BLUE, not a colour chosen here, so it is
+// Simplify's on a Simplify email and Navigate's on a Navigate one.
+//
+// Word-safe like everything else: a one-cell table carrying bgcolor as an
+// ATTRIBUTE, and a border on the cell, which Word honours. No rgba, no div, no
+// box-shadow - none of those survive the trip.
+//
+// A WASH, NOT AN OUTLINE. First version was a white box with a bright blue line
+// round it. Fabio, 17 Nov 2026: "dont like we used baby blue backgorund befroe
+// come on" - and he is right, the pale blue fill is what every settlements
+// screen and every mock in this build already uses. A bright outline round
+// white is a different thing wearing the same colour.
+//
+// The tint is the portal's own info pair rather than the brand accent, because
+// a pale version of an arbitrary accent cannot be worked out here - Navigate's
+// teal would need its own tint on the brand record, and that is a change to
+// make when Navigate needs it rather than a guess now.
+export function outstandingBox(inner: string): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 14px;"><tr>
+<td bgcolor="${INFO_BG}" style="background-color:${INFO_BG};border:1px solid ${INFO_EDGE};border-radius:6px;padding:14px 16px;font-family:${FONT};">${inner}</td>
+</tr></table>`
+}
 
 // WHO SENT IT. Fabio, 29 Sep 2026, choosing between the two: "B match send and
 // sognature" - so the name at the foot is the name in the From line, always.

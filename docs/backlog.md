@@ -151,3 +151,48 @@ Still to do:
 - Multiple uploads per deal: the tab reads the most recent and Remove deletes it.
   If a deal ever needs two periods side by side, the tables already support it -
   only the tab assumes one.
+
+---
+
+## Reviews, tracked (its own project — NOT part of settlements)
+
+17 Nov 2026. Fabio: "the only thing outstanding is the Google review, which is a
+whole portal, which we have all the data... remove any Google reviews process
+from this."
+
+Then, an hour later, he put one ask back: "why don't we just, as part of the
+emails, say there's a settlement email here that we ask for Google reviews just
+for the time being... At least we're asking for reviews still while we're
+building the portal."
+
+So the settlements build carries ONE review ask, in the settled email, of
+everybody, with no condition on it - see lib/the-review-ask.ts. The formal
+approval email does not ask. Email 7 ("A small favour") is not built: a second
+ask without tracking is the exact thing the rule below exists to prevent.
+
+**The rule this project has to carry**, pinned 16 Nov 2026 in Fabio's words:
+
+> "We want at formal and IF and ONLY IF do feedback ask again at settlement hecne
+> why we are building a section within ONE to track reveiws remeber review for
+> good thats a whole other porject so pin that and remeber this rule when we
+> build it"
+
+In plain terms: ask for the review at formal approval. Ask again at settlement
+ONLY where they did not leave one the first time. That condition is the whole
+reason reviews need tracking — without knowing who has already reviewed, the
+second ask goes to people who already did it, which is worse than not asking.
+
+**Where this project picks up:** `reviewButton()` in lib/the-review-ask.ts is the
+function that becomes conditional. Today it always returns the button. When
+reviews are tracked it takes the client's review state, the formal approval email
+gains the first ask, and the settled email asks only where the first one went
+unanswered. Nothing else in settlements has to change.
+
+**What already exists and should be left alone until then:**
+- `review_sent` on the Settled checklist (lib/the-step-checklists.ts) — a tickbox,
+  not a process. The reviews project replaces it.
+- `toCloseOut` on the board's Settled sub-tab (lib/board-subtabs.ts) counts it
+  alongside compliance and commission.
+- `reviewDaysAfter` in SETTLEMENT_DEFAULTS (lib/settlement-settings.ts) — the
+  stored number stays so this project can use it. It is not shown on the
+  settlements settings pane, because nothing in settlements reads it.

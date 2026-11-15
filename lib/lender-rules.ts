@@ -39,7 +39,9 @@ export type RuleQuestion = {
   // very specific for the name in the isnruance". No list of options could hold
   // "Bankwest, a division of Commonwealth Bank of Australia" for every lender on
   // the panel, and a list that nearly holds it is worse than a box.
-  kind?: 'choice' | 'text'
+  // 'text' is a NAME or a short phrase, capped at 160. 'longtext' is Belle's
+  // instructions - several paragraphs that go into a client email whole.
+  kind?: 'choice' | 'text' | 'longtext'
   // Empty for a typed question.
   options: RuleOption[]
   // A note under the question when it is first asked. Empty where the question
@@ -107,6 +109,63 @@ export const RULES: RuleQuestion[] = [
     hint: 'Their exact wording, as it has to appear on the certificate of currency.',
     options: [],
   },
+  {
+    // BELLE'S INTERNET BANKING INSTRUCTIONS, one bank at a time.
+    //
+    // 17 Nov 2026. She wrote seven of these - AMP, ANZ, Bankwest, CBA, ING, NAB,
+    // St George - and the panel has twenty. Fabio, on the other thirteen: "we
+    // are then forcing staff to answer questions as we go and then the library
+    // gets build more efficient that going one by one."
+    //
+    // So they are not written up in a sitting. The deal that reaches Formal with
+    // a bank nobody has answered for asks whoever is sending the email, once.
+    // Macquarie and ubank are the second and third busiest lenders in the book
+    // and have nothing recorded, which is what that is for.
+    key: 'netbanking_steps',
+    kind: 'longtext',
+    ask: 'What does a client do to register for internet banking with this lender?',
+    short: 'Internet banking',
+    hint: 'In your own words, as it will appear in the formal approval email. '
+      + 'Write {application} where the application number should go.',
+    options: [],
+  },
+  {
+    // Belle's table, 14 Nov 2026, and the eight lenders on it do not agree:
+    // the 1st of the month after settling, the last banking day of the month of
+    // drawdown, or a month after settling. A guess here is a client who thinks
+    // they have three weeks and has three days.
+    key: 'first_repayment_io',
+    kind: 'text',
+    ask: 'On an interest only loan, when does this lender take the first repayment?',
+    short: 'First IO repayment',
+    hint: 'It goes in the settlement booked email. Left out entirely where nobody has answered.',
+    options: [],
+  },
+  {
+    // Belle's loan documents email: "[ONLY INCLUDE IF REQUIRED BY THE LENDER]
+    // You may need to contact your strata manager..." - and nobody wrote down
+    // which lenders those are. On a purchase it is never asked of the client:
+    // the certificate comes from the solicitor.
+    key: 'strata_on_refinance',
+    ask: 'On a refinance of a strata property, does this lender want the strata certificate from the client?',
+    short: 'Strata on refi',
+    options: [
+      { value: 'yes', label: 'Yes - ask the client to get it from their strata manager' },
+      { value: 'no', label: 'No' },
+    ],
+    hint: 'Only ever asked on a refinance. On a purchase it comes from the solicitor.',
+  },
+  {
+    // "Refer to the attached document for [LENDER]-specific guidance on setting
+    // this up" - or, where there is no attachment, the plain ask. Two different
+    // paragraphs, and which one is right is a fact about the bank.
+    key: 'direct_debit_guidance',
+    kind: 'longtext',
+    ask: 'What does this lender need for the direct debit, beyond the form in the loan pack?',
+    short: 'Direct debit',
+    hint: 'Left empty, the email uses the plain ask: complete the direct debit and tell us the account.',
+    options: [],
+  },
 ]
 
 export function ruleQuestion(key: string): RuleQuestion | null {
@@ -114,7 +173,20 @@ export function ruleQuestion(key: string): RuleQuestion | null {
 }
 
 export function isTyped(key: string): boolean {
-  return ruleQuestion(key)?.kind === 'text'
+  const k = ruleQuestion(key)?.kind
+  return k === 'text' || k === 'longtext'
+}
+
+/**
+ * A PARAGRAPH, NOT A NAME.
+ *
+ * The difference decides what the screen draws. A one-line box is right for
+ * what a bank wants to be called on an insurance certificate and hopeless for
+ * Belle's registration steps - she could not press Enter without the box
+ * closing on her.
+ */
+export function isLong(key: string): boolean {
+  return ruleQuestion(key)?.kind === 'longtext'
 }
 
 // What a person reads back. A typed answer IS its own label - there is nothing
@@ -233,6 +305,13 @@ export function ruleWrite(lenderId: any, key: string, value: any, by: string,
   // client email and a pasted paragraph is not a company name.
   if (q.kind === 'text') {
     return { lender_id: id, key: q.key, value: v.slice(0, 160), set_by: txt(by) }
+  }
+  // BELLE'S INSTRUCTIONS ARE PARAGRAPHS, NOT A NAME. Still capped, because this
+  // is pasted into a client email and nobody means to send 8,000 characters -
+  // but 160 would cut "Now that your application has progressed with..." off
+  // mid-sentence, which is how a client gets half an instruction.
+  if (q.kind === 'longtext') {
+    return { lender_id: id, key: q.key, value: v.slice(0, 4000), set_by: txt(by) }
   }
   // An answer outside the list is a bug upstream, not a new option. Writing it
   // would put a value in the table that nothing can read back.
