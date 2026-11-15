@@ -63,6 +63,10 @@ type Preview = {
   picksSender: boolean
   /** Picks the trading name only - see picksBrand in lib/milestone-emails.ts. */
   picksBrand?: boolean
+  /** Everyone who can be introduced, settlements first. */
+  staff?: { id: string; name: string; settlements?: boolean }[]
+  /** Who is ticked right now. */
+  contactIds?: string[]
   // Empty unless the chosen broker has no login linked, and so no email or
   // mobile for the signature. Said on screen rather than discovered in a sent
   // email.
@@ -311,6 +315,17 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
   // settlement email went out as the default - see picksBrand in
   // lib/milestone-emails.ts.
   const picksBrand = Boolean(preview?.picksBrand)
+
+  // WHO IS INTRODUCED, AND WHETHER ANYBODY HAS SAID.
+  //
+  // null is "nobody has touched this", which is NOT the same as "nobody is
+  // picked". Untouched means the Settings default applies; an empty list means
+  // somebody unticked everyone on purpose and the email should name the team.
+  // If these were the same value, unticking everybody would quietly put the
+  // default back. See contactsFrom in the API route.
+  const [contacts, setContacts] = useState<string[] | null>(null)
+  const ticked = contacts ?? (preview?.contactIds || [])
+  const introducesPeople = templateId === 'formal_approval'
   const brokerKey = picksSender ? sender.brokerKey : ''
   const brandId = (picksSender || picksBrand) ? sender.brandId : ''
   const calendly = picksSender ? sender.calendlyUrl : ''
@@ -330,6 +345,7 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
       overrides: JSON.stringify(overrides), extra, expiry, insuranceAmount,
       valuation, businessDays, fixedTerm,
       sentWith: JSON.stringify(sentWithKeys),
+      ...(contacts === null ? {} : { contacts: JSON.stringify(contacts) }),
       documents: JSON.stringify(docKeys),
       // Ignored by the route for a template that does not pick its sender.
       brokerKey, brandId, calendly,
@@ -343,7 +359,7 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
       setErr(`The preview could not be built — ${e?.message || 'network error'}.`)
     }
   }, [deal.id, templateId, overrides, extra, expiry, insuranceAmount, brokerKey, brandId, calendly,
-      valuation, sentWithKeys, businessDays, fixedTerm, docKeys])
+      valuation, sentWithKeys, businessDays, fixedTerm, docKeys, contacts])
 
   // Redrawn as you tick. Typing is debounced so the free text box does not
   // rebuild the email on every keystroke.
@@ -387,6 +403,7 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
       body.set('businessDays', businessDays)
       body.set('fixedTerm', fixedTerm)
       body.set('documents', JSON.stringify(docKeys))
+      if (contacts !== null) body.set('contacts', JSON.stringify(contacts))
       body.set('brokerKey', brokerKey)
       body.set('brandId', brandId)
       body.set('calendly', calendly)
@@ -484,6 +501,46 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
                 {!!preview?.senderNote && (
                   <p className="mt-1.5 text-[11px] text-chase leading-snug">{preview.senderNote}</p>
                 )}
+              </div>
+            )}
+
+            {/* WHO THE CLIENT IS INTRODUCED TO.
+                *
+                * Only on the formal approval, which is the one email that says
+                * who has them from here. Settlements are ticked and at the top
+                * because they are the usual answer; everybody else is listed
+                * under them for the day somebody is away or helping out.
+                *
+                * Fabio, 17 Nov 2026: "we cna select other staff IF and only IF
+                * we need to." */}
+            {introducesPeople && !!preview?.staff?.length && (
+              <div className="mt-5">
+                <Shout>Who has them from here</Shout>
+                <div className="mt-2 rounded-lg border border-[#E6E1D8] bg-card p-1.5">
+                  {preview.staff.map(p => {
+                    const on = ticked.includes(p.id)
+                    return (
+                      <button key={p.id} type="button"
+                        onClick={() => setContacts(
+                          on ? ticked.filter(id => id !== p.id) : [...ticked, p.id])}
+                        className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[12.5px] ${
+                          on ? 'bg-info-bg font-semibold text-brand-ink' : 'text-body'}`}>
+                        <span className={on ? 'text-brand-ink' : 'text-faint'}>{on ? '\u2713' : '\u00b7'}</span>
+                        <span>{p.name}</span>
+                        {p.settlements && (
+                          <span className="ml-auto text-[10px] uppercase tracking-[.06em] text-faint">
+                            settlements
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="mt-1.5 text-[11px] text-faint leading-snug">
+                  {ticked.length === 0
+                    ? 'Nobody picked \u2014 the email will say our settlements team.'
+                    : 'Named in the email. Untick everyone to say our settlements team instead.'}
+                </p>
               </div>
             )}
 

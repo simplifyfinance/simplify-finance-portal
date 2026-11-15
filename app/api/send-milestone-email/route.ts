@@ -4,7 +4,7 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
 import { resolveBrand } from '@/lib/brand'
 import { brandOnDeal } from '@/lib/which-business'
-import { type Person } from '@/lib/who-has-you-now'
+import { suggestedContacts, pickOrder, type Person } from '@/lib/who-has-you-now'
 import { menuFor, templateById, withSent, type TemplateId, type SentEmail } from '@/lib/milestone-emails'
 import { assembleMilestoneEmail, SETTLEMENTS_EMAIL } from '@/lib/milestone-send'
 import { rulesOf } from '@/lib/lender-rules'
@@ -244,25 +244,49 @@ function offerAcceptedChoices(get: (k: string) => any, deal: any) {
  * Nobody ticked, and the email names the team rather than a person. Vaguer,
  * and true.
  */
-async function settlementContacts(supabase: any): Promise<Person[]> {
+async function allStaff(supabase: any): Promise<Person[]> {
   try {
     const { data } = await supabase.from('user_profiles')
       .select('id, full_name, email, sees_settlements')
-      .eq('sees_settlements', true)
     return (data || [])
       .map((r: any) => ({
         id: String(r?.id || ''),
         name: String(r?.full_name || '').trim(),
         email: String(r?.email || '').trim(),
-        settlements: true,
+        settlements: !!r?.sees_settlements,
       }))
-      .filter((p: Person) => p.name)
-      .sort((a: Person, b: Person) => a.name.localeCompare(b.name))
+      .filter((p: Person) => p.name && p.id)
   } catch {
     // A LIST WE CANNOT READ IS AN EMPTY LIST, never a guess. The email then
     // says "our settlements team", which is true whatever the table holds.
     return []
   }
+}
+
+/**
+ * WHO IS BEING INTRODUCED, FROM WHAT THE SCREEN SENT.
+ *
+ * ABSENT AND EMPTY ARE DIFFERENT, and that distinction is the whole of this
+ * function. Absent means nobody has touched the control, so the Settings
+ * default applies - the people with the settlements box ticked. Empty means
+ * somebody unticked everybody on purpose, and the email should name the team
+ * rather than a person.
+ *
+ * Treating them the same would mean unticking everyone quietly put the default
+ * back, and the names you just removed would go out anyway.
+ */
+function contactsFrom(raw: string | null, staff: Person[]): Person[] {
+  if (raw === null) return suggestedContacts(staff)
+  let ids: string[] = []
+  try {
+    const parsed = JSON.parse(raw || '[]')
+    ids = Array.isArray(parsed) ? parsed.map(String) : []
+  } catch {
+    // Rubbish in the box is nobody, not everybody.
+    return []
+  }
+  // IN THE ORDER THEY WERE PICKED, so "Belle and Julian" stays that way.
+  return ids.map(id => staff.find(p => p.id === id)).filter(Boolean) as Person[]
 }
 
 export async function GET(req: NextRequest) {
@@ -295,6 +319,10 @@ export async function GET(req: NextRequest) {
   const typedCalendly = txt(req.nextUrl.searchParams.get('calendly'))
 
   const lender = await loadLender(deal)
+  // EVERYONE, with the settlements people marked - the screen puts them first
+  // and ticks them, and anybody else can be picked on the day it is not them.
+  const staff = await allStaff(supabase)
+  const introduced = contactsFrom(req.nextUrl.searchParams.get('contacts'), staff)
   const built = assembleMilestoneEmail({
     deal, templateId,
     rules: lender.rules,
@@ -320,7 +348,7 @@ export async function GET(req: NextRequest) {
     expiry: txt(req.nextUrl.searchParams.get('expiry')),
     insuranceAmount: txt(req.nextUrl.searchParams.get('insuranceAmount')),
     ...offerAcceptedChoices(k => req.nextUrl.searchParams.get(k), deal),
-    contacts: await settlementContacts(supabase),
+    contacts: introduced,
   })
   if (!built) return NextResponse.json({ error: 'Unknown template.' }, { status: 400 })
 
@@ -382,6 +410,9 @@ export async function GET(req: NextRequest) {
     // lib/milestone-emails.ts - without this the settlement emails could only
     // ever go out as the default brand.
     picksBrand: tpl?.picksBrand ?? false,
+    // THE TEAM, AND WHO IS TICKED. Settlements first - see pickOrder.
+    staff: pickOrder(staff),
+    contactIds: introduced.map(p => p.id),
     // Empty unless the chosen broker is missing contact details - see
     // brokerSender above. Printed on the screen, not swallowed.
     senderNote: chosen?.note || '',
@@ -451,8 +482,10 @@ export async function POST(req: NextRequest) {
     expiry: txt(form.get('expiry')),
     insuranceAmount: txt(form.get('insuranceAmount')),
     ...offerAcceptedChoices(k => form.get(k), deal),
-    // Same list as the preview, so what was read is what is sent.
-    contacts: await settlementContacts(supabase),
+    // Same resolution as the preview, so what was read is what is sent.
+    contacts: contactsFrom(
+      form.get('contacts') === null ? null : String(form.get('contacts')),
+      await allStaff(supabase)),
   })
   if (!built) return NextResponse.json({ error: 'Unknown template.' }, { status: 400 })
 

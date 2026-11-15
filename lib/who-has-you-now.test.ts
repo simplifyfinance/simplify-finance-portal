@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'fs'
 import {
   handoverLine, firstNameOf, namesInWords, suggestedContacts, pickOrder,
   isSendingThemselves, NO_NEW_CREDIT, type Person,
@@ -110,5 +111,38 @@ describe('the credit warning', () => {
   })
   it('and gives them somewhere to go', () => {
     expect(NO_NEW_CREDIT).toContain('call us first')
+  })
+})
+
+// ABSENT AND EMPTY ARE DIFFERENT. Unticking everybody must not quietly put the
+// Settings default back and send the names somebody just removed.
+describe('the picker, through the route', () => {
+  const ROUTE = readFileSync('app/api/send-milestone-email/route.ts', 'utf8')
+  const SCREEN = readFileSync('components/MilestoneEmails.tsx', 'utf8')
+
+  it('untouched means the settings default', () => {
+    expect(ROUTE).toContain('if (raw === null) return suggestedContacts(staff)')
+  })
+
+  it('and an empty list means nobody, not the default', () => {
+    // JSON.parse('[]') -> [] -> no names. The only path back to the default is
+    // raw === null, which the screen sends only while untouched.
+    expect(SCREEN).toContain('const [contacts, setContacts] = useState<string[] | null>(null)')
+    expect(SCREEN).toContain("...(contacts === null ? {} : { contacts: JSON.stringify(contacts) })")
+  })
+
+  it('everyone is listed, not just settlements', () => {
+    expect(ROUTE).toContain("select('id, full_name, email, sees_settlements')")
+    expect(ROUTE, 'filtering here would hide the rest of the team')
+      .not.toContain(".eq('sees_settlements', true)")
+  })
+
+  it('the send resolves it exactly as the preview did', () => {
+    expect(ROUTE).toContain("contacts: contactsFrom(")
+    expect(ROUTE).toContain("form.get('contacts') === null ? null : String(form.get('contacts'))")
+  })
+
+  it('and only the formal approval asks', () => {
+    expect(SCREEN).toContain("const introducesPeople = templateId === 'formal_approval'")
   })
 })

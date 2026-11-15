@@ -105,9 +105,14 @@ describe('the browser posts the deal, never the email', () => {
     //     client reads is the portal's whatever a browser sends.
     //   businessDays and fixedTerm are figures, like insuranceAmount. Digits
     //     are stripped out of both before either reaches a sentence.
+    //   contacts is a list of user_profiles IDS, like brokerKey. The route
+    //     looks each one up and takes the NAME from the table, so a browser can
+    //     choose which colleague is introduced and cannot invent one. An id
+    //     that matches nobody is dropped rather than printed.
     const allowed = ['dealId', 'template', 'overrides', 'extra', 'expiry',
                      'insuranceAmount', 'brandId', 'brokerKey', 'calendly', 'file',
-                     'valuation', 'sentWith', 'documents', 'businessDays', 'fixedTerm']
+                     'valuation', 'sentWith', 'documents', 'businessDays', 'fixedTerm',
+                     'contacts']
     const extra = posted.filter(k => !allowed.includes(k))
     expect(extra, 'anything else on this form is something a browser could put in a client email')
       .toEqual([])
