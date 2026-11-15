@@ -359,6 +359,28 @@ export function insuredPartyName(rules: Record<string, LenderRule>): string {
   return answerTo(rules, 'insurance_interested_party')
 }
 
+/**
+ * BELLE'S REGISTRATION STEPS, WITH THE APPLICATION NUMBER IN.
+ *
+ * Her ANZ text carries {application}, because ANZ ask the client to have it on
+ * the phone. The portal holds it as deals.lender_reference.
+ *
+ * A CLIENT MUST NEVER RECEIVE "{application}". Where the deal has no reference
+ * recorded the placeholder becomes words they can act on rather than a token
+ * that looks like a bug - the alternative, dropping the whole section, would
+ * lose six correct sentences over one missing number.
+ *
+ * Empty where this lender has not been answered, and then the section does not
+ * appear at all.
+ */
+export function netbankingSteps(rules: Record<string, LenderRule>, application: any): string {
+  const steps = answerTo(rules, 'netbanking_steps')
+  if (!steps) return ''
+  const app = txt(application)
+  return steps.replace(/\{application\}/g,
+    app || 'your application number \u2014 ask us if you do not have it')
+}
+
 // Exported for the guard test only: every option in the catalogue must have
 // words. See lib/rule-phrases.test.ts.
 export const PHRASE_TABLES: Record<string, Record<string, string>> = {

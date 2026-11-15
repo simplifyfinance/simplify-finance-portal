@@ -24,8 +24,10 @@ import { anythingElseItems } from './anything-else'
 import { type Brand, DEFAULT_BRAND } from './brand'
 import {
   p, hero, heading, moneyTable, detailTable, markedList, noteBox, signature, plain, strip,
+  paragraphs,
 } from './milestone-email-parts'
 import { type Block, on } from './milestone-blocks'
+import { NO_NEW_CREDIT } from './who-has-you-now'
 import { type PurchaseRow } from './purchase-rows'
 
 const txt = (v: any) => String(v ?? '').trim()
@@ -54,6 +56,13 @@ export type FormalApprovalContext = {
   // How much, off this deal's approval letter. Optional and never remembered:
   // it is different on every deal. Empty and the sentence simply does not say.
   insuranceAmount?: string
+  // THE HANDOVER SENTENCE, already built - see lib/who-has-you-now.ts. Empty
+  // where the block is off.
+  handover?: string
+  // BELLE'S REGISTRATION STEPS FOR THIS LENDER, application number already
+  // filled in. Empty where nobody has answered for this bank, and then the
+  // whole section is left out rather than half-written.
+  netbankingSteps?: string
   // THE RBA NOTICE, or empty. Already decided by lib/rate-notice.ts against the
   // lender this deal is with - this file only knows where it goes on the page.
   rateNotice?: string
@@ -147,8 +156,20 @@ export function buildFormalApprovalEmail(ctx: FormalApprovalContext): {
     // DIRECTLY UNDER THE RATE, because it is about the rate. A disclaimer at the
     // foot of an email is a disclaimer nobody reads.
     (txt(ctx.rateNotice) ? noteBox(txt(ctx.rateNotice)) : '') +
+    // WHO HAS THEM NOW, before what happens next - a client wants to know who
+    // they are dealing with before they are told what to do.
+    (on(b, 'handover') && txt(ctx.handover)
+      ? heading('Who has you from here') + p(txt(ctx.handover)) : '') +
     heading('What happens next') + markedList(ours, 'number') +
     (theirs.length ? heading('What we need from you') + markedList(theirs, 'tick') : '') +
+    // THE BANK'S OWN REGISTRATION STEPS, in Belle's words, printed whole.
+    (on(b, 'netbanking_steps') && txt(ctx.netbankingSteps)
+      ? heading('Setting up your banking') + paragraphs(txt(ctx.netbankingSteps)) : '') +
+    // LAST. A client who reads nothing else reads the last thing.
+    // THE BRAND'S BLUE, NOT AMBER. Amber is out of this build - and this box
+    // is new, so it has no history to disturb the way the rate notice above
+    // does. See the note on noteBox in lib/milestone-email-parts.ts.
+    (on(b, 'no_new_credit') ? noteBox(NO_NEW_CREDIT, brand.accentColor) : '') +
     p('If anything above does not look right, or you have a question about any of it, reply to this ' +
       'email or give us a call.') +
     p('Congratulations again — this is the hard part done.') +
@@ -165,8 +186,12 @@ export function buildFormalApprovalEmail(ctx: FormalApprovalContext): {
       ...(ctx.rows.length ? ['YOUR LOAN', ctx.rows.filter(r => !r.note)
         .map(r => `${r.label}: ${r.value}`)] : []),
       ...(ctx.details.length ? ['THE DETAILS', ctx.details.map(d => `${d.label}: ${d.value}`)] : []),
+      ...(on(b, 'handover') && txt(ctx.handover) ? ['WHO HAS YOU FROM HERE', strip(txt(ctx.handover))] : []),
       'WHAT HAPPENS NEXT', ours.map(strip),
       ...(theirs.length ? ['WHAT WE NEED FROM YOU', theirs.map(strip)] : []),
+      ...(on(b, 'netbanking_steps') && txt(ctx.netbankingSteps)
+        ? ['SETTING UP YOUR BANKING', txt(ctx.netbankingSteps)] : []),
+      ...(on(b, 'no_new_credit') ? [strip(NO_NEW_CREDIT)] : []),
       'If anything above does not look right, reply to this email or give us a call.',
       'Congratulations again - this is the hard part done.',
       ctx.senderName, brand.name,

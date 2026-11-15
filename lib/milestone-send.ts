@@ -24,6 +24,8 @@ import {
 import {
   settlementRows, settlementNumbersGaps, numbersWorthSending, surplusGoesTo,
 } from './the-settlement-numbers'
+import { handoverLine } from './who-has-you-now'
+import { brokerLabel } from './broker-key'
 import { securitiesOf } from './box-security'
 import { isPurchase, isRefinance, settlementDate } from './settlement'
 import { templateById, type TemplateId, type MilestoneTemplate } from './milestone-emails'
@@ -31,7 +33,7 @@ import { formalApprovalBlocks, preapprovalBlocks, withOverrides, on,
          securityState, waitingOnLender, type Block, type Overrides, offerAcceptedBlocks} from './milestone-blocks'
 import { milestoneRows, loanDetails, missingFigures } from './milestone-figures'
 import { loanDetailsNow } from './the-loan-now'
-import { contractsByPhrase, insuredPartyName, type LenderRule, answerTo } from './lender-rules'
+import { contractsByPhrase, insuredPartyName, type LenderRule, answerTo, netbankingSteps } from './lender-rules'
 import { buildFormalApprovalEmail } from './formal-approval-email'
 import { buildOfferAcceptedEmail, loanMovedLine, depositPaidLine } from './offer-accepted-email'
 import { buildPreapprovalEmail } from './preapproval-email'
@@ -413,7 +415,13 @@ export function assembleMilestoneEmail(input: AssembleInput): Assembled | null {
     for (const p of theOtherSide) cc.push(p.email)
     if (on(blocks, 'other_side')) for (const gap of otherSideGaps(deal)) problems.push(gap)
 
+    // WHO HAS THEM NOW, and the bank's own registration steps. Both are blocks,
+    // so both can be unticked; both are left out where there is nothing honest
+    // to say. See lib/who-has-you-now.ts.
+    const brokerName = brokerLabel(deal?.assigned_broker)
     built = buildFormalApprovalEmail({
+      handover: handoverLine(brokerName === '\u2014' ? '' : brokerName),
+      netbankingSteps: netbankingSteps(rules, deal?.lender_reference),
       brand,
       clientNames,
       lenderName,

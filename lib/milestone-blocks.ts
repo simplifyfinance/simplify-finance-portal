@@ -195,6 +195,28 @@ export function formalApprovalBlocks(deal: any,
     `Building insurance, noting ${lender}'s exact interested-party name`,
     rules, lender, a => !!a))
 
+  // BELLE'S REGISTRATION STEPS FOR THIS BANK, left off where nobody has
+  // answered - fromLender already behaves that way, which is exactly right
+  // here. Seven banks were loaded on 17 Nov 2026; the rest fill in as deals
+  // come through. See lib/the-lender-library.md in docs/backlog.md.
+  out.push(fromLender('netbanking_steps',
+    `How to register for ${lender} internet banking`,
+    rules, lender, a => !!a))
+
+  // THE HANDOVER AND THE WARNING. Both always on, both unticked by hand on the
+  // rare deal that does not want them. Neither reads anything off a lender, so
+  // neither can print a hole.
+  out.push({
+    key: 'handover', label: 'Who is looking after the settlement',
+    on: true, by: 'deal',
+    why: 'On — the settlement email introduces whoever is sending it',
+  })
+  out.push({
+    key: 'no_new_credit', label: 'Reminder not to take new credit before settlement',
+    on: true, by: 'deal',
+    why: 'On — a new debt before settlement can change what the bank approved',
+  })
+
   out.push({
     key: 'other_side', label: 'Solicitor and buyers agent copied in',
     on: isPurchase(deal), by: 'deal',

@@ -166,6 +166,34 @@ export function outstandingBox(inner: string): string {
 </tr></table>`
 }
 
+/**
+ * SOMEBODY ELSE'S WRITING, PRINTED WHOLE.
+ *
+ * Belle's lender instructions arrive as several paragraphs with the odd bullet
+ * list in them - see the AMP steps. They are pasted into a box by a person, so
+ * this takes them as typed rather than asking anybody to write HTML.
+ *
+ * A blank line starts a new paragraph. A run of lines beginning with "-" or a
+ * bullet becomes a ticked list, because <ul> indents differently in every mail
+ * program and collapses in a few. Everything else is a paragraph with its own
+ * line breaks kept.
+ *
+ * NOTHING IS REWORDED. If it reads oddly, it reads oddly in the lender library
+ * too, where the person who wrote it can fix it once for every deal.
+ */
+export function paragraphs(text: string): string {
+  const chunks = String(text || '').replace(/\r\n/g, '\n').split(/\n\s*\n/)
+  return chunks.map(chunk => {
+    const lines = chunk.split('\n').map(l => l.trim()).filter(Boolean)
+    if (lines.length === 0) return ''
+    const bullets = lines.filter(l => /^[-•*]\s+/.test(l))
+    if (bullets.length === lines.length) {
+      return markedList(lines.map(l => l.replace(/^[-•*]\s+/, '')), 'tick')
+    }
+    return p(lines.join('<br>'))
+  }).join('')
+}
+
 // WHO SENT IT. Fabio, 29 Sep 2026, choosing between the two: "B match send and
 // sognature" - so the name at the foot is the name in the From line, always.
 export function signature(name: string, brandName: string, email: string,
