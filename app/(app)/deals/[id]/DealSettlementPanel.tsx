@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState } from 'react'
-import TheFormalLetter from '@/components/TheFormalLetter'
 import TheContracts from '@/components/TheContracts'
 import TheOtherDocuments from '@/components/TheOtherDocuments'
 import SettlementSteps from '@/components/SettlementSteps'
@@ -249,14 +248,6 @@ export default function DealSettlementPanel({ deal, onUpdated, me }: {
           <SettlementTrail deal={d} me={me?.name || ''} busy={busy} onWrite={patch => save(patch)} />
         </div>
       </div>
-
-      {/* THE FORMAL APPROVAL LETTER. First of the four documents, and the
-          reason the other three can be trusted - Belle: "these details are
-          often incorrect". See components/TheFormalLetter.tsx. */}
-      {!d.settled_at && stepOf(d) && (
-        <TheFormalLetter deal={d} me={me}
-          onSaved={patch => { setD((prev: any) => ({ ...prev, ...patch })); onUpdated?.(patch) }} />
-      )}
 
       {/* THE CONTRACTS. Dropped at Contracts Issued and checked against the
           formal approval - "everyhtig passes through formal". The file is read
