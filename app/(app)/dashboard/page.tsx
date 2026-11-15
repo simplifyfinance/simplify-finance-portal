@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { whichToday } from '@/lib/which-today'
 import TodayPlan from '@/components/TodayPlan'
 import RunThrough from '@/components/RunThrough'
+import SettlementsBand from '@/components/SettlementsBand'
 import RateNoticeNag from '@/components/RateNoticeNag'
 import { todayYmd } from '@/lib/periods'
 import { needsChasing, chaseLine, latest as latestPush, mineNotArrived } from '@/lib/the-push-leaves-a-mark'
@@ -412,6 +413,7 @@ export default async function Dashboard(
         * credit assessor's and a broker's, and every admin panel it used to
         * carry has been taken off. */}
       {theirScreen ? (
+        <>
         <RunThrough
           deals={deals || []}
           brokerNames={brokerNames}
@@ -427,6 +429,15 @@ export default async function Dashboard(
           weekDone={weekDone}
           me={{ id: user.id, name: profile?.full_name || '' }}
         />
+        {/* THE SECOND CHAPTER. 17 Nov 2026, Fabio: "the black bar for
+          * settlements and all the boxes for settlements under it."
+          *
+          * Lodging is a weekly question and settlements is a monthly one.
+          * Different clocks, different people, different targets - so they get
+          * a bar each rather than one longer page that mixes them.
+          * See components/SettlementsBand.tsx. */}
+        <SettlementsBand deals={deals || []} brokerRows={(brokerRows || []) as any[]} />
+        </>
       ) : (
       <TodayPlan
         deals={deals || []}
