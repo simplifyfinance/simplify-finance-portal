@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
+import TheContracts from '@/components/TheContracts'
 import SettlementSteps from '@/components/SettlementSteps'
+import { stepOf } from '@/lib/the-seven-steps'
 import SettlementTrail from '@/components/SettlementTrail'
 import { useSettlementSettings } from '@/lib/use-settlement-settings'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -245,6 +247,15 @@ export default function DealSettlementPanel({ deal, onUpdated, me }: {
           <SettlementTrail deal={d} me={me?.name || ''} busy={busy} onWrite={patch => save(patch)} />
         </div>
       </div>
+
+      {/* THE CONTRACTS. Dropped at Contracts Issued and checked against the
+          formal approval - "everyhtig passes through formal". The file is read
+          on the way through and never saved; what it said is written onto the
+          deal. See components/TheContracts.tsx. */}
+      {!d.settled_at && stepOf(d) && (
+        <TheContracts deal={d} me={me}
+          onSaved={patch => { setD((prev: any) => ({ ...prev, ...patch })); onUpdated?.(patch) }} />
+      )}
 
       {/* THE SEVEN STEPS. See components/SettlementSteps.tsx. */}
       {!d.settled_at && (
