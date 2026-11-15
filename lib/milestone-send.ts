@@ -24,7 +24,7 @@ import {
 import {
   settlementRows, settlementNumbersGaps, numbersWorthSending, surplusGoesTo,
 } from './the-settlement-numbers'
-import { handoverLine } from './who-has-you-now'
+import { handoverLine, type Person } from './who-has-you-now'
 import { brokerLabel } from './broker-key'
 import { securitiesOf } from './box-security'
 import { isPurchase, isRefinance, settlementDate } from './settlement'
@@ -58,6 +58,11 @@ export type Sender = {
 }
 
 export type AssembleInput = {
+  /**
+   * WHO IS BEING INTRODUCED in the formal approval email. Empty is a real
+   * answer: the email then names the settlements team rather than a person.
+   */
+  contacts?: Person[]
   // --- the offer accepted email's own four choices -------------------------
   //
   // 21 Oct 2026. Everything else on this type comes off the deal. These are
@@ -420,7 +425,13 @@ export function assembleMilestoneEmail(input: AssembleInput): Assembled | null {
     // to say. See lib/who-has-you-now.ts.
     const brokerName = brokerLabel(deal?.assigned_broker)
     built = buildFormalApprovalEmail({
-      handover: handoverLine(brokerName === '\u2014' ? '' : brokerName),
+      handover: handoverLine({
+        // WHO THE SENDER PICKED, or the settlements people by default. The
+        // route works that out - see lib/who-has-you-now.ts.
+        contacts: input.contacts || [],
+        senderEmail: input.sender.email,
+        brokerName: brokerName === '\u2014' ? '' : brokerName,
+      }),
       netbankingSteps: netbankingSteps(rules, deal?.lender_reference),
       brand,
       clientNames,

@@ -4,6 +4,7 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
 import { resolveBrand } from '@/lib/brand'
 import { brandOnDeal } from '@/lib/which-business'
+import { type Person } from '@/lib/who-has-you-now'
 import { menuFor, templateById, withSent, type TemplateId, type SentEmail } from '@/lib/milestone-emails'
 import { assembleMilestoneEmail, SETTLEMENTS_EMAIL } from '@/lib/milestone-send'
 import { rulesOf } from '@/lib/lender-rules'
@@ -228,6 +229,42 @@ function offerAcceptedChoices(get: (k: string) => any, deal: any) {
   }
 }
 
+/**
+ * WHO IS INTRODUCED IN THE FORMAL APPROVAL EMAIL.
+ *
+ * The settlements people, as ticked in Settings, Team. Fabio, 17 Nov 2026:
+ * "Julian and Belle is generally what we like to introduce" - and that is a
+ * setting they already maintain, not two names to write into a builder.
+ *
+ * A sender who is NOT one of them does not get themselves introduced. Kylie
+ * sending a formal approval should not send an email claiming she is running
+ * the settlement, and she would have had to be stopped from doing it by
+ * accident - this is that stop.
+ *
+ * Nobody ticked, and the email names the team rather than a person. Vaguer,
+ * and true.
+ */
+async function settlementContacts(supabase: any): Promise<Person[]> {
+  try {
+    const { data } = await supabase.from('user_profiles')
+      .select('id, full_name, email, sees_settlements')
+      .eq('sees_settlements', true)
+    return (data || [])
+      .map((r: any) => ({
+        id: String(r?.id || ''),
+        name: String(r?.full_name || '').trim(),
+        email: String(r?.email || '').trim(),
+        settlements: true,
+      }))
+      .filter((p: Person) => p.name)
+      .sort((a: Person, b: Person) => a.name.localeCompare(b.name))
+  } catch {
+    // A LIST WE CANNOT READ IS AN EMPTY LIST, never a guess. The email then
+    // says "our settlements team", which is true whatever the table holds.
+    return []
+  }
+}
+
 export async function GET(req: NextRequest) {
   const supabase = await createSupabaseServer()
   const sender = await senderOf(supabase)
@@ -283,6 +320,7 @@ export async function GET(req: NextRequest) {
     expiry: txt(req.nextUrl.searchParams.get('expiry')),
     insuranceAmount: txt(req.nextUrl.searchParams.get('insuranceAmount')),
     ...offerAcceptedChoices(k => req.nextUrl.searchParams.get(k), deal),
+    contacts: await settlementContacts(supabase),
   })
   if (!built) return NextResponse.json({ error: 'Unknown template.' }, { status: 400 })
 
@@ -413,6 +451,8 @@ export async function POST(req: NextRequest) {
     expiry: txt(form.get('expiry')),
     insuranceAmount: txt(form.get('insuranceAmount')),
     ...offerAcceptedChoices(k => form.get(k), deal),
+    // Same list as the preview, so what was read is what is sent.
+    contacts: await settlementContacts(supabase),
   })
   if (!built) return NextResponse.json({ error: 'Unknown template.' }, { status: 400 })
 
