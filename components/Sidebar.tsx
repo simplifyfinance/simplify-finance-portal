@@ -16,7 +16,10 @@ const nav = [
   // TODAY, NOT DASHBOARD. 22 Oct 2026: the page everybody lands on is now the
   // morning plan, so the word on the tab says what it is for. The route is
   // unchanged - every link and bookmark in the portal still works.
-  { label: "Today", href: "/dashboard", icon: LayoutDashboard },
+  // NOT FOR EVERYBODY. See no_today in components/TeamSection.tsx - a tick of
+  // its own rather than a rule read off the settlements flag, which thirteen
+  // people hold including credit.
+  { label: "Today", href: "/dashboard", icon: LayoutDashboard, notWithoutToday: true },
   { label: "Deals", href: "/deals", icon: Briefcase },
   // MY WORK WAS HERE, AND IT WAS TODAY TWICE.
   //
@@ -63,7 +66,7 @@ const adminNav = [
 ]
 
 type Profile = { full_name: string; role: string; email: string; is_admin?: boolean; sees_finance?: boolean
-                 sees_settlements?: boolean }
+                 sees_settlements?: boolean; no_today?: boolean }
 
 // Settings has outgrown one scroll, so it nests under the nav item rather than
 // growing a second left column beside the one the portal already has.
@@ -106,7 +109,7 @@ export default function Sidebar() {
     const supabase = createSupabaseBrowser()
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
-      supabase.from('user_profiles').select('full_name, role, email, is_admin, sees_finance, sees_settlements').eq('id', user.id).single()
+      supabase.from('user_profiles').select('full_name, role, email, is_admin, sees_finance, sees_settlements, no_today').eq('id', user.id).single()
         .then(({ data }) => { if (data) setProfile(data) })
     })
   }, [])
@@ -285,6 +288,7 @@ export default function Sidebar() {
         <div className="text-white/30 text-xs uppercase tracking-widest px-2 mb-2">Main</div>
         {nav
           .filter(item => !(item as any).settlementsOnly || profile?.is_admin || profile?.sees_settlements)
+          .filter(item => !(item as any).notWithoutToday || !profile?.no_today)
           .map(item => {
           const Icon = item.icon
           const linkClass = `flex items-center gap-2.5 px-3 py-2 rounded-md text-sm mb-0.5 transition-colors ${

@@ -19,6 +19,22 @@ type UserProfile = {
   sees_finance?: boolean | null
   sees_all_deals?: boolean | null
   sees_settlements?: boolean | null
+  // NO TODAY PAGE.
+  //
+  // 17 Nov 2026. Fabio: "not everyone needs a Today Page so deactive Today tab
+  // from settlem ent staff... any chnace we can remove from the left hand side
+  // so it doesnt confuse them?"
+  //
+  // A TICK OF ITS OWN, NOT A RULE READ OFF ANOTHER FLAG. The obvious shortcut
+  // was to hide Today from anybody who sees the settlements board - and that
+  // would have taken it off nine people, including Dinisha, who is credit and
+  // is on maternity leave with her page waiting for her. sees_settlements
+  // means "can open that board", and thirteen people have it.
+  //
+  // So it is explicit and visible beside the others. Somebody is given a
+  // settlements login next year and nothing silently changes about their
+  // morning.
+  no_today?: boolean | null
 }
 
 // A broker key is the name deals are stamped with. It must match what is already
@@ -142,7 +158,10 @@ export default function TeamSection() {
       : 'Broker key cleared. They no longer appear as a broker anywhere.')
   }
 
-  async function toggleFlag(user: UserProfile, field: 'is_admin' | 'sees_finance' | 'sees_all_deals' | 'sees_settlements') {
+  async function toggleFlag(
+    user: UserProfile,
+    field: 'is_admin' | 'sees_finance' | 'sees_all_deals' | 'sees_settlements' | 'no_today',
+  ) {
     setAccessMsg('')
     const next = !user[field]
     if (!(await writeProfile(user.id, { [field]: next }))) return
@@ -422,7 +441,8 @@ export default function TeamSection() {
                     {([['is_admin', 'Admin', 'Sets targets and monthly actuals'],
                        ['sees_finance', 'Sees finance', 'Commissions and the finance screens'],
                        ['sees_all_deals', 'Sees all deals', 'Every deal, not just their own'],
-                       ['sees_settlements', 'Settlements', 'The settlements board, every broker, from lodgement on']] as const).map(([f, label, why]) => (
+                       ['sees_settlements', 'Settlements', 'The settlements board, every broker, from lodgement on'],
+                       ['no_today', 'No Today page', 'Hides the Today tab. For people who work out of one screen']] as const).map(([f, label, why]) => (
                       <label key={f} className="flex items-start gap-2 mb-1.5 cursor-pointer">
                         <input type="checkbox" checked={!!user[f]} onChange={() => toggleFlag(user, f)} className="mt-[3px]" />
                         <span>

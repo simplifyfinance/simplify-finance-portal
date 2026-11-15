@@ -41,9 +41,26 @@ export default async function Dashboard(
 
   const { data: profile } = await supabase
     .from('user_profiles')
-    .select('role, broker_key, full_name')
+    .select('role, broker_key, full_name, no_today')
     .eq('id', whoseId)
     .single()
+
+  // NOT EVERYBODY HAS A TODAY PAGE.
+  //
+  // 17 Nov 2026. Fabio: "not everyone needs a Today Page so deactive Today tab
+  // from settlem ent staff for now - any chnace we can remove from the left
+  // hand side so it doesnt confuse them?"
+  //
+  // HIDING THE TAB IS NOT ENOUGH. Everything lands on /dashboard - app/page.tsx
+  // redirects there - so somebody with no Today tab would still open the portal
+  // onto the one page they are not meant to use, every morning, with no way
+  // back to it in the sidebar. So they are sent to the screen they do work out
+  // of instead.
+  //
+  // ONLY WHEN THEY ARE LOOKING AT THEIR OWN. An admin viewing somebody else's
+  // Today is reading a page about that person, not using their own, and must
+  // not be bounced out of it.
+  if (!viewingId && (profile as any)?.no_today) redirect('/settlements')
 
   const brokerKey = profile?.broker_key || null
 
