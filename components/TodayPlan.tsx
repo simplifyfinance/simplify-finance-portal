@@ -11,7 +11,7 @@ import TheOrderCame from '@/components/TheOrderCame'
 import { whoHasIt } from '@/lib/who-has-it'
 import { isFinished } from '@/lib/deal-phase'
 import { whichToday, type TodayView } from '@/lib/which-today'
-import { creditDay, openWithSuggestion, SUGGEST } from '@/lib/the-credit-order'
+import { creditDay, openWithSuggestion, PRE_TICKED } from '@/lib/the-credit-order'
 import { daysWaiting, waitedWords, oldestFirst } from '@/lib/how-long-waiting'
 // A broker is never matched by lower-casing a name - brokerKey() takes the
 // first word, so "Fabio De Castro".toLowerCase() never equals "fabio".
@@ -218,6 +218,43 @@ export default function TodayPlan({
       .filter(x => x.stage))
   }, [deals, meOfficerId, brokerKey])
 
+  // THE REST OF THE BOOK, REACHABLE BY SEARCH ONLY.
+  //
+  // 17 Nov 2026. Fabio, on the credit day: "we can still search a deal not
+  // there". A credit assessor sometimes picks up a file that is not assigned
+  // to her, and before this the screen had no way to say so - she worked on it
+  // and the day she told the brokers did not mention it.
+  //
+  // It is NOT a suggestion and it is not in any list. It is only ever found by
+  // typing a name. Nothing from here is ticked for her.
+  const otherFiles = useMemo<PlanDeal[]>(() => {
+    if (!meOfficerId) return []
+    const hers = new Set(mine.map(d => d.id))
+    return deals
+      .filter(live)
+      .filter(d => !hers.has(d.id))
+      .map(d => ({
+        id: d.id, name: d.deal_name, stage: stageWaitingOn(d) || '',
+        since: stageOpenedAt(d) || d.credit_assigned_at || d.created_at,
+        priority: null, broker: d.assigned_broker || '', rework: null,
+      }))
+      .filter(x => x.stage)
+  }, [deals, mine, meOfficerId])
+
+  // AND ONE SHE PICKED UP YESTERDAY IS STILL HERS TODAY.
+  //
+  // Without this, a deal she ticked off somebody else's book is dropped the
+  // next time the page loads - openWithSuggestion() keeps only the saved ids
+  // it can still find, and that one is not on her list. A deal that vanishes
+  // out of a saved day is the one bug this screen must never have.
+  const minePlusPicked = useMemo<PlanDeal[]>(() => {
+    if (!meOfficerId) return mine
+    const hers = new Set(mine.map(d => d.id))
+    const kept = new Set((mySaved?.deals || []).map((d: any) => String(d.id)))
+    const extra = otherFiles.filter(d => !hers.has(d.id) && kept.has(d.id))
+    return extra.length ? [...mine, ...extra] : mine
+  }, [mine, otherFiles, mySaved, meOfficerId])
+
   // CREDIT'S DRAFT IS ORDERED BY HOW CLOSE EACH FILE IS TO LODGING.
   //
   // 16 Nov 2026. Fabio: "if someone is at compliance, I want that to be
@@ -232,21 +269,22 @@ export default function TodayPlan({
   // A BROKER'S DRAFT IS UNTOUCHED. His day is his own book in the order
   // draftDay() already puts it in.
   const drafted = useMemo(
-    () => (meOfficerId ? creditDay(mine) : mine), [mine, meOfficerId])
+    () => (meOfficerId ? creditDay(minePlusPicked) : mine), [minePlusPicked, mine, meOfficerId])
 
   // THE DRAFT, THEN WHATEVER THEY HAVE DONE TO IT SINCE.
   // A CREDIT ASSESSOR'S DAY OPENS EMPTY and she pulls up what she is doing.
   // See startingOrder() - 12 Nov 2026, on an assessor holding fourteen files.
   // WHERE THE DAY OPENS. 16 Nov 2026.
   //
-  // It used to open EMPTY for credit - everything below the line, and she
-  // pulled up what she was doing. That was right while nothing could say which
-  // ten were worth pulling up. Now lib/the-credit-order.ts can, so the portal
-  // offers ten and she unticks what she is not doing.
+  // It opens EMPTY for credit - everything below the line, and she ticks what
+  // she is doing. For a few days in November it opened with ten already
+  // ticked; that came out on 17 Nov 2026. Ten is twice what anybody finishes,
+  // and what the portal is good for is the ORDER she reads the list in, not
+  // deciding her morning. See lib/the-credit-order.ts.
   //
   // A DAY SHE HAS ALREADY SAID YES TO STILL WINS, in both of these.
   const dayOrder = order ?? (view === 'credit'
-    ? openWithSuggestion(drafted.map(d => d.id), mySaved?.deals?.map(d => d.id) || null, SUGGEST)
+    ? openWithSuggestion(drafted.map(d => d.id), mySaved?.deals?.map(d => d.id) || null, PRE_TICKED)
     : startingOrder(drafted.map(d => d.id), mySaved?.deals?.map(d => d.id) || null, false))
   const todayIds = splitAtLine(dayOrder).today
 
@@ -461,6 +499,9 @@ export default function TodayPlan({
   const dayCard = (
     <DayComponent
       deals={drafted.map(d => ({ ...d, days: daysSince(d.since) })) as DayDeal[]}
+      others={otherFiles
+        .filter(d => !drafted.some(m => m.id === d.id))
+        .map(d => ({ ...d, days: daysSince(d.since) })) as DayDeal[]}
       order={dayOrder}
       setOrder={setOrder}
       notes={notes}
@@ -470,7 +511,7 @@ export default function TodayPlan({
       saved={saved}
       busy={busy}
       onConfirm={confirm}
-      heading={view === 'credit' ? '2 — Everything with you' : 'Today, in this order'}
+      heading={view === 'credit' ? 'Everything with you' : 'Today, in this order'}
     />
   )
 

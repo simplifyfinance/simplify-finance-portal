@@ -5,7 +5,7 @@
 // deal that week."
 import { describe, it, expect } from 'vitest'
 import {
-  CREDIT_STAGES, SUGGEST, stageRank, byStageThenAge, openWithSuggestion, pickedWords,
+  CREDIT_STAGES, PRE_TICKED, stageRank, byStageThenAge, openWithSuggestion, pickedWords,
   creditDay,
 } from './the-credit-order'
 
@@ -63,23 +63,32 @@ describe('inside a stage, oldest first', () => {
 describe('where the day opens', () => {
   const ids = Array.from({ length: 27 }, (_, i) => `d${i + 1}`)
 
-  // 16 Nov 2026: it used to open EMPTY - everything below the line.
-  it('with ten ticked, and the rest in the queue', () => {
-    const out = openWithSuggestion(ids, null, SUGGEST, LINE)
-    expect(out.indexOf(LINE)).toBe(10)
-    expect(out.slice(0, 10)).toEqual(ids.slice(0, 10))
-    expect(out.slice(11)).toEqual(ids.slice(10))
+  // 17 Nov 2026. For a few days it opened with ten ticked. Fabio: "we would
+  // need tick 10 things remeber max things you cna do a day 4-5... all boxes
+  // next to it a unticked". Nothing is ticked for her.
+  it('with NOTHING ticked - every file below the line', () => {
+    const out = openWithSuggestion(ids, null, PRE_TICKED, LINE)
+    expect(PRE_TICKED).toBe(0)
+    expect(out.indexOf(LINE)).toBe(0)
+    expect(out.slice(1)).toEqual(ids)
   })
 
-  it('and never offers more than there are', () => {
+  // THE SUGGESTION IS THE ORDER. creditDay() has already put the list in the
+  // order she should read it in, and opening empty does not undo that.
+  it('and the order it is offered in is untouched', () => {
+    const out = openWithSuggestion(['a', 'b', 'c'], null, PRE_TICKED, LINE)
+    expect(out).toEqual([LINE, 'a', 'b', 'c'])
+  })
+
+  it('and still never offers more than there are', () => {
     const three = ['a', 'b', 'c']
-    const out = openWithSuggestion(three, null, SUGGEST, LINE)
+    const out = openWithSuggestion(three, null, 10, LINE)
     expect(out).toEqual(['a', 'b', 'c', LINE])
   })
 
   it('nothing with you is still a line, not a crash', () => {
-    expect(openWithSuggestion([], null, SUGGEST, LINE)).toEqual([LINE])
-    expect(openWithSuggestion(null as any, null, SUGGEST, LINE)).toEqual([LINE])
+    expect(openWithSuggestion([], null, PRE_TICKED, LINE)).toEqual([LINE])
+    expect(openWithSuggestion(null as any, null, PRE_TICKED, LINE)).toEqual([LINE])
   })
 
   // THE RULE THAT MATTERS MOST. Once she has said "this is my day", the portal
@@ -87,28 +96,28 @@ describe('where the day opens', () => {
   describe('but a day she has already said yes to wins', () => {
     it('her saved day stays above the line, whatever the suggestion would be', () => {
       const saved = ['d20', 'd3']
-      const out = openWithSuggestion(ids, saved, SUGGEST, LINE)
+      const out = openWithSuggestion(ids, saved, PRE_TICKED, LINE)
       expect(out.slice(0, out.indexOf(LINE))).toEqual(['d20', 'd3'])
     })
 
     it('and a deal that arrived since goes to the queue, not into her day', () => {
       const saved = ['d2']
-      const out = openWithSuggestion([...ids, 'brand-new'], saved, SUGGEST, LINE)
+      const out = openWithSuggestion([...ids, 'brand-new'], saved, PRE_TICKED, LINE)
       const today = out.slice(0, out.indexOf(LINE))
       expect(today).toEqual(['d2'])
       expect(out.slice(out.indexOf(LINE) + 1)).toContain('brand-new')
     })
 
     it('a saved deal that is no longer hers is dropped, not resurrected', () => {
-      const out = openWithSuggestion(['a', 'b'], ['a', 'gone'], SUGGEST, LINE)
+      const out = openWithSuggestion(['a', 'b'], ['a', 'gone'], PRE_TICKED, LINE)
       expect(out).toEqual(['a', LINE, 'b'])
     })
   })
 })
 
 describe('the counter', () => {
-  it('says what it is out of, without pretending ten is a cap', () => {
-    expect(pickedWords(10, 27)).toBe('of 27 — the most anybody gets through')
+  it('says what it is out of, and what a day actually looks like', () => {
+    expect(pickedWords(4, 27)).toBe('of 27 — most people get through four or five')
   })
 
   it('and says so plainly when there is nothing', () => {

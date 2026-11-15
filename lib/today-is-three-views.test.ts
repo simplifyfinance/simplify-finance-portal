@@ -310,25 +310,26 @@ describe('the line', () => {
   // they will pick the ones that they're doing today." So her day opened with
   // NOTHING above the line and she pulled up what she was doing.
   //
-  // 16 Nov 2026 it opens with TEN, and the reason the first rule existed is
-  // the reason this one can: back then nothing could say which ten were worth
-  // pulling up. Now lib/the-credit-order.ts can - compliance first, because a
-  // file at compliance is the closest one to a deal this week.
+  // 16 Nov 2026 it opened with TEN ticked, because by then something could say
+  // which ten - lib/the-credit-order.ts, compliance first, because a file at
+  // compliance is the closest one to a deal this week.
   //
   //   "If someone is at compliance, I want that to be sitting on the top of
   //    the list for credit, because that means we're going to get a deal that
   //    week."
   //
-  // She unticks what she is not doing. The number she is offered is still the
-  // number she can finish.
-  it('a credit assessor opens with ten ticked, chosen by stage', () => {
+  // 17 Nov 2026 the ticks came out again and the ORDER stayed. Fabio: "max
+  // things you cna do a day 4-5... all boxes next to it a unticked so when we
+  // tick starts arranging in order THEN we confirm this is my day." Ten is
+  // twice a day's work, and a screen that ticks ten things on somebody's
+  // behalf has decided their morning for them.
+  it('a credit assessor opens with nothing ticked, in that order', () => {
     expect(page).toContain("view === 'credit'")
     expect(page).toContain('openWithSuggestion(')
-    expect(page).toContain('creditDay(mine)')
-    expect(openWithSuggestion(['a', 'b', 'c'], null, 2))
-      .toEqual(['a', 'b', LINE, 'c'])
-    expect(splitAtLine(openWithSuggestion(['a', 'b', 'c'], null, 2)))
-      .toEqual({ today: ['a', 'b'], queue: ['c'] })
+    expect(page).toContain('creditDay(')
+    // 17 Nov 2026: the ten that were ticked came out. The ORDER stayed.
+    expect(splitAtLine(openWithSuggestion(['a', 'b', 'c'], null)))
+      .toEqual({ today: [], queue: ['a', 'b', 'c'] })
   })
 
   // AND A DAY SHE HAS ALREADY CONFIRMED IS NEVER REOPENED BY THE SUGGESTION.

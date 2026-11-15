@@ -10,6 +10,14 @@ import { readFileSync } from 'fs'
 import { LINE, moveInOrder, splitAtLine } from './the-days-plan'
 
 const PICK = readFileSync('components/PickTheDay.tsx', 'utf8')
+
+// A CHECK THAT READS A COMMENT IS NOT A CHECK. Six separate guards in this
+// repo have passed or failed on a sentence describing the code rather than on
+// the code, so anything asserting something is ABSENT reads this instead.
+const CODE = PICK
+  .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .split('\n').filter(l => !l.trim().startsWith('//')).join('\n')
 const TODAY = readFileSync('components/TodayPlan.tsx', 'utf8')
 const MYDAY = readFileSync('components/MyDay.tsx', 'utf8')
 
@@ -19,8 +27,8 @@ describe('two boxes for credit, one list for everybody else', () => {
     expect(MYDAY, 'the old day list is still there for brokers').toContain('export default function MyDay')
   })
 
-  it('and the left box is headed by what it holds, not by a day', () => {
-    expect(TODAY).toContain("'2 — Everything with you'")
+  it('and the list is headed by what it holds, not by a day', () => {
+    expect(TODAY).toContain("'Everything with you'")
   })
 })
 
@@ -75,19 +83,71 @@ describe('the right box is the day she will work in', () => {
   })
 })
 
-describe('the left box never reorders itself under her', () => {
+describe('the list never reorders itself under her', () => {
   it('it is grouped into bands and the groups follow the draft', () => {
     expect(PICK).toContain('function bandOf(')
     expect(PICK).toContain("if (d.rework) return 'Sent back'")
     expect(PICK).toContain("if (d.priority) return 'A broker asked'")
   })
 
-  // The box stops growing rather than the list being cut short.
+  // The list stops growing rather than being cut short.
   it('and it scrolls instead of running down the page', () => {
-    expect((PICK.match(/overflow-y-auto/g) || []).length).toBeGreaterThanOrEqual(2)
+    expect(CODE).toContain('overflow-y-auto')
   })
 
   it('nothing sitting with her is still a sentence, not an empty box', () => {
     expect(PICK).toContain('Nothing is sitting with you. Enjoy it.')
+  })
+})
+
+// 17 Nov 2026. THREE THINGS FABIO FOUND ON THE SHIPPED SCREEN.
+//
+//   "I can only see 5 and I can't roll it. So you missed that when you did
+//    the coding."
+//   "we would need tick 10 things remeber max things you cna do a day 4-5"
+//   "all boxes next to it a unticked so when we tick starts arranging in
+//    order THEN we confirm this is my day"
+describe('the day is above the list, and it never traps her', () => {
+  it('this is my day comes first on the screen', () => {
+    const day = PICK.indexOf('2 &mdash; This is my day')
+    const list = PICK.indexOf('{heading}')
+    expect(day, 'the day box must be in the file').toBeGreaterThan(-1)
+    expect(list, 'the list header must be in the file').toBeGreaterThan(-1)
+    expect(day, 'the day she is building sits above the list').toBeLessThan(list)
+  })
+
+  // THE WHOLE FAULT, IN ONE LINE. The day was in a 400px column with a
+  // 360px scroller inside it, so the sixth thing she ticked was unreachable.
+  it('and nothing above the list is a scroller', () => {
+    const above = CODE.split('{heading}')[0]
+    expect(above, 'the day must never be put in a scrolling box').not.toContain('overflow-y-auto')
+    expect(above, 'and it must never be capped in height').not.toMatch(/max-h-\[/)
+  })
+
+  it('exactly one thing on this screen scrolls, and it is the list', () => {
+    expect((CODE.match(/overflow-y-auto/g) || []).length).toBe(1)
+  })
+})
+
+describe('nothing is ticked for her, and she can find a file that is not hers', () => {
+  it('the screen says so rather than leaving her to notice', () => {
+    expect(PICK).toContain('Nothing is ticked for you')
+  })
+
+  it('there is a search, and it reaches past her own list', () => {
+    expect(PICK).toContain('Find a deal')
+    expect(PICK).toContain('Found &mdash; not on your list')
+    expect(PICK).toContain('others')
+  })
+
+  it('and a deal she picks up off somebody else still draws its name', () => {
+    expect(CODE, 'both lists answer "what is this deal called"')
+      .toContain('new Map([...deals, ...others]')
+  })
+
+  // SEARCHING IS NOT SUGGESTING. Nothing from the rest of the book is shown
+  // until she types, and nothing from it is ever ticked for her.
+  it('and the rest of the book is never shown unasked', () => {
+    expect(CODE).toContain('const found = looking')
   })
 })

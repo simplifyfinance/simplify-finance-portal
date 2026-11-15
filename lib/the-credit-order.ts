@@ -36,20 +36,32 @@
 // suggestion, and a suggestion does not outrank an instruction.
 //
 // ---------------------------------------------------------------------------
-// TEN, AND NO MORE
+// THE SUGGESTION IS THE ORDER, NOT THE SELECTION
 // ---------------------------------------------------------------------------
 //
-// Fabio: "don't make more than 10... because remember, they can't do more than
-// 10." It is not a cap - she can tick an eleventh - it is what the portal
-// offers. Suggesting fifteen to somebody who finishes ten is suggesting
-// failure, and a list nobody can finish is a list nobody trusts.
+// 17 Nov 2026. The screen opened with ten ticked. Fabio, looking at it: "we
+// would need tick 10 things remeber max things you cna do a day 4-5... all
+// boxes next to it a unticked so when we tick starts arranging in order THEN
+// we confirm this is my day."
+//
+// So nothing is ticked for her. What the portal offers is the ORDER she should
+// read the list in - compliance first, because that is a deal this week - and
+// she ticks what she is actually doing. A screen that ticks ten things on
+// somebody's behalf has decided their morning for them, and ten is twice what
+// anybody finishes.
 
 /** Closest to a lodged deal first. Anything unrecognised sorts last. */
 export const CREDIT_STAGES = ['Compliance', 'LO', 'BC', 'Fact Find'] as const
 export type CreditStage = typeof CREDIT_STAGES[number]
 
-/** How many the day opens with ticked. */
-export const SUGGEST = 10
+/**
+ * HOW MANY ARE TICKED WHEN SHE ARRIVES. None of them.
+ *
+ * Deliberately a number rather than a removed argument: the day opening with
+ * nothing ticked is a decision somebody made on 17 Nov 2026, and it should be
+ * readable as one.
+ */
+export const PRE_TICKED = 0
 
 export function stageRank(stage: any): number {
   const i = (CREDIT_STAGES as readonly string[]).indexOf(String(stage ?? '').trim())
@@ -75,12 +87,13 @@ export function byStageThenAge<T extends { stage?: any; since?: any }>(rows: T[]
 }
 
 /**
- * WHERE A CREDIT ASSESSOR'S DAY OPENS.
+ * WHERE A CREDIT ASSESSOR'S DAY OPENS. EMPTY.
  *
- * 12 Nov 2026 it opened EMPTY - everything below the line, and she pulled up
- * what she was doing. That was right while nothing could say which ten were
- * worth pulling up. Now something can, so the portal offers them and she
- * unticks what she is not doing.
+ * Everything below the line, and she ticks what she is doing. For a day in
+ * November it opened with ten already ticked; that was taken out on 17 Nov
+ * 2026 because ten is twice what anybody finishes and because deciding
+ * somebody's morning for them is not the portal's job. The portal decides the
+ * ORDER she reads the list in. See the top of this file.
  *
  * A SAVED DAY ALWAYS WINS. Once she has said "this is my day", that is her
  * day - and a deal that arrived since then goes to the queue rather than
@@ -88,7 +101,7 @@ export function byStageThenAge<T extends { stage?: any; since?: any }>(rows: T[]
  * cannot simply be "the first ten every time".
  */
 export function openWithSuggestion(ids: string[], saved: string[] | null | undefined,
-                                   howMany: number = SUGGEST,
+                                   howMany: number = PRE_TICKED,
                                    LINE = '__line__'): string[] {
   const all = (ids || []).filter(Boolean)
   if (saved && saved.length) {
@@ -120,8 +133,14 @@ export function creditDay<T extends { rework?: any; priority?: any; stage?: any;
   return [...back, ...asked, ...byStageThenAge(rest)]
 }
 
-/** For the counter: "10 of 27 — the most anybody gets through". */
+/**
+ * FOR THE COUNTER: "4 of 27 — most people get through four or five".
+ *
+ * It says what a day looks like, and it never says she has picked too many.
+ * 17 Nov 2026, Fabio: "max things you cna do a day 4-5". An eleventh tick is
+ * her call and the counter stays out of it.
+ */
 export function pickedWords(picked: number, all: number): string {
   if (all === 0) return 'nothing with you today'
-  return `of ${all} — the most anybody gets through`
+  return `of ${all} — most people get through four or five`
 }

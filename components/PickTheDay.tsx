@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { LINE, moveInOrder, splitAtLine, noteFor } from '@/lib/the-days-plan'
 import { brokerLabel } from '@/lib/broker-key'
@@ -9,22 +9,28 @@ import { OFFICE } from '@/lib/same-date-everywhere'
 import { pickedWords } from '@/lib/the-credit-order'
 import { type DayDeal } from '@/components/MyDay'
 
-// SHE TICKS, AND THE DAY BUILDS BESIDE HER.
+// SHE TICKS, AND THE DAY BUILDS ABOVE HER.
 //
 // 16 Nov 2026. The day was one list with a line through it: above the line was
-// today, below it was the queue, and you dragged things across. Fabio, on
-// watching it as a credit assessor would: "it's going to confuse my staff...
-// as the credit assessor is selecting the ones that they're doing today, that
-// generates the actual box that becomes, this is my day."
+// today, below it the queue, and you dragged things across. Fabio, watching it
+// as a credit assessor would: "it's going to confuse my staff... as the credit
+// assessor is selecting the ones that they're doing today, that generates the
+// actual box that becomes, this is my day."
 //
 // So it is two boxes, and they are the same list seen twice:
 //
-//   LEFT   everything sitting with her, grouped by stage, with a tick box.
-//          Ten are ticked when she arrives - see lib/the-credit-order.ts,
-//          compliance first because that is a deal this week. The list never
-//          moves, so she can always find a file.
-//   RIGHT  the ones she ticked, numbered, in the order she will work in, and
-//          hers to drag. The box that becomes her day.
+//   TOP    THIS IS MY DAY - the ones she ticked, numbered, in the order she
+//          will work in, hers to drag. It never scrolls and it is never
+//          below the fold, because it is the thing she is building.
+//   UNDER  EVERYTHING WITH YOU - every file sitting with her, grouped by
+//          stage, each with a tick box, plus a search for one that is not on
+//          her list. The list never reorders itself under her.
+//
+// 17 Nov 2026 moved the day above the list and took the ticks out. Fabio, on
+// the version that opened with ten ticked and the day in a short right-hand
+// column: "I can only see 5 and I can't roll it"; and "all boxes next to it a
+// unticked so when we tick starts arranging in order THEN we confirm this is
+// my day". The portal suggests the ORDER. She decides the day.
 //
 // NOTHING NEW IS STORED. Ticked means "above the line" in exactly the order
 // the old screen used, so a day saved yesterday reads the same today and the
@@ -35,13 +41,12 @@ import { type DayDeal } from '@/components/MyDay'
 // wrong thing is a screen nobody trusts with their morning.
 
 const SOFT = 'text-[12px] text-muted'
-const WHY = 'text-[10.5px] text-faint border border-card-line rounded-full px-2 py-[1px] whitespace-nowrap'
 const WHY_P = 'text-[10.5px] text-chase bg-chase-bg border border-chase-edge rounded-full px-2 py-[1px] whitespace-nowrap font-bold'
 const WHY_R = 'text-[10.5px] text-chase bg-chase-bg border border-chase-edge rounded-full px-2 py-[1px] whitespace-nowrap font-bold uppercase tracking-[.03em]'
 const BRK = 'text-[10.5px] text-info bg-info-bg border border-info-edge rounded-full px-2 py-[1px] whitespace-nowrap font-bold'
 const CAP = 'text-[10.5px] font-bold tracking-[0.08em] uppercase text-muted'
 
-/** Which band a deal sits under on the left. The two instructions, then stages. */
+/** Which band a deal sits under on the list. The two instructions, then stages. */
 function bandOf(d: DayDeal): string {
   if (d.rework) return 'Sent back'
   if (d.priority) return 'A broker asked'
@@ -54,11 +59,19 @@ const BAND_NOTE: Record<string, string> = {
   Compliance: 'closest to lodging',
 }
 
+/** Typing two letters is enough to start looking. One letter matches the book. */
+const ENOUGH = 2
+
+const hit = (d: DayDeal, needle: string) =>
+  String(d.name || '').toLowerCase().includes(needle)
+
 export default function PickTheDay({
-  deals, order, setOrder, notes, setNote, onItNow, setOnItNow, saved, busy, onConfirm,
-  canEdit = true, heading = '2 — Everything with you',
+  deals, others = [], order, setOrder, notes, setNote, onItNow, setOnItNow,
+  saved, busy, onConfirm, canEdit = true, heading = 'Everything with you',
 }: {
   deals: DayDeal[]
+  /** Live files that are NOT hers, reachable by search only. */
+  others?: DayDeal[]
   order: string[]
   setOrder: (next: string[]) => void
   notes: Record<string, string>
@@ -73,7 +86,12 @@ export default function PickTheDay({
 }) {
   const [drag, setDrag] = useState<string | null>(null)
   const [writing, setWriting] = useState<string | null>(null)
-  const byId = new Map(deals.map(d => [d.id, d]))
+  const [find, setFind] = useState('')
+
+  // A DEAL SHE TICKED OFF SOMEBODY ELSE'S BOOK STILL HAS TO DRAW. Both lists
+  // answer "what is this deal called", so both go in the map.
+  const byId = useMemo(
+    () => new Map([...deals, ...others].map(d => [d.id, d])), [deals, others])
   const { today } = splitAtLine(order)
 
   // A deal that arrived since the order was worked out goes on the end rather
@@ -96,14 +114,26 @@ export default function PickTheDay({
     setDrag(null)
   }
 
-  // ---- LEFT: everything with her, grouped, never reordered -----------------
+  // ---- THE LIST: everything with her, grouped, never reordered -------------
+  const needle = find.trim().toLowerCase()
+  const looking = needle.length >= ENOUGH
+  const shown = looking ? deals.filter(d => hit(d, needle)) : deals
+
   const bands: Array<{ name: string; deals: DayDeal[] }> = []
-  for (const d of deals) {
+  for (const d of shown) {
     const name = bandOf(d)
     const last = bands[bands.length - 1]
     if (last && last.name === name) last.deals.push(d)
     else bands.push({ name, deals: [d] })
   }
+
+  // NOT ON HER LIST, AND SHE CAN STILL PICK IT UP. 17 Nov 2026: "we can still
+  // search a deal not there". Only ever reached by typing - it is nobody's
+  // suggestion, it is her going to find something.
+  const mineIds = new Set(deals.map(d => d.id))
+  const found = looking
+    ? others.filter(d => !mineIds.has(d.id) && hit(d, needle)).slice(0, 6)
+    : []
 
   const pickRow = (d: DayDeal) => {
     const on = ticked(d.id)
@@ -132,7 +162,7 @@ export default function PickTheDay({
     )
   }
 
-  // ---- RIGHT: the day she is building --------------------------------------
+  // ---- THE DAY she is building --------------------------------------------
   const dayRow = (id: string, i: number) => {
     const d = byId.get(id)
     if (!d) return null
@@ -207,57 +237,21 @@ export default function PickTheDay({
   }
 
   return (
-    <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-start">
-      {/* ================= LEFT ================= */}
-      <div className="min-w-0 flex-1 rounded-xl border border-card-line bg-card px-5 py-4">
-        <div className="mb-1 flex items-center gap-2">
-          <span className={CAP}>{heading}</span>
-          <span className="flex-1" />
-          <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-faint">
-            {deals.length} files &middot; {today.length} ticked
-          </span>
-        </div>
+    <div className="mb-3 flex flex-col gap-3">
 
-        {deals.length === 0 ? (
-          <div className={`${SOFT} py-3`}>Nothing is sitting with you. Enjoy it.</div>
-        ) : (
-          <>
-            <p className="mb-1 text-[11.5px] leading-relaxed text-faint">
-              The first {Math.min(10, deals.length)} are ticked for you &mdash; compliance first,
-              then lending options, then borrowing capacity. Untick anything you are not doing today.
-            </p>
-            {/* IT STOPS GROWING, IT DOES NOT GET CUT SHORT. Everything is here
-                and in order; past about seven rows the box scrolls instead of
-                running down the page. 12 Nov 2026, Fabio: "7 is the maximum I
-                want to show because I want it to be able to scroll, because
-                otherwise this box looks ridiculous." */}
-            <div className="max-h-[360px] overflow-y-auto pr-1">
-              {bands.map(b => (
-                <div key={b.name}>
-                  <div className="mb-[2px] mt-3 flex items-center gap-2.5 first:mt-1">
-                    <span className="whitespace-nowrap text-[10px] font-extrabold uppercase tracking-[0.08em] text-brand-ink">
-                      {b.name}
-                    </span>
-                    <span className="flex-1 border-t border-line-soft" />
-                    <span className="whitespace-nowrap text-[10.5px] text-faint">
-                      {b.deals.length}{BAND_NOTE[b.name] ? ` · ${BAND_NOTE[b.name]}` : ''}
-                    </span>
-                  </div>
-                  {b.deals.map(pickRow)}
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* ================= RIGHT ================= */}
-      <div className={`w-full lg:w-[400px] lg:flex-none rounded-xl bg-card px-5 py-4 ${
+      {/* ================= THIS IS MY DAY ================= */}
+      {/* IT SITS ABOVE THE LIST AND IT NEVER SCROLLS. 17 Nov 2026, Fabio, on
+          it being a short column beside the list: "I can only see 5 and I
+          can't roll it. So you missed that when you did the coding." Four or
+          five rows is a day, and a day is never taller than the screen. */}
+      <div className={`rounded-xl bg-card px-5 py-4 ${
         saved ? 'border border-card-line' : 'border-2 border-ink'}`}>
         <div className="mb-1 flex items-center gap-2">
-          <span className={`${CAP} text-ink`}>This is my day</span>
+          <span className={`${CAP} text-ink`}>2 &mdash; This is my day</span>
           <span className="flex-1" />
-          {canEdit && <span className="text-[10.5px] text-faint">drag to reorder</span>}
+          {canEdit && today.length > 1 && (
+            <span className="text-[10.5px] text-faint">drag to reorder</span>
+          )}
         </div>
 
         <div className="mb-2 flex items-baseline gap-2">
@@ -270,11 +264,10 @@ export default function PickTheDay({
             blank." */}
         {today.length === 0 ? (
           <div className={`${SOFT} rounded-lg border border-dashed border-field-line px-3 py-6 text-center leading-relaxed`}>
-            Nothing ticked yet.<br />Tick what you are doing today and it appears here.
+            Nothing ticked yet.<br />Tick what you are doing today, below, and it builds here.
           </div>
         ) : (
-          <div className="max-h-[360px] overflow-y-auto pr-1"
-               onDragOver={e => e.preventDefault()}
+          <div onDragOver={e => e.preventDefault()}
                onDrop={e => { e.preventDefault(); dropOn(null) }}>
             {today.map((id, i) => dayRow(id, i))}
           </div>
@@ -292,6 +285,69 @@ export default function PickTheDay({
             </button>
           )}
         </div>
+      </div>
+
+      {/* ================= EVERYTHING WITH YOU ================= */}
+      <div className="min-w-0 rounded-xl border border-card-line bg-card px-5 py-4">
+        <div className="mb-1 flex items-center gap-2">
+          <span className={CAP}>{heading}</span>
+          <span className="flex-1" />
+          <span className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-faint">
+            {deals.length} files &middot; {today.length} ticked
+          </span>
+        </div>
+
+        {deals.length === 0 && others.length === 0 ? (
+          <div className={`${SOFT} py-3`}>Nothing is sitting with you. Enjoy it.</div>
+        ) : (
+          <>
+            <p className="mb-2 text-[11.5px] leading-relaxed text-faint">
+              Nothing is ticked for you. The order is the suggestion &mdash; compliance
+              first, then lending options, then borrowing capacity. Tick what you are
+              doing today and it goes up into your day in that order.
+            </p>
+
+            {/* LOOKING FOR ONE THAT IS NOT HERE. 17 Nov 2026: "we can still
+                search a deal not there". It searches her own list first, and
+                then the rest of the book. */}
+            <input value={find} onChange={e => setFind(e.target.value)}
+              placeholder="Find a deal — type a client name"
+              className="mb-2 w-full rounded-[10px] border border-field-line bg-page px-3.5 py-2.5 text-[13.5px]" />
+
+            {found.length > 0 && (
+              <div className="mb-2 rounded-[10px] border border-info-edge bg-info-bg px-3 py-1">
+                <div className="py-1.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-info">
+                  Found &mdash; not on your list
+                </div>
+                {found.map(pickRow)}
+              </div>
+            )}
+
+            {looking && bands.length === 0 && found.length === 0 && (
+              <div className={`${SOFT} py-3`}>Nothing matches &ldquo;{find.trim()}&rdquo;.</div>
+            )}
+
+            {/* IT STOPS GROWING, IT DOES NOT GET CUT SHORT. Everything is here
+                and in order; past about a dozen rows the list scrolls instead
+                of running down the page. The DAY above never does. */}
+            <div className="max-h-[560px] overflow-y-auto pr-1">
+              {bands.map(b => (
+                <div key={b.name}>
+                  <div className="mb-[2px] mt-3 flex items-center gap-2.5 first:mt-1">
+                    <span className="whitespace-nowrap text-[10px] font-extrabold uppercase tracking-[0.08em] text-brand-ink">
+                      {b.name}
+                    </span>
+                    <span className="flex-1 border-t border-line-soft" />
+                    <span className="whitespace-nowrap text-[10.5px] text-faint">
+                      {b.deals.length}{BAND_NOTE[b.name] ? ` · ${BAND_NOTE[b.name]}` : ''}
+                    </span>
+                  </div>
+                  {b.deals.map(pickRow)}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
