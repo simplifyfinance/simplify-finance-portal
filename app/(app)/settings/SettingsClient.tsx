@@ -1,5 +1,6 @@
 'use client'
 import { everyRow } from '@/lib/the-whole-book'
+import SettlementSettingsPane from '@/components/SettlementSettingsPane'
 import { SETTINGS_PANES } from '@/lib/settings-panes'
 import SomethingWrongList from '@/components/SomethingWrongList'
 import { todaySoFar } from '@/lib/compliance-allocation'
@@ -553,6 +554,7 @@ export default function SettingsPage() {
       </div>
       <p className="text-[13px] text-muted mb-1">{activePane.label}</p>
       <p className="text-[11.5px] text-faint mb-8">{activePane.blurb}</p>
+      {pane === 'settlements' && <SettlementSettingsPane />}
       {pane === 'brands' && (
       <section className="mb-10">
         <h2 className="text-[10px] font-semibold text-faint uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-info inline-block shrink-0" />Brands</h2>

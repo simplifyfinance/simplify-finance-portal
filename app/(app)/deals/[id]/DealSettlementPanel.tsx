@@ -1,5 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
+import SettlementSteps from '@/components/SettlementSteps'
+import SettlementTrail from '@/components/SettlementTrail'
+import { useSettlementSettings } from '@/lib/use-settlement-settings'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { todayYmd } from '@/lib/periods'
 import { STATE_LABEL, isRefinance, isPurchase, stepLabel, attentionFor,
@@ -10,8 +13,12 @@ import { OFFICE } from '@/lib/same-date-everywhere'
 // The same fields as the settlements board, on the deal itself, for the people who
 // work settlements. A broker opening this deal never renders it - the panel is the
 // only place in the portal that shows the in-between steps.
-export default function DealSettlementPanel({ deal, onUpdated }: { deal: any; onUpdated?: (patch: any) => void }) {
+export default function DealSettlementPanel({ deal, onUpdated, me }: {
+  deal: any; onUpdated?: (patch: any) => void; me?: { id?: string | null; name?: string | null }
+}) {
   const supabase = createSupabaseBrowser()
+  // Every chase time, from Settings, falling back to the defaults in code.
+  const settings = useSettlementSettings()
   const today = todayYmd()
   const [d, setD] = useState<any>(deal)
   const [draft, setDraft] = useState<any>({})
@@ -35,6 +42,14 @@ export default function DealSettlementPanel({ deal, onUpdated }: { deal: any; on
       review_sent: !!d.review_sent,
       compliance_finalised: !!d.compliance_finalised,
       commission_paid: !!d.commission_paid,
+      // 17 Nov 2026. The lender's solicitor comes in by email when documents
+      // are issued - Belle: "we normally get an email from lender solicitor
+      // when loan documents are issued so reference + settlements handler will
+      // be noted there." Until both are blank the client email says two
+      // business days.
+      lender_solicitor: d.lender_solicitor || '',
+      lender_solicitor_ref: d.lender_solicitor_ref || '',
+      loan_docs_signing: d.loan_docs_signing || '',
     })
   }, [d])
 
@@ -141,12 +156,27 @@ export default function DealSettlementPanel({ deal, onUpdated }: { deal: any; on
               <option key={s} value={s}>{STATE_LABEL[s]}</option>)}
           </select></div>
 
-        <div><label className={lab}>Latest update</label>
-          <input className={inp} placeholder="e.g. settling 3pm" value={draft.settlement_note || ''}
-            onChange={e => setDraft({ ...draft, settlement_note: e.target.value })} /></div>
         <div><label className={lab}>Outstandings</label>
           <input className={inp} placeholder="PEXA TOL, pending OFI" value={draft.outstandings || ''}
             onChange={e => setDraft({ ...draft, outstandings: e.target.value })} /></div>
+
+        {/* HOW THE DOCUMENTS ARE BEING SIGNED. It decides what the client is
+            told and which reminders appear - on an esign deal there is nothing
+            to post, so the reminder to scan copies back does not show. */}
+        <div><label className={lab}>Loan docs completed by</label>
+          <select className={inp} value={draft.loan_docs_signing || ''}
+            onChange={e => setDraft({ ...draft, loan_docs_signing: e.target.value })}>
+            <option value="">Not set</option>
+            <option value="Esign">Esign</option>
+            <option value="Wet sign">Wet sign</option>
+            <option value="Mortgage only to be wet signed">Mortgage only to be wet signed</option>
+          </select></div>
+        <div><label className={lab}>Lender solicitor</label>
+          <input className={inp} placeholder="firm or contact" value={draft.lender_solicitor || ''}
+            onChange={e => setDraft({ ...draft, lender_solicitor: e.target.value })} /></div>
+        <div><label className={lab}>Reference &amp; handler</label>
+          <input className={inp} placeholder="reference, settlements handler" value={draft.lender_solicitor_ref || ''}
+            onChange={e => setDraft({ ...draft, lender_solicitor_ref: e.target.value })} /></div>
 
         {refi && (
           <div><label className={lab}>Discharge form ready</label>
@@ -189,25 +219,37 @@ export default function DealSettlementPanel({ deal, onUpdated }: { deal: any; on
         )}
       </div>
 
-      {!d.settled_at && (
-        <div className="flex gap-2 items-center flex-wrap px-4 pb-4">
-          <span className="text-[10px] font-bold uppercase tracking-[.08em] text-faint mr-1">Step</span>
-          {STEPS.map(s => {
-            const on = stepIsOn(d, s)
-            const when = d[s === 'settlement_booked' ? 'settlement_booked_at' : 'contracts_returned_at']
-            return (
-              <button key={s} type="button" disabled={busy} onClick={() => setStep(s, !on)}
-                title={on && when ? `Recorded ${String(when).slice(0, 10)}. Click to undo.` : ''}
-                className={`text-[12px] rounded-lg px-3 py-1.5 border transition ${on
-                  ? 'bg-ink border-ink text-page font-semibold'
-                  : 'bg-card border-line text-muted hover:bg-page'}`}>
-                {stepLabel(s, d.transaction_type)}
-                {on && when && <span className="font-normal opacity-70 ml-1.5">{String(when).slice(8, 10)}/{String(when).slice(5, 7)}</span>}
-              </button>
-            )
-          })}
-          <span className="text-[11px] text-faint">optional · either can be skipped · both are stages on the board now</span>
+      {/* ATTN SETTLEMENTS - THE FIELD THAT CROSSES THE HANDOVER.
+          The broker and the credit manager write into it before formal, and it
+          comes through when the file lands. Settlements add to it as they go.
+          One field, both sides, nothing retyped. */}
+      <div className="px-4 pb-3">
+        <div className="rounded-xl border border-info-edge border-l-[4px] border-l-info bg-info-bg px-4 py-3">
+          <div className="mb-2 text-[10.5px] font-extrabold uppercase tracking-[.08em] text-info">
+            ATTN Settlements
+          </div>
+          <SettlementTrail deal={d} column="attn_settlements" me={me?.name || ''} busy={busy} tone="info"
+            placeholder="Anything settlements need to know about this file"
+            onWrite={patch => save(patch)} />
         </div>
+      </div>
+
+      {/* LATEST UPDATE, AS A TRAIL. 17 Nov 2026: "a trail, not a box. Every
+          entry dated and named, nothing typed over." settlement_note is left
+          exactly where it is and seeds the first entry. */}
+      <div className="px-4 pb-3">
+        <div className="rounded-xl border border-card-line bg-card px-4 py-3">
+          <div className="mb-2 text-[10.5px] font-extrabold uppercase tracking-[.08em] text-muted">
+            Latest update
+          </div>
+          <SettlementTrail deal={d} me={me?.name || ''} busy={busy} onWrite={patch => save(patch)} />
+        </div>
+      </div>
+
+      {/* THE SEVEN STEPS. See components/SettlementSteps.tsx. */}
+      {!d.settled_at && (
+        <SettlementSteps deal={d} settings={settings} busy={busy}
+          onMove={patch => save(patch)} onTick={patch => save(patch)} />
       )}
 
       <div className="flex items-center gap-3 px-4 py-3 border-t border-[#F6F2EA] bg-[#FDFCFA] flex-wrap">

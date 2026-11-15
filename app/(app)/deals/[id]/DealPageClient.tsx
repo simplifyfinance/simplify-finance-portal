@@ -749,7 +749,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
               is nothing to record. */}
           <OfferAccepted deal={dealData} me={me}
             onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
-          <DealSettlementPanel deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+          <DealSettlementPanel deal={dealData} me={me} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
           <DealCommission deal={dealData} />
         </div>
 

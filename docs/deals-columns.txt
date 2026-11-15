@@ -15,7 +15,10 @@
 #   from information_schema.columns
 #   where table_schema = 'public' and table_name = 'deals';
 #
-# Taken 12 November 2026.
+# Taken 12 November 2026, and again 17 November 2026 after the settlements
+# migration added eight columns: the step and its clock, the two trails, the
+# lender solicitor and its reference, how the documents are being signed, and
+# the per-step checklist.
 #
 # A deal is also SELECTED with two joins, so these are real on the object in
 # memory while being no part of the table. They are allowed by name:
@@ -26,6 +29,7 @@
 
 assigned_broker
 assigned_credit_officer
+attn_settlements
 bc_completed_at
 bc_data
 bc_owner_name
@@ -129,6 +133,8 @@ lender
 lender_id
 lender_ref
 lender_reference
+lender_solicitor
+lender_solicitor_ref
 lo_client_proceeded
 lo_completed_at
 lo_data
@@ -150,6 +156,7 @@ lo_sent_at
 lo_wants_call
 lo_wants_call_at
 loan_amount
+loan_docs_signing
 lodged_at
 lodged_splits
 lodged_total
@@ -188,6 +195,7 @@ property_use
 purchase_address
 purpose
 push_answers
+push_log
 questions_added
 questions_state
 review_sent
@@ -201,9 +209,13 @@ settled_at
 settled_splits
 settled_total
 settlement_booked_at
+settlement_checklist
 settlement_note
+settlement_stage
+settlement_stage_at
 settlement_state
 settlement_step
+settlement_trail
 settlement_updated_at
 settlement_updated_by
 solicitor_email

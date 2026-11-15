@@ -48,6 +48,11 @@ export const SETTINGS_PANES: SettingsPane[] = [
     blurb: 'What each lender pays, on what basis, and what they claw back.' },
   { key: 'ai', label: 'AI expenses', financeOnly: true,
     blurb: 'What the portal spends on Anthropic, by month, person and feature.' },
+  // 17 Nov 2026. Every chase time in the settlements process, because every one
+  // of them is a guess until Julian and Belle have run a month on it. Fabio:
+  // "this is going to be a test and trial and error."
+  { key: 'settlements', label: 'Settlements',
+    blurb: 'How long each settlement step may sit before it is chased, and when the dated work falls due.' },
   { key: 'people', label: 'Credit team',
     blurb: 'Who covers which broker.' },
   { key: 'notifications', label: 'Notifications',

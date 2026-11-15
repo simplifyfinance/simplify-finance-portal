@@ -82,8 +82,7 @@
     "Saved at",
     "Settlement",
     "Yes",
-    "chasing the bank, client to call…",
-    "e.g. settling 3pm"
+    "chasing the bank, client to call…"
   ],
   "app/(app)/deals/[id]/DealCommission.tsx": [
     "Clawback",
