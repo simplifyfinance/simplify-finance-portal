@@ -16,10 +16,20 @@
 // the button. An email that is not ready is still listed and still says why -
 // hiding it just means somebody asks where it went.
 
+import { reached } from './the-seven-steps'
+
 const txt = (v: any) => String(v ?? '').trim()
 
 export type TemplateId = 'preapproval' | 'preapproval_extension' | 'formal_approval'
   | 'final_checkin' | 'offer_accepted'
+  // THE SETTLEMENT FIVE, 17 Nov 2026. Same dropdown, same preview, same copy
+  // and paste - Fabio: "Look at how we do the templates. There's a little drop
+  // down box on the deal card... Nothing changes."
+  //
+  // The formal approval is NOT one of them. The spec says formal approval and
+  // the welcome are one email, and the portal already sends the approval, so it
+  // is extended rather than joined by a near-identical second email.
+  | 'loan_documents' | 'settlement_numbers' | 'settlement_booked' | 'settled' | 'month_in'
 
 export type MilestoneTemplate = {
   id: TemplateId
@@ -66,6 +76,18 @@ export const TEMPLATES: MilestoneTemplate[] = [
   { id: 'preapproval', name: 'Pre-approval', letterRequired: true, copySettlements: false, picksSender: false },
   { id: 'preapproval_extension', name: 'Pre-approval extension', letterRequired: true, copySettlements: false, picksSender: false },
   { id: 'formal_approval', name: 'Formal approval', letterRequired: true, copySettlements: true, picksSender: false },
+  // NONE OF THE FIVE CARRIES A LENDER'S LETTER. They announce what WE are doing
+  // - documents are out, here are the numbers, the date is set, it is done.
+  // The one attachment among them is the settlement summary on the settled
+  // email, which is ours and not the bank's.
+  //
+  // Settlements are copied on all but the last: there is a settlement running.
+  // A month after it has gone there is nothing for them to act on.
+  { id: 'loan_documents', name: 'Loan documents', letterRequired: false, copySettlements: true, picksSender: false },
+  { id: 'settlement_numbers', name: 'Settlement numbers', letterRequired: false, copySettlements: true, picksSender: false },
+  { id: 'settlement_booked', name: 'Settlement booked', letterRequired: false, copySettlements: true, picksSender: false },
+  { id: 'settled', name: 'Settled', letterRequired: false, copySettlements: true, picksSender: false },
+  { id: 'month_in', name: 'One month in', letterRequired: false, copySettlements: false, picksSender: false },
 ]
 
 export function templateById(id: any): MilestoneTemplate | null {
@@ -136,6 +158,13 @@ export type MenuItem = {
   note: string
 }
 
+/** Whole days since an ISO date, or null where there is not one. */
+function daysSince(iso: any, now: Date = new Date()): number | null {
+  const d = new Date(txt(iso))
+  if (!txt(iso) || Number.isNaN(d.getTime())) return null
+  return Math.floor((now.getTime() - d.getTime()) / 86400000)
+}
+
 function when(iso: any): string {
   const d = new Date(txt(iso))
   if (!txt(iso) || Number.isNaN(d.getTime())) return ''
@@ -198,6 +227,62 @@ function readiness(deal: any, t: MilestoneTemplate): { state: MenuState; note: s
     return already
       ? { state: 'sent', note: sentNote }
       : { state: 'ready', note: `pre-approved ${when(deal.preapproval_at)}` }
+  }
+
+  // THE SETTLEMENT FIVE ASK THE DEAL, like the formal approval does.
+  //
+  // Each one announces something that has either happened or has not, and the
+  // settlement steps already record exactly that. A template whose moment has
+  // not arrived is listed and says why rather than hidden - a missing button is
+  // a question and a greyed one is an answer.
+  if (t.id === 'loan_documents') {
+    if (!reached(deal, 'contracts_issued')) {
+      return { state: 'not_yet', note: 'the loan documents have not been issued yet' }
+    }
+    return already
+      ? { state: 'sent', note: `${sentNote}${timesSent(deal, t.id) > 1 ? ` \u00b7 ${timesSent(deal, t.id)} times` : ''}` }
+      : { state: 'ready', note: 'the documents are out to the client' }
+  }
+
+  if (t.id === 'settlement_numbers') {
+    // A DATE, NOT A STEP. The numbers go about a week before settlement, and
+    // what makes that possible is knowing the day - which can be a booked date
+    // or an expected one.
+    const on = txt(deal?.confirmed_settlement_date) || txt(deal?.expected_settlement_date)
+    if (!on) return { state: 'not_yet', note: 'no settlement date yet' }
+    return already
+      ? { state: 'sent', note: sentNote }
+      : { state: 'ready', note: `settling ${when(on)}` }
+  }
+
+  if (t.id === 'settlement_booked') {
+    // CONFIRMED, NOT EXPECTED. "Your settlement is booked" about a date nobody
+    // has accepted is the email that gets a client to book a removalist.
+    const on = txt(deal?.confirmed_settlement_date)
+    if (!on) return { state: 'not_yet', note: 'no confirmed settlement date' }
+    return already
+      ? { state: 'sent', note: sentNote }
+      : { state: 'ready', note: `booked for ${when(on)}` }
+  }
+
+  if (t.id === 'settled') {
+    if (!deal?.settled_at) return { state: 'not_yet', note: 'not settled yet' }
+    return already
+      ? { state: 'sent', note: sentNote }
+      : { state: 'ready', note: `settled ${when(deal.settled_at)}` }
+  }
+
+  if (t.id === 'month_in') {
+    if (!deal?.settled_at) return { state: 'not_yet', note: 'not settled yet' }
+    const days = daysSince(deal.settled_at)
+    if (already) return { state: 'sent', note: sentNote }
+    // READY EARLY RATHER THAN LOCKED. Thirty days is when it is DUE, and a
+    // client who rings on day twenty with a question is a client somebody wants
+    // to send it to. The note says how long it has been so nobody sends it on
+    // the afternoon of settlement by accident.
+    return days === null
+      ? { state: 'ready', note: 'settled' }
+      : { state: 'ready', note: days >= 30 ? `settled ${days} days ago - due now` : `settled ${days} days ago` }
   }
 
   // preapproval_extension
@@ -279,7 +364,17 @@ const NEVER_SUGGESTED: TemplateId[] = ['final_checkin', 'offer_accepted']
 // It stays in TEMPLATES and in menuFor: those are the record of what exists,
 // and the send screen still opens on ?email=offer_accepted. Only the two LISTS
 // somebody browses leave it out.
-export const SENT_FROM_ITS_OWN_STEP: TemplateId[] = ['offer_accepted']
+//
+// THE SETTLEMENT FIVE JOIN IT, for the same reason and after the same kind of
+// bug. They read the settlement date, the outstandings, the figures and the
+// lender's own answers - none of which can be filled in from the Templates
+// page. Sent from there they would quietly fall back to whatever the deal
+// happened to hold, which is exactly how the offer accepted email once quoted
+// a product and a rate nobody had typed.
+export const SENT_FROM_ITS_OWN_STEP: TemplateId[] = [
+  'offer_accepted',
+  'loan_documents', 'settlement_numbers', 'settlement_booked', 'settled', 'month_in',
+]
 
 /** The menu somebody browses. The same list, less the ones with one door. */
 export function menuToBrowse(deal: any): MenuItem[] {

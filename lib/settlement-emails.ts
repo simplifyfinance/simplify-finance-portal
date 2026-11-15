@@ -30,6 +30,8 @@ import {
   outstandingBox, INFO_BG, plain, strip,
 } from './milestone-email-parts'
 import { reviewButton, reviewText } from './the-review-ask'
+import { splitsOf } from './deal-structure'
+import { readRepayment } from './years-and-months'
 
 const txt = (v: any) => String(v ?? '').trim()
 
@@ -391,4 +393,51 @@ export function monthInEmail(ctx: SettlementEmailContext & { checks?: string[] }
       ctx.senderName, (ctx.brand || DEFAULT_BRAND).name,
     ]),
   }
+}
+
+/**
+ * THE SETTLEMENT DAY, AS A PERSON SAYS IT.
+ *
+ * "Friday 28 November", never 2026-11-28. A client reading a date in a
+ * settlement email should not have to work out which day of the week it falls
+ * on - that is the single most common question they ring about.
+ *
+ * Empty where there is no date, so every sentence that uses one can be left out
+ * rather than printed with a hole in it.
+ */
+export function settlementWords(iso: any): string {
+  const raw = txt(iso)
+  if (!raw) return ''
+  const d = new Date(raw.length <= 10 ? `${raw}T00:00:00` : raw)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('en-AU',
+    { timeZone: 'Australia/Sydney', weekday: 'long', day: 'numeric', month: 'long' })
+}
+
+/**
+ * WHAT WE ARE WAITING ON, AS LINES.
+ *
+ * The Outstandings field IS the Outstandings step - whatever the team typed is
+ * what we are waiting for. It prints into the client email so nothing is
+ * retyped, which is the whole reason it is one field and not two.
+ *
+ * Split on new lines and bullets, because people type it as a list however the
+ * box is shaped.
+ */
+export function outstandingLines(deal: any): string[] {
+  return txt(deal?.outstandings)
+    .split(/\r?\n|^\s*[-•*]\s+/m)
+    .map(l => l.replace(/^\s*[-•*]\s*/, '').trim())
+    .filter(Boolean)
+}
+
+/**
+ * IS ANY PART OF THIS LOAN INTEREST ONLY?
+ *
+ * Decides whether the missing first-repayment answer is worth saying anything
+ * about. On a principal and interest loan nobody needs to be told when the
+ * first repayment comes out - it is the ordinary one.
+ */
+export function isIoDeal(deal: any): boolean {
+  return (splitsOf(deal) || []).some((sp: any) => readRepayment(sp?.repaymentType) === 'IO')
 }

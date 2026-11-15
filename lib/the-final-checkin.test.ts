@@ -223,11 +223,13 @@ describe('every template can say its own name', () => {
   // entry for that file was reduced by exactly those two.
   //
   // THIS IS WHAT REPLACES IT. The snapshot could only see the copy; this sees
-  // the original, and it covers all four rather than the two that happened to
-  // be spelled out.
+  // the original, and it covers every template rather than the two that
+  // happened to be spelled out.
   it('every name a person reads on the send screen is here', () => {
     expect(TEMPLATES.map(t => t.name).sort()).toEqual(
-      ['Final check-in', 'Formal approval', 'Offer accepted', 'Pre-approval', 'Pre-approval extension'])
+      ['Final check-in', 'Formal approval', 'Loan documents', 'Offer accepted', 'One month in',
+       'Pre-approval', 'Pre-approval extension', 'Settled', 'Settlement booked',
+       'Settlement numbers'])
   })
 
   it('no two share one, and none is blank', () => {

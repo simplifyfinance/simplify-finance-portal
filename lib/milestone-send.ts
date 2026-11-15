@@ -17,12 +17,18 @@
 // which the send screen prints before anybody presses anything. An email that
 // quietly drops a condition is the failure this whole area exists to prevent.
 
+import {
+  loanDocumentsEmail, settlementNumbersEmail, settlementBookedEmail, settledEmail,
+  monthInEmail, settlementWords, outstandingLines, isIoDeal,
+} from './settlement-emails'
+import { securitiesOf } from './box-security'
+import { isPurchase, isRefinance, settlementDate } from './settlement'
 import { templateById, type TemplateId, type MilestoneTemplate } from './milestone-emails'
 import { formalApprovalBlocks, preapprovalBlocks, withOverrides, on,
          securityState, waitingOnLender, type Block, type Overrides, offerAcceptedBlocks} from './milestone-blocks'
 import { milestoneRows, loanDetails, missingFigures } from './milestone-figures'
 import { loanDetailsNow } from './the-loan-now'
-import { contractsByPhrase, insuredPartyName, type LenderRule } from './lender-rules'
+import { contractsByPhrase, insuredPartyName, type LenderRule, answerTo } from './lender-rules'
 import { buildFormalApprovalEmail } from './formal-approval-email'
 import { buildOfferAcceptedEmail, loanMovedLine, depositPaidLine } from './offer-accepted-email'
 import { buildPreapprovalEmail } from './preapproval-email'
@@ -319,6 +325,74 @@ export function assembleMilestoneEmail(input: AssembleInput): Assembled | null {
       senderPhone: input.sender.phone,
       senderWeb: brandWeb(brand),
     })
+  } else if (template.id === 'loan_documents' || template.id === 'settlement_numbers'
+      || template.id === 'settlement_booked' || template.id === 'settled'
+      || template.id === 'month_in') {
+    // THE SETTLEMENT FIVE.
+    //
+    // One context, five builders. Everything a lender decides comes off the
+    // lender rules and is left out where nobody has answered - the same rule
+    // the formal approval's insurance line has followed since September.
+    const ff = deal?.fact_find_data || {}
+    const subtype = securitiesOf(deal).map((x: any) => txt(x.subtype)).find(Boolean) || ''
+    const ctx = {
+      brand,
+      clientNames,
+      lenderName,
+      propertyAddress: propertyAddressOf(deal),
+      settlementDate: settlementWords(settlementDate(deal)),
+      // Learned once per bank. Empty is a real answer and means the block goes.
+      firstRepaymentIO: answerTo(rules, 'first_repayment_io'),
+      directDebitGuidance: answerTo(rules, 'direct_debit_guidance'),
+      strataFromClient: answerTo(rules, 'strata_on_refinance') === 'yes',
+      insuredParty: phrases.insuredParty,
+      contractsBy: phrases.contractsBy,
+      // The documents live inside internet banking, so they cannot sign until
+      // they have registered.
+      registrationFirst: answerTo(rules, 'contracts_issued_by') === 'online',
+      isPurchase: isPurchase(deal),
+      isRefinance: isRefinance(deal),
+      isStrata: /unit|townhouse|strata/i.test(subtype),
+      outstandings: outstandingLines(deal),
+      senderName: input.sender.name,
+      senderEmail: input.sender.email,
+      senderPhone: input.sender.phone,
+      senderWeb: brandWeb(brand),
+      extra: txt(input.extra),
+    }
+
+    if (template.id === 'loan_documents') {
+      built = loanDocumentsEmail(ctx)
+    } else if (template.id === 'settlement_numbers') {
+      // THE BREAKDOWN IS NOT BUILT YET, AND THE EMAIL SAYS SO RATHER THAN
+      // INVENTING ONE. The spec gives a different set of figures per
+      // transaction type - payout, surplus, contribution, equity released -
+      // and none of them is worked out anywhere in the portal yet. An email
+      // that quotes a made-up surplus is the exact thing this whole build
+      // refuses to do, so it goes out with no table and the screen says why.
+      problems.push('The settlement figures are not worked out by the portal yet, so this email has no '
+        + 'breakdown in it. Type the numbers into the box below, or send it once that is built.')
+      built = settlementNumbersEmail({ ...ctx, rows: [] })
+    } else if (template.id === 'settlement_booked') {
+      if (!txt(ctx.settlementDate)) {
+        problems.push('No settlement date is recorded, so the email cannot name the day.')
+      }
+      if (!txt(ctx.firstRepaymentIO) && isIoDeal(deal)) {
+        problems.push(`This is an interest only loan and nobody has recorded when `
+          + `${lenderName || 'this lender'} takes the first repayment, so that line is left out. `
+          + `Answer it on the Lenders page and it is remembered for every deal after this one.`)
+      }
+      built = settlementBookedEmail(ctx)
+    } else if (template.id === 'settled') {
+      built = settledEmail(ctx)
+    } else {
+      // THE FOUR CHECKS WERE NEVER WRITTEN DOWN. The communication breakdown
+      // says this email carries them and does not list them, so the section
+      // does not print - see monthInEmail.
+      problems.push('The four checks for this email have not been written yet, so that section is '
+        + 'left out. Add them to the box below for now.')
+      built = monthInEmail(ctx)
+    }
   } else if (template.id === 'formal_approval') {
     // The other side only goes on the copy line when the block is on, which is
     // the same condition the sentence in the email is written under. One

@@ -3,7 +3,7 @@ import MilestoneFromTemplates from '@/components/MilestoneFromTemplates'
 import { TEMPLATES as MILESTONE_TEMPLATES, SENT_FROM_ITS_OWN_STEP,
          type TemplateId } from '@/lib/milestone-emails'
 
-// THE SAME FOUR, FROM THE SAME LIST lib/milestone-emails.ts holds - so this
+// THE SAME LIST lib/milestone-emails.ts holds lib/milestone-emails.ts holds - so this
 // page cannot offer one the deal does not, or miss one it gains. The Record is
 // typed by TemplateId on purpose: a template added there and forgotten here
 // fails the build rather than quietly going missing from this page. It did
@@ -17,6 +17,18 @@ const MILESTONE_BLURB: Record<TemplateId, string> = {
   offer_accepted: 'A pre-approved client has had an offer accepted. Confirms the valuation, the '
     + 'final purchase numbers and the loan, and chases what is still outstanding. Always '
     + 'available \u2014 no stage to wait for.',
+  // THE SETTLEMENT FIVE. Each one is sent from the deal, where the figures and
+  // the lender answers live - the same reason the offer accepted email has one
+  // door. They are described here because this page is the record of what
+  // exists, and a template that vanishes is a template somebody hunts for.
+  loan_documents: 'The documents are out to the client. Carries the checklist, the insurance wording '
+    + 'for that lender, and whatever is still outstanding.',
+  settlement_numbers: 'Where the money goes on the day. Not sent on a dollar-for-dollar refinance \u2014 '
+    + 'there is no number to tell them.',
+  settlement_booked: 'The date is confirmed and every party has accepted it.',
+  settled: 'It has gone through. Carries the settlement summary and the review request.',
+  month_in: 'About a month after settlement \u2014 a check that everything is running, with the Loan '
+    + 'Guide attached.',
 }
 // ONE DOOR FOR THE OFFER ACCEPTED EMAIL, AND IT IS NOT THIS PAGE.
 //

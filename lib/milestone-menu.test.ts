@@ -20,7 +20,7 @@ const sent = (template: any, at: string, by = 'Katie Amos'): SentEmail => ({
 })
 
 describe('the catalogue', () => {
-  it('is five, and there is still no conditional approval template', () => {
+  it('is ten, and there is still no conditional approval template', () => {
     // 9 Oct 2026: the final check-in joined them, for a client who has gone
     // quiet after the borrowing capacity. It leads the list because it is the
     // earliest point a deal can reach it - TEMPLATES is in the order a deal
@@ -29,8 +29,14 @@ describe('the catalogue', () => {
     // 21 Oct 2026: the offer accepted joined them, for a pre-approved client
     // who has found a house. It sits beside the final check-in at the top for
     // the same reason - neither waits for a milestone the record knows about.
+    // 17 Nov 2026: the settlement five joined them, in the order a deal lives
+    // them - documents out, numbers, booked, settled, a month later. The formal
+    // approval is NOT among them: the spec makes the approval and the welcome
+    // one email, so it was extended rather than duplicated.
     expect(TEMPLATES.map(t => t.id))
-      .toEqual(['final_checkin', 'offer_accepted', 'preapproval', 'preapproval_extension', 'formal_approval'])
+      .toEqual(['final_checkin', 'offer_accepted', 'preapproval', 'preapproval_extension',
+        'formal_approval', 'loan_documents', 'settlement_numbers', 'settlement_booked',
+        'settled', 'month_in'])
     expect(templateById('conditional_approval')).toBeNull()
   })
 
@@ -58,10 +64,16 @@ describe('the catalogue', () => {
     }
   })
 
-  it('only the formal approval copies settlements', () => {
+  it('settlements are copied once there is a settlement to run', () => {
     // There is no settlement to run on a pre-approval, and a house hunt can take
     // months - copying them would fill an inbox with deals nobody can act on.
-    expect(TEMPLATES.filter(t => t.copySettlements).map(t => t.id)).toEqual(['formal_approval'])
+    //
+    // From formal approval on there IS one, so they are on every email until
+    // the deal has settled and a month has passed - at that point there is
+    // nothing left for them to act on.
+    expect(TEMPLATES.filter(t => t.copySettlements).map(t => t.id)).toEqual([
+      'formal_approval', 'loan_documents', 'settlement_numbers', 'settlement_booked', 'settled'])
+    expect(templateById('month_in')!.copySettlements).toBe(false)
   })
 })
 
@@ -120,7 +132,7 @@ describe('what is ready on a deal', () => {
 
     // Listed rather than hidden - a missing button is a question, a greyed one
     // is an answer.
-    expect(menu).toHaveLength(5)
+    expect(menu).toHaveLength(10)
     for (const i of menu) expect(i.note).not.toBe('')
   })
 
@@ -190,6 +202,14 @@ describe('the menu reads in a useful order', () => {
       ['offer_accepted', 'ready'],
       ['final_checkin', 'ready'],
       ['preapproval', 'sent'],
+      // The settlement five are last and say why: this deal is formally
+      // approved and has not reached any of them. Listed rather than hidden,
+      // in the order a deal lives them, which is how somebody reads a history.
+      ['loan_documents', 'not_yet'],
+      ['settlement_numbers', 'not_yet'],
+      ['settlement_booked', 'not_yet'],
+      ['settled', 'not_yet'],
+      ['month_in', 'not_yet'],
     ])
   })
 
