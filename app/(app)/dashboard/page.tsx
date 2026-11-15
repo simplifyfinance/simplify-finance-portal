@@ -2,13 +2,10 @@ import { everyRow } from '@/lib/the-whole-book'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { realDealsOnly, REAL_DEALS_OR } from '@/lib/test-deal'
 import { redirect } from 'next/navigation'
-import DashboardClient from './DashboardClient'
-import { whichToday, showsTheBusinessDashboard } from '@/lib/which-today'
+import { whichToday } from '@/lib/which-today'
 import TodayPlan from '@/components/TodayPlan'
 import RunThrough from '@/components/RunThrough'
 import RateNoticeNag from '@/components/RateNoticeNag'
-import ThisWeek from '@/components/ThisWeek'
-import DueToLodge from '@/components/DueToLodge'
 import { todayYmd } from '@/lib/periods'
 import { needsChasing, chaseLine, latest as latestPush, mineNotArrived } from '@/lib/the-push-leaves-a-mark'
 import { whereItIs } from '@/lib/the-run-through'
@@ -372,14 +369,19 @@ export default async function Dashboard(
         *
         * A broker's page keeps them until the broker view is designed; a credit
         * assessor never had them. */}
-      {/* NOT ON A BROKER'S TODAY EITHER. 15 Nov 2026 - these asked "is this an
-        * admin", which let them through to Keanen and Justin alongside the
-        * business dashboard. A broker's screen is the Monday ask, where his
-        * deals are, and a New deal card. Nothing else. */}
-      {todayView === 'credit' && <ThisWeek deals={deals || []} />}
-      {todayView === 'credit' && (
-        <DueToLodge deals={deals || []} brokerNames={brokerNames} canSet={!!seesAll && !viewingId} />
-      )}
+      {/* THIS WEEK AND DUE TO LODGE ARE NOT ON ANYBODY'S TODAY. 15 Nov 2026.
+        *
+        * They used to be drawn for whoever was not credit and not admin -
+        * brokers and office staff. On 15 Nov I rewrote that condition as
+        * "credit", which is its exact opposite: brokers correctly lost them
+        * and Katie wrongly gained two business-wide lists she had never seen.
+        * Shipped in 61f012b, and Fabio found it the same morning looking at
+        * her screen.
+        *
+        * Neither belongs here for anyone. A broker's Today is his own book; a
+        * credit assessor's Today is her own day. What lodged across the firm
+        * is the Monday run-through, and the lodgement queue has its own page
+        * at /lodgements, where it is somebody's job rather than scenery. */}
       {/* THE MONDAY MEETING, AND IT IS THE WHOLE ADMIN PAGE.
         *
         * 12 Nov 2026. Fabio, on what Today is for from an admin seat: "we go
@@ -425,17 +427,20 @@ export default async function Dashboard(
       />
       )}
     </div>
-    {showsTheBusinessDashboard(todayView) && (
-      <DashboardClient
-        deals={deals || []}
-        fullName={profile?.full_name || null}
-        brokerKey={brokerKey}
-        creditOfficerId={creditOfficerId}
-        allowToggle={allowToggle}
-        defaultView={defaultView}
-        brokerNames={brokerNames}
-      />
-    )}
+    {/* THE BUSINESS DASHBOARD IS NOT ON TODAY AT ALL. 15 Nov 2026.
+      *
+      * A second greeting, Deals by broker across the whole firm, Needs your
+      * action, six counting tiles and Recent deals - bolted under whoever's
+      * day happened to be above it.
+      *
+      * Admin lost it on 12 Nov, brokers on 15 Nov, and credit the same day
+      * once Fabio saw Katie's screen: "Nothing else in today. Just what you're
+      * showing me."
+      *
+      * TODAY IS ONE PERSON'S DAY. Credit's is the three numbered steps and the
+      * box that sends them. A broker's is the Monday ask, where his deals are,
+      * and a New deal card. Admin's is the run-through. None of them is a
+      * place to park counts of the whole business. */}
     </>
   )
 }

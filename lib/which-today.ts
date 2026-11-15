@@ -60,12 +60,15 @@ export function whichToday(officerId: any, seesAll: any): TodayView {
   return 'broker'
 }
 
-/**
- * DOES THE BUSINESS DASHBOARD BELONG UNDER THIS TODAY?
- *
- * Only for credit. An admin gets the run-through instead, and a broker gets
- * his own three boxes and nothing else bolted underneath.
- */
-export function showsTheBusinessDashboard(view: TodayView): boolean {
-  return view === 'credit'
-}
+// THERE IS NO LONGER A showsTheBusinessDashboard().
+//
+// 15 Nov 2026. It answered "does the business dashboard belong under this
+// Today", and for a day the answer was "yes, for credit". Fabio looked at
+// Katie's screen that morning: "Nothing else in today. Just what you're
+// showing me."
+//
+// So the answer is no, for everybody, and a function that can only ever
+// return false is a question nobody should be asking. Today is one person's
+// day - credit's three numbered steps, a broker's own book, admin's
+// run-through - and none of them is a place to park counts of the whole
+// business. app/(app)/dashboard/page.tsx draws none of it now.

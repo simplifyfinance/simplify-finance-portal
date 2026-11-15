@@ -13,7 +13,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { LINE, splitAtLine, startingOrder } from './the-days-plan'
-import { whichToday, showsTheBusinessDashboard } from './which-today'
+import { whichToday } from './which-today'
 
 const page = readFileSync('components/TodayPlan.tsx', 'utf8')
 const dash = readFileSync('app/(app)/dashboard/page.tsx', 'utf8')
@@ -78,22 +78,42 @@ describe('three views, and admin wins', () => {
     })
   })
 
-  describe('and a broker gets his three boxes and nothing bolted underneath', () => {
-    it('the business dashboard is for credit only', () => {
-      expect(showsTheBusinessDashboard('credit')).toBe(true)
-      expect(showsTheBusinessDashboard('broker')).toBe(false)
-      expect(showsTheBusinessDashboard('admin')).toBe(false)
+  // ---------------------------------------------------------------------
+  // TODAY IS ONE PERSON'S DAY - 15 Nov 2026
+  // ---------------------------------------------------------------------
+  //
+  // The business dashboard was bolted under whoever's day happened to be
+  // above it: a second greeting, Deals by broker across the firm, Needs your
+  // action, six counting tiles, Recent deals. Admin lost it on 12 Nov,
+  // brokers on 15 Nov, and credit the same day once Fabio saw Katie's screen:
+  // "Nothing else in today. Just what you're showing me."
+  //
+  // It is now drawn for NOBODY. So is This week, and so is Due to lodge -
+  // which had reached brokers and office staff for weeks, and reached Katie
+  // for one day because I inverted the condition that kept them away.
+  describe('and nobody has the business bolted under their day', () => {
+    const DEAD = ['<DashboardClient', '<ThisWeek', '<DueToLodge']
+
+    it('none of it is drawn on Today, for any seat', () => {
+      const code = dash.split('\n')
+        .filter(l => !l.trim().startsWith('*') && !l.trim().startsWith('{/*')
+                     && !l.trim().startsWith('//'))
+        .join('\n')
+      for (const gone of DEAD) {
+        expect(code, `${gone} is back on somebody's Today`).not.toContain(gone)
+      }
     })
 
-    it('and the page asks that, not "is this an admin"', () => {
-      expect(dash).toContain('showsTheBusinessDashboard(todayView)')
-      expect(dash, 'the old guard let every non-admin through')
-        .not.toContain('{!theirScreen && (\n      <DashboardClient')
+    it('and it is not imported either, so it cannot creep back in', () => {
+      for (const gone of ['DashboardClient', 'ThisWeek', 'DueToLodge']) {
+        expect(dash, `${gone} is imported again`).not.toContain(`import ${gone} `)
+      }
     })
 
-    it('This week and Due to lodge are credit\'s, not a broker\'s', () => {
-      expect(dash).toContain("{todayView === 'credit' && <ThisWeek")
-      expect(dash, 'this let brokers through').not.toContain('!creditOfficerId && !theirScreen')
+    // The old condition read "not credit and not admin", which is how brokers
+    // and staff got them in the first place.
+    it('and the condition that let them through is gone', () => {
+      expect(dash).not.toContain('!creditOfficerId && !theirScreen')
     })
   })
 
@@ -207,10 +227,12 @@ describe('the page is given what the three views need', () => {
     expect(dash).toContain('{theirScreen ? (')
     expect(dash).not.toContain('!creditOfficerId && !seesAll')
     expect(dash).not.toContain('{!seesAll && (')
-    // ...while what the SIGNED-IN person is allowed to change still comes from
-    // their own permission, and is off entirely while they are looking at
-    // somebody else's day.
-    expect(dash).toContain('canSet={!!seesAll && !viewingId}')
+    // There used to be a third assertion here, on Due to lodge's canSet prop:
+    // what the SIGNED-IN person may change comes from their own permission and
+    // is off while they are looking at somebody else's day. Due to lodge left
+    // Today on 15 Nov, so the assertion went with it rather than being kept
+    // alive against a panel nobody draws. The rule itself still holds on the
+    // run-through's target - see RunThrough's canSetTarget.
   })
 
   it('and reads the brokers’ half of the plans table', () => {
