@@ -103,3 +103,23 @@ export function holdWords(n: number): string {
     ? 'One left to settle before the client is told'
     : `${n} left to settle before the client is told`
 }
+
+/**
+ * SOMEBODY'S ANSWER, RECORDED AGAINST ONE ROW OF ONE LOAN.
+ *
+ * A loan contract and a formal approval letter both arrive as several loans,
+ * so their answers are kept per loan and then per field. This returns the whole
+ * reading back with the one answer folded in, because settlement_documents is a
+ * JSON column and two half-writes lose an answer.
+ *
+ * It lives here rather than in either screen: it was written twice, once in
+ * each, and the repo's own duplicate-logic guard caught it on the first run.
+ */
+export function withAnswer<T extends { answers?: Record<string, Record<string, Answer>> }>(
+  read: T, loan: number, field: string, a: Answer,
+): T {
+  const answers = { ...(read.answers || {}) }
+  const key = String(loan)
+  answers[key] = { ...(answers[key] || {}), [field]: a }
+  return { ...read, answers }
+}

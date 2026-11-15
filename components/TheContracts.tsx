@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite } from '@/lib/checked-write'
+import { withAnswer } from '@/lib/a-checked-row'
 import { OFFICE } from '@/lib/same-date-everywhere'
 import {
   checkContract, differences, countWords, askAbout, heldBack, holdWords,
@@ -130,12 +131,6 @@ export default function TheContracts({ deal, me, onSaved }: {
     await save({ at: new Date().toISOString(), by: me?.name || '', lender, reference, loans, answers: {} })
   }
 
-  async function answer(i: number, field: string, a: Answer) {
-    if (!read) return
-    const answers = { ...(read.answers || {}) }
-    answers[String(i)] = { ...(answers[String(i)] || {}), [field]: a }
-    await save({ ...read, answers })
-  }
 
   const checks: Line[][] = (read?.loans || []).map((l, i) =>
     checkContract({
@@ -231,7 +226,7 @@ export default function TheContracts({ deal, me, onSaved }: {
                       const on = answers[l.field] === a
                       return (
                         <button key={a} type="button" disabled={busy}
-                          onClick={() => void answer(i, l.field, a)}
+                          onClick={() => void save(withAnswer(read, i, l.field, a))}
                           className={`rounded-[9px] border px-3 py-1.5 text-[12.5px] font-semibold ${
                             on ? 'border-ink bg-ink text-page' : 'border-field-line bg-card'}`}>
                           {ANSWER_WORDS[a]}

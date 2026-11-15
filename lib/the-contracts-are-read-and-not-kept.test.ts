@@ -88,7 +88,10 @@ describe('what it is checked against', () => {
 describe('nothing is corrected automatically', () => {
   it('a person says which side is wrong', () => {
     expect(BOX).toContain('ANSWER_WORDS[a]')
-    expect(BOX).toContain('void answer(i, l.field, a)')
+    // Recorded per loan then per field, by the one shared writer - the approval
+    // letter arrives the same shape and had its own copy of this until the
+    // duplicate-logic guard caught it. See withAnswer in lib/a-checked-row.ts.
+    expect(BOX).toContain('withAnswer(read, i, l.field, a)')
   })
 
   // 17 Nov 2026: "you'll confirm when we're sending the confirmation email that

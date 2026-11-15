@@ -57,11 +57,42 @@ Notes:
 - The sum insured is not asked for. Do not return it.
 - Return ONLY the JSON object.`
 
-const PROMPTS: Record<string, string> = { signed: SIGNED, insurance: INSURANCE }
+const FORMAL_LETTER = `You are reading an Australian lender's FORMAL APPROVAL letter (also called an approval advice, letter of offer or unconditional approval) for a home loan.
+
+${DO_NOT_GUESS}
+
+A formal approval often covers SEVERAL loans, called splits, accounts or facilities. Return one entry per loan.
+
+{
+  "lender": "the lender's name, or empty string",
+  "reference": "the application or approval reference number, or empty string",
+  "loans": [
+    {
+      "label": "what the letter calls this loan - 'Split 1', 'Loan 2', the account number, or empty string",
+      "amount": "the approved loan amount as a plain digit string, no $ or commas, e.g. '340600'",
+      "rate": "the interest rate as a plain number string, e.g. '6.14'. No % sign",
+      "repayment": "exactly one of: Principal and interest, Interest only, or empty string",
+      "ioTerm": "how long the loan is interest only for, as written. Empty string unless the loan is interest only",
+      "loanTerm": "the total loan term as written, e.g. '30 years'",
+      "security": "the address of the property securing this loan, or empty string",
+      "borrowers": ["full name of each borrower exactly as the letter writes it"]
+    }
+  ]
+}
+
+Notes:
+- A comparison rate is NOT the interest rate. If both appear, return the interest rate.
+- Do not convert years to months or months to years.
+- Do not merge two loans into one, and do not split one loan into two.
+- Conditions of approval are not asked for. Do not return them.
+- Return ONLY the JSON object.`
+
+const PROMPTS: Record<string, string> = { signed: SIGNED, insurance: INSURANCE, formal_letter: FORMAL_LETTER }
 
 const WORD: Record<string, string> = {
   signed: 'signed loan documents',
   insurance: 'insurance certificate',
+  formal_letter: 'formal approval letter',
 }
 
 export async function POST(req: NextRequest) {
@@ -80,7 +111,7 @@ export async function POST(req: NextRequest) {
       // A SIGNED PACK IS LONG AND THE ANSWER IS SHORT. 2000 is generous for
       // five fields, and the stop_reason is still checked - a truncated answer
       // that parses is the dangerous kind.
-      max_tokens: 2000,
+      max_tokens: String(kind) === 'formal_letter' ? 8000 : 2000,
       system,
       messages: [{
         role: 'user',
@@ -111,6 +142,17 @@ export async function POST(req: NextRequest) {
       }, { status: 500 })
     }
 
+    // THE FORMAL LETTER COMES BACK SHAPED LIKE A CONTRACT, because it is
+    // checked by the same code. The other two are single objects.
+    if (String(kind) === 'formal_letter') {
+      return NextResponse.json({
+        read: {
+          lender: String(read?.lender || ''),
+          reference: String(read?.reference || ''),
+          loans: Array.isArray(read?.loans) ? read.loans : [],
+        },
+      })
+    }
     return NextResponse.json({ read })
   } catch (e: any) {
     return NextResponse.json({
