@@ -29,6 +29,12 @@ import { applicantNamesOf, purchaseHandover } from '@/lib/purchase-handover'
 // IT WRITES NOTHING TO THE DEAL. No tick comes off, no compliance box is
 // rewritten. That was my first answer and he was right to stop it.
 
+// NOT BLUE ANY MORE. 15 Nov 2026. A blue block here competed with the deposit
+// decision below it, which is the one thing on the panel that actually needs
+// deciding. Same words, same button, same warnings - a plain card, and an
+// outlined button rather than a solid black one, because this is not the thing
+// to press first. Fabio: "look how many red colors, green colors... it's really,
+// really poor design."
 export default function PurchaseHandover({ deal }: { deal: any }) {
   const supabase = createSupabaseBrowser()
   const [busy, setBusy] = useState(false)
@@ -59,21 +65,22 @@ export default function PurchaseHandover({ deal }: { deal: any }) {
   }
 
   return (
-    <div className="mt-2.5 rounded-lg border border-info-edge bg-info-bg px-3.5 py-3">
-      <div className="text-[12.5px] font-semibold text-info">Actual purchase handover</div>
-      <p className="m-0 mt-1 mb-2.5 text-[11.5px] text-[#0B5F7D] leading-relaxed">
+    <div className="mt-2.5 rounded-lg border border-card-line bg-card px-3.5 py-3">
+      <div className="text-[12.5px] font-semibold text-ink">Actual purchase handover</div>
+      <p className="m-0 mt-1 mb-2.5 text-[11.5px] text-muted leading-relaxed">
         The purchase as it actually is, on one page, with the submission notes the bank reads.
         A separate document — the handover stays as the position this file was assessed on.
       </p>
       <button type="button" onClick={build} disabled={busy}
-        className="rounded-lg bg-ink px-3 py-1.5 text-[12.5px] font-semibold text-page disabled:opacity-50">
+        className="rounded-lg border border-field-line bg-card px-3 py-1.5 text-[12.5px]
+                   font-semibold text-ink disabled:opacity-50">
         {busy ? 'Building…' : 'Build the actual purchase handover'}
       </button>
       {/* WHAT WILL PRINT AS NOT RECORDED, BEFORE SOMEBODY SENDS IT ON. The page
           never guesses, so a gap is survivable - but finding out from a
           settlements person is not. */}
       {gaps.length > 0 && (
-        <p className="m-0 mt-2 text-[11.5px] text-[#0B5F7D] leading-relaxed">
+        <p className="m-0 mt-2 text-[11.5px] text-muted leading-relaxed">
           Will print as not recorded: {gaps.join(', ')}.
         </p>
       )}

@@ -52,13 +52,50 @@ const INP = 'text-[12.5px] border border-gray-200 rounded-lg px-2.5 py-1.5 bg-ca
 
 const LAB = 'text-[8.5px] font-bold tracking-[.07em] uppercase text-[#A0A7AE] block mb-1'
 
+// THE LENDER'S LINES, AND NONE OF THEM IS AN ALARM.
+//
+// 15 Nov 2026. Fabio, looking at an offer accepted panel: "look how many red
+// colors, green colors, like it's really, really poor design."
+//
+// He was right, and it was countable. Four kinds of line, four full-width
+// coloured blocks, stacked at the same weight:
+//
+//   do       green   an instruction - which reads as though it is already done
+//   watch    red     the trap - the same red the portal uses for a failure
+//   clock    blue    a deadline
+//   unknown  grey    us admitting we have not been told
+//
+// NOTHING ON THAT PANEL IS WRONG. No error, no failure, nothing overdue. Red
+// means something is broken or about to hurt somebody; using it for a lender's
+// fee is how red stops working everywhere else.
+//
+// So the four become four rows of ONE card, each with a small label instead of
+// a colour. Same words, same order, same four kinds - the text is untouched.
+// Only 'unknown' keeps any colour, because the portal admitting what it does
+// not know is the most useful line on the screen and the easiest to skim past.
+//
+// WHY A WORD AND NOT A SYMBOL. The mock used arrows and a dollar sign, which
+// worked for the three lines that happened to be on screen that day. 'watch' is
+// the trap in general, not a charge, and a dollar sign would have lied about
+// three quarters of them.
+const MARK: Record<PanelLine['kind'], { word: string; tone: string }> = {
+  do:      { word: 'Do',    tone: 'border-line bg-page text-muted' },
+  watch:   { word: 'Watch', tone: 'border-ink bg-page text-ink' },
+  clock:   { word: 'When',  tone: 'border-info-edge bg-info-bg text-info' },
+  unknown: { word: '?',     tone: 'border-info-edge bg-info-bg text-info' },
+}
+
 function Line({ line }: { line: PanelLine }) {
-  const tone =
-    line.kind === 'watch'   ? 'bg-chase-bg border-chase-edge text-chase' :
-    line.kind === 'unknown' ? 'bg-[#F7F8F9] border-[#E3E6E8] text-muted' :
-    line.kind === 'clock'   ? 'bg-info-bg border-info-edge text-info' :
-                              'bg-done-bg border-[#BBF7D0] text-[#166534]'
-  return <p className={`m-0 mt-1.5 text-[12.5px] leading-relaxed border rounded-lg px-3 py-2 ${tone}`}>{line.text}</p>
+  const m = MARK[line.kind] || MARK.do
+  return (
+    <div className="flex items-start gap-3 border-b border-line-soft py-2.5 last:border-b-0">
+      <span className={`mt-px flex-none rounded-md border px-1.5 py-px text-[10px]
+                        font-extrabold uppercase tracking-[0.05em] ${m.tone}`}>
+        {m.word}
+      </span>
+      <span className="text-[12.5px] leading-relaxed text-body">{line.text}</span>
+    </div>
+  )
 }
 
 export default function OfferAccepted({ deal, me, onUpdated }: {
@@ -411,9 +448,12 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
           anybody until now. See lib/offer-accepted-rules.ts. */}
       <div className="mt-4">
         <span className={LAB}>Telling {lenderName || 'the lender'}</span>
-        {steps.map((l, i) => <Line key={i} line={l} />)}
-        {pricing && <Line line={pricing} />}
-        {preapproval && <Line line={preapproval} />}
+        {/* ONE CARD, NOT FOUR COLOURED BLOCKS. 15 Nov 2026 - see Line above. */}
+        <div className="mt-1.5 rounded-lg border border-card-line bg-card px-3.5 py-1">
+          {steps.map((l, i) => <Line key={i} line={l} />)}
+          {pricing && <Line line={pricing} />}
+          {preapproval && <Line line={preapproval} />}
+        </div>
         {/* The documents go up with the resubmission, and this is one of them.
             See components/PurchaseHandover.tsx for why it sits here rather than
             at the bottom of the panel or on the email screen. */}
@@ -429,12 +469,22 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
         * The first version of this asked which LOAN they wanted and derived the
         * contribution. Backwards, and contrary to the portal's own rule in
         * lib/purchase-rows.ts. The deposit is the question. */}
+      {/* THE ONE DECISION ON THE PANEL, AND IT IS NOT AN ERROR. 15 Nov 2026.
+        *
+        * This was a red block - the same red the portal uses for a failed
+        * save. Nothing here has failed: somebody is being asked a question
+        * about real money. Fabio: "look how many red colors... it's really,
+        * really poor design."
+        *
+        * A black border instead. The portal already uses it for the thing you
+        * are meant to deal with, and it is now the only bordered card on the
+        * panel, so the eye lands here without anything shouting. */}
       {moved && (
-        <div className="mt-4 bg-chase-bg border border-chase-edge rounded-lg px-4 py-3.5">
-          <div className="text-[13.5px] font-bold text-[#6E4C0F]">
+        <div className="mt-4 bg-card border-2 border-ink rounded-xl px-4 py-3.5">
+          <div className="text-[13.5px] font-bold text-ink">
             How much would the clients like to put in?
           </div>
-          <div className="text-[12.5px] text-chase mt-0.5 leading-relaxed">
+          <div className="text-[12.5px] text-body mt-0.5 leading-relaxed">
             They were going to bring {money(assessed)}. Total cost is now {money(dutyNow(d) + num(d.contract_price))},
             against {money(num(d.bc_data?.purchasePrice) + num(d.bc_data?.stampDuty))} as assessed.
           </div>
@@ -566,12 +616,17 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
       <div className="mt-5 pt-4 border-t border-[#EEF0F2]">
         <span className={LAB}>Tell the client</span>
         <div className="mt-1.5 flex gap-2 items-center flex-wrap">
+          {/* ONE BLACK BUTTON PER PANEL. While figures are missing this one is
+              outlined, which says the same as the red note beside it used to -
+              and it goes solid the moment the deal is ready. */}
           <a href={`/deals/${d.id}?email=offer_accepted`}
-             className="px-3 py-1.5 text-xs rounded-lg bg-ink text-page font-semibold">
+             className={`px-3 py-1.5 text-xs rounded-lg font-semibold ${blanks.length > 0
+               ? 'border border-field-line bg-card text-ink'
+               : 'bg-ink text-page'}`}>
             Write the offer accepted email
           </a>
           {blanks.length > 0 && (
-            <span className="text-[11.5px] text-chase">
+            <span className="text-[11.5px] text-muted">
               The numbers will be left out until {blanks.join(', ')} {blanks.length === 1 ? 'is' : 'are'} recorded.
             </span>
           )}

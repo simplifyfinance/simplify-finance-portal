@@ -184,10 +184,29 @@ describe('a file is never on two people’s day at once', () => {
 })
 
 describe('the week', () => {
-  it('nothing is drawn on a weekend or a public holiday', () => {
+  // 15 Nov 2026. This used to assert `if (whyNoPlan(today)) return null` - the
+  // whole page came off on a weekend or a public holiday. That was survivable
+  // only while the business dashboard still drew underneath it. The day that
+  // dashboard came off every Today, Fabio opened Katie's screen on a Sunday
+  // and found nothing on it at all:
+  //
+  //   "I want all the boxes there. And if it's blank, it's blank, but the
+  //    boxes are there. The screen is never blank."
+  //
+  // So the boxes stay and the CHASING stops, which was the only thing the
+  // blank page was ever protecting anybody from.
+  it('the boxes are drawn on a weekend, and nobody is chased', () => {
     expect(page).toContain("import { whyNoPlan, lastWorkdayBefore } from '@/lib/the-week'")
-    expect(page, 'the weekend rule has gone from the page')
-      .toContain('if (whyNoPlan(today)) return null')
+    expect(page, 'the page throws itself away again on a weekend')
+      .not.toContain('if (whyNoPlan(today)) return null')
+    expect(page).toContain('const noPlanToday = whyNoPlan(today)')
+    // The "you have not told the brokers your day yet" banner, silenced.
+    expect(page).toContain("{!noPlanToday && meOfficerId && !saved && mineLate")
+  })
+
+  it('and it says why it is quiet, and which day is below', () => {
+    expect(page).toContain('Nothing to plan')
+    expect(page).toContain('the last day anybody was at work')
   })
 
   it('and yesterday means the last day anybody was at work', () => {

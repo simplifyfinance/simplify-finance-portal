@@ -396,7 +396,29 @@ export default function TodayPlan({
   // dashboard underneath carries on as normal. Without this, Saturday morning
   // tells four people they have not told the brokers their day, and keeps
   // counting how late they are until Monday. See lib/the-week.ts.
-  if (whyNoPlan(today)) return null
+  // THE SCREEN IS NEVER BLANK. 15 Nov 2026.
+  //
+  // whyNoPlan() used to end this component right here, returning nothing at
+  // all on a Saturday, Sunday or public holiday. That was fine while the
+  // business dashboard still rendered underneath it. On 15 Nov that dashboard
+  // was taken off every Today, and Fabio opened Katie's screen on a Sunday to
+  // find nothing at all on it but the Viewing as strip.
+  //
+  // Fabio: "even if something has nothing there, Sunday pushes for Friday,
+  // right?... I want all the boxes there. And if it's blank, it's blank, but
+  // the boxes are there. The screen is never blank."
+  //
+  // He is right twice. An empty box says nothing is there, which is worth
+  // knowing; a missing box says nothing at all. And lastWorkdayBefore() has
+  // always answered Friday for a Sunday - the page was working that out
+  // correctly and then throwing itself away.
+  //
+  // WHAT THE WEEKEND STILL TURNS OFF IS THE CHASING, which is the only reason
+  // the blank page existed: "Saturday morning tells four people they have not
+  // told the brokers their day, and keeps counting how late they are until
+  // Monday." The boxes stay. Nobody is chased on a day they are not working.
+  const noPlanToday = whyNoPlan(today)
+
 
   const dayCard = (
     <MyDay
@@ -549,6 +571,14 @@ export default function TodayPlan({
         </div>
       )}
 
+      {/* WHY TODAY IS QUIET, said once, where the chasing used to be. */}
+      {noPlanToday && (
+        <p className="mb-3 mt-1 text-[12.5px] text-muted">
+          Nothing to plan &mdash; it is {noPlanToday}. Below is {dayMonth(yesterdayDate)},
+          the last day anybody was at work.
+        </p>
+      )}
+
       {/* A PUSH YOU MADE THAT NEVER ARRIVED.
         *
         * ABOVE EVERYTHING, because the whole fault is that she did not know.
@@ -581,7 +611,7 @@ export default function TodayPlan({
 
       {/* WHAT THE PERSON THEMSELVES READS. Pointed on purpose: "not planned
           yet" sounds like untidiness, and this is about somebody waiting. */}
-      {meOfficerId && !saved && mineLate && mineLate.level !== 'quiet' && (
+      {!noPlanToday && meOfficerId && !saved && mineLate && mineLate.level !== 'quiet' && (
         <div className={`mb-3 rounded-xl px-4 py-3 text-[13.5px] border ${
           mineLate.level === 'flag' ? 'bg-chase-bg border-chase-edge text-chase' : 'bg-info-bg border-info-edge text-info'}`}>
           <b>{mineLate.mine}</b>
