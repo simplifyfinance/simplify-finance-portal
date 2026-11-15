@@ -17,6 +17,11 @@ import { brokerKey as keyOf } from '@/lib/broker-key'
 import { bcLanes, sentOn } from '@/lib/bc-lanes'
 import { paneHeight, dragScrollBy } from '@/lib/board-pane'
 import { columnCountLabel } from '@/lib/board-filters'
+import {
+  ALL, hasSubTabs, subTabsFor, countsFor, cardsOn, showingWords, subTabOf, type SplitColumn,
+} from '@/lib/board-subtabs'
+import { isOverdue } from '@/lib/the-seven-steps'
+import { useSettlementSettings } from '@/lib/use-settlement-settings'
 import { OFFICE } from '@/lib/same-date-everywhere'
 
 // The whole book, in columns.
@@ -64,7 +69,7 @@ const AGE_STYLE: Record<string, string> = {
   long:  'text-waiting bg-waiting-bg border-waiting-edge',
 }
 
-export default function DealBoard({ deals, allDeals, nameFor, colours, thresholds, alerts, onDelete, onMoveBack, showLost }: {
+export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, thresholds, alerts, onDelete, onMoveBack, showLost }: {
   deals: any[]
   // EVERY DEAL THIS BOARD WOULD SHOW WITH NOTHING FILTERED.
   //
@@ -106,6 +111,27 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
   const router = useRouter()
   // Folded columns, this person's own, remembered across logins.
   const { folds, toggle } = useColumnFolds()
+
+  // WHICH SUB-TAB EACH COLUMN IS ON. Deliberately not remembered: the board
+  // opens on All every morning. A remembered filter saves two clicks a day and
+  // costs the one morning somebody opens the board, sees four cards and thinks
+  // the book has emptied. Julian Kok and Belle both asked for this.
+  const [subTab, setSubTab] = useState<Record<string, string>>({})
+
+  // WHAT WAS TICKED FROM THE QUICK LOOK, until the page reloads.
+  //
+  // The board is handed its deals by the page and has no way to ask for them
+  // again. A tick made in the quick look is already saved; this is only so the
+  // card behind it agrees with the panel in front of it. A screen that
+  // disagrees with itself is worse than one that made you open the deal.
+  const [patched, setPatched] = useState<Record<string, any>>({})
+  const deals = useMemo(
+    () => Object.keys(patched).length === 0
+      ? dealsIn
+      : dealsIn.map(d => patched[d.id] ? { ...d, ...patched[d.id] } : d),
+    [dealsIn, patched])
+  // The settlement chase times, for the dot on a sub-tab.
+  const settlementChase = useSettlementSettings()
   const [dragging, setDragging] = useState<string>('')
   const [over, setOver] = useState<Phase | ''>('')
 
@@ -353,9 +379,19 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
         <div className={`flex gap-2.5 ${paneH === null ? 'items-start' : 'items-stretch h-full'}`}
           style={{ minWidth: openCount * OPEN_W + shutCount * SHUT_W + (columns.length - 1) * GAP }}>
           {columns.map(p => {
-            const cards = byColumn[p] || []
-            const total = cards.reduce((t, d) => t + (amountOf(d) || 0), 0)
-            const hot = cards.filter(d => ageGroupOf(d, thresholds) === 'nudge').length
+            // THE COLUMN, AND THEN WHAT THE SUB-TAB IS SHOWING OF IT.
+            //
+            // 17 Nov 2026. Three columns gained sub-tabs because the seven
+            // settlement steps are finer than the board's four columns. The
+            // headline count, the money and the chase count stay the WHOLE
+            // column - a filter must never make the board look emptier than
+            // the book is. See lib/board-subtabs.ts.
+            const colCards = byColumn[p] || []
+            const split = hasSubTabs(p)
+            const tab = split ? (subTab[p] || ALL) : ALL
+            const cards = split ? cardsOn(colCards, p as SplitColumn, tab) : colCards
+            const total = colCards.reduce((t, d) => t + (amountOf(d) || 0), 0)
+            const hot = colCards.filter(d => ageGroupOf(d, thresholds) === 'nudge').length
             const shut = folds.includes(p)
 
             // A folded column still counts.
@@ -378,7 +414,7 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                     : hot > 0 ? 'border-chase-edge bg-chase-bg'
                     : 'border-card-line bg-gray-50 hover:border-gray-300'}`}>
                   <span className={`text-[11px] font-bold tabular-nums ${hot > 0 ? 'text-chase' : 'text-body'}`}>
-                    {countLabel(p, cards.length)}
+                    {countLabel(p, colCards.length)}
                   </span>
                   <span className="text-[9.5px] font-bold tracking-[.06em] uppercase text-faint whitespace-nowrap"
                         style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
@@ -426,7 +462,7 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                   <span title={totalByColumn ? `${cards.length} of ${totalByColumn[p] || 0} while a filter is on` : ''}
                     className={`ml-auto text-[11px] font-bold bg-card border border-card-line rounded-full px-1.5 ${
                       totalByColumn ? 'text-faint' : 'text-body'}`}>
-                    {countLabel(p, cards.length)}
+                    {countLabel(p, colCards.length)}
                   </span>
                   <button type="button" title={`Fold ${PHASE_LABEL[p]} away`}
                     onClick={e => { e.stopPropagation(); toggle(p) }}
@@ -442,6 +478,59 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                 <div className="text-[11px] text-muted mb-2 px-0.5 tabular-nums">
                   {total > 0 ? money(total) : '—'}
                 </div>
+
+                {/* SUB-TABS, ON THREE COLUMNS ONLY.
+                  *
+                  * Full words, wrapping onto a second row where they have to.
+                  * The board is scanned rather than read, and a word somebody
+                  * has to translate is a word they will misread on the morning
+                  * it matters.
+                  *
+                  * IT OPENS ON ALL EVERY MORNING, which is why nothing here is
+                  * remembered. Julian Kok and Belle asked for that separately:
+                  * "please reset each morning so that it shows all deal cards
+                  * in each sub tab. We will manually filter by outstanding if
+                  * required." */}
+                {split && (() => {
+                  const counts = countsFor(colCards, p as SplitColumn)
+                  // THE DOT IS THE STEP'S OWN CLOCK, not the column's. A deal
+                  // three days into Contracts issued is late by its step and
+                  // nowhere near late by the column, and the sub-tab is about
+                  // the step. The column's own "to chase" chip above is
+                  // unchanged and still answers the other question.
+                  const lateOn = (key: string) => colCards.some(d =>
+                    (key === ALL || subTabOf(d, p as SplitColumn) === key)
+                    && isOverdue(d, settlementChase.chase))
+                  return (
+                    <>
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {subTabsFor(p as SplitColumn).map(t => {
+                          const on = tab === t.key
+                          return (
+                            <button key={t.key} type="button"
+                              onClick={e => { e.stopPropagation()
+                                setSubTab(prev => ({ ...prev, [p]: on ? ALL : t.key })) }}
+                              className={`rounded-[7px] border px-[7px] py-[2px] text-[10.5px] font-semibold leading-[1.5] whitespace-nowrap ${
+                                on ? 'border-ink bg-ink text-page' : 'border-field-line bg-card text-body hover:bg-page'}`}>
+                              {t.key !== ALL && lateOn(t.key) && (
+                                <span className="mr-1 inline-block h-[6px] w-[6px] rounded-full bg-brand-ink align-[1px]" />
+                              )}
+                              {t.label}
+                              <span className={`ml-[3px] font-bold ${on ? 'opacity-75' : 'opacity-55'}`}>
+                                {counts[t.key] ?? 0}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                      {showingWords(cards.length, colCards.length, tab) && (
+                        <div className="mb-1.5 px-0.5 text-[10.5px] text-faint">
+                          {showingWords(cards.length, colCards.length, tab)}
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
 
                 {/* EVERYTHING ABOVE THIS LINE STAYS PUT while the cards scroll
                     under it. "How many and how much" is the question a board is
@@ -679,6 +768,7 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
             creditName={d.credit_officers?.name || ''}
             colours={colours}
             onClose={() => setPeeking(null)}
+            onSaved={patch => setPatched(prev => ({ ...prev, [d.id]: { ...(prev[d.id] || {}), ...patch } }))}
             onStep={dir => {
               // Wraps, so the end of a column is not a dead end.
               const next = list[(i + dir + list.length) % list.length]

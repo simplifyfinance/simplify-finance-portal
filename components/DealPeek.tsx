@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import PeekSettlement from '@/components/PeekSettlement'
 import { useRouter } from 'next/navigation'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { buildPeek, peekAge, type PeekSection } from '@/lib/deal-peek'
@@ -33,7 +34,7 @@ function Section({ s }: { s: PeekSection }) {
   )
 }
 
-export default function DealPeek({ deal, lenderName, brokerName, creditName, colours, onClose, onStep }: {
+export default function DealPeek({ deal, lenderName, brokerName, creditName, colours, onClose, onStep, onSaved }: {
   deal: any
   lenderName?: string
   brokerName?: string
@@ -43,6 +44,10 @@ export default function DealPeek({ deal, lenderName, brokerName, creditName, col
   colours?: { type?: any; use?: any }
   onClose: () => void
   onStep?: (dir: -1 | 1) => void
+  // A TICK MADE FROM HERE HAS TO REACH THE BOARD BEHIND IT. Without this the
+  // card keeps its old chips until the page is reloaded, and a screen that
+  // disagrees with itself is worse than a screen that made you open the deal.
+  onSaved?: (patch: Record<string, any>) => void
 }) {
   const router = useRouter()
   const { notes, alerts } = useDealFile(deal.id)
@@ -155,6 +160,12 @@ export default function DealPeek({ deal, lenderName, brokerName, creditName, col
             </div>
           </div>
         )}
+
+        {/* MARKING THINGS OFF WITHOUT OPENING THE DEAL. The strip only appears
+            on a deal that is on a settlement step, and everything on it is
+            also on the settlement panel - it is an option, not a rule.
+            See components/PeekSettlement.tsx. */}
+        <PeekSettlement deal={deal} onSaved={onSaved} />
 
         <div className="flex gap-2 items-center px-[18px] py-3 border-t border-line bg-gray-50">
           <button onClick={() => router.push(`/deals/${deal.id}`)}
