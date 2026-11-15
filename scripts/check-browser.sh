@@ -56,6 +56,22 @@ for _ in $(seq 1 40); do
   sleep 0.5
 done
 
+# IS THE ROBOT STILL SIGNED IN? FIVE SECONDS, BEFORE THE FORTY-TWO.
+#
+# 15 Nov 2026. Twice this week a ship passed every code check, every test and
+# the build, and then sat here failing all 42 tests - once for thirty-four
+# minutes - because the saved session held a token Supabase had stopped
+# accepting. The file existed, so this script carried on.
+#
+# Every test waits for [data-ready="1"] on a deal card. Signed out, the page
+# draws perfectly and that marker never arrives, so each test burns its full
+# thirty second timeout and is then retried. It looks like forty-two broken
+# features. It is one dead token, and the server log says so from the first
+# second.
+if ! PORTAL_TEST_URL="http://localhost:$PORT" node scripts/check-robot-login.mjs; then
+  exit 1
+fi
+
 # WATCHING IT WORK.
 #
 # It runs with no window by default, which is right for something that fires on
