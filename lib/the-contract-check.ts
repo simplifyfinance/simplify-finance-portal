@@ -29,6 +29,7 @@
 // wrote.
 import { readMonths, termWords, readRepayment, repaymentWords, type Repayment } from './years-and-months'
 import { money, readMoney } from './money'
+import { row, answerWords, type Row } from './a-checked-row'
 
 const txt = (v: any) => String(v ?? '').trim()
 
@@ -63,16 +64,8 @@ export const FIELD_LABEL: Record<Field, string> = {
 /** In the order the team reads them. */
 export const FIELDS: Field[] = ['rate', 'repayment', 'ioTerm', 'amount', 'loanTerm', 'security', 'borrowers']
 
-export type Line = {
-  field: Field
-  label: string
-  /** What the contract says, in words. */
-  says: string
-  /** What the deal says, in words. Empty where the deal is silent. */
-  expected: string
-  /** Different, the same, or nobody said. */
-  state: 'differs' | 'matches' | 'not stated'
-}
+/** A checked row whose field is one of this document's seven. */
+export type Line = Row & { field: Field }
 
 const rate = (v: any): number | null => {
   const n = Number(txt(v).replace(/[^0-9.]/g, ''))
@@ -132,11 +125,8 @@ const words = {
 export function checkContract(said: ContractSays, want: DealSays): Line[] {
   const out: Line[] = []
   const add = (field: Field, says: string, expected: string, same: boolean) => {
-    if (!says && !expected) return
-    out.push({
-      field, label: FIELD_LABEL[field], says, expected,
-      state: !says || !expected ? 'not stated' : same ? 'matches' : 'differs',
-    })
+    const r = row(field, FIELD_LABEL[field], says, expected, same)
+    if (r) out.push(r as Line)
   }
 
   add('rate', words.rate(said.rate), words.rate(want.rate), rate(said.rate) === rate(want.rate))
@@ -164,52 +154,17 @@ export function checkContract(said: ContractSays, want: DealSays): Line[] {
   return out
 }
 
-export const differences = (lines: Line[]) => lines.filter(l => l.state === 'differs')
-export const notStated = (lines: Line[]) => lines.filter(l => l.state === 'not stated')
+// THE COUNTING, THE ANSWERING AND THE HOLDING are the same for every document
+// that arrives during settlement, so they live in one place and are re-exported
+// here. See lib/a-checked-row.ts.
+export { differences, notStated, countWords, heldBack, holdWords } from './a-checked-row'
+export type { Answer } from './a-checked-row'
 
-/** "2 of 6 differ" / "all 6 match". */
-export function countWords(lines: Line[]): string {
-  const n = differences(lines).length
-  if (lines.length === 0) return 'nothing read'
-  if (n === 0) return `all ${lines.length} match`
-  return `${n} of ${lines.length} differ${n === 1 ? 's' : ''}`
-}
-
-// WHAT SOMEBODY DECIDED ABOUT A DIFFERENCE.
-export type Answer = 'contract' | 'deal' | 'unsure'
-
-export const ANSWER_WORDS: Record<Answer, string> = {
-  contract: 'The contract — update the deal',
-  deal: 'The deal — go back to the lender',
-  unsure: 'Not sure yet',
-}
+/** Named after this document: "The contract — update the deal". */
+export const ANSWER_WORDS = answerWords('contract')
 
 /** "The contract says 6.14% and the deal says 6.08%. Which one is right?" */
 export function askAbout(l: Line): string {
   return `The contract says ${l.says} and the deal says ${l.expected}. Which one is right?`
 }
 
-/**
- * CAN THE CLIENT BE TOLD YET?
- *
- * 17 Nov 2026, Fabio: "you'll confirm when we're sending the confirmation email
- * that everything is correct." The loan documents email carries the figures, so
- * an unanswered difference holds it. A difference that has been ANSWERED does
- * not - somebody has looked at it and said which side is right, which is the
- * whole job.
- *
- * This is the only thing in the settlements build that blocks anything.
- */
-export function heldBack(lines: Line[], answers: Record<string, Answer | undefined>): Line[] {
-  return differences(lines).filter(l => {
-    const a = answers?.[l.field]
-    return !a || a === 'unsure'
-  })
-}
-
-export function holdWords(n: number): string {
-  if (n <= 0) return ''
-  return n === 1
-    ? 'One left to settle before the client is told'
-    : `${n} left to settle before the client is told`
-}

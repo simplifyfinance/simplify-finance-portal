@@ -80,6 +80,7 @@ const txt = (v: any) => String(v ?? '').trim()
 // ---------------------------------------------------------------- the deal --
 
 import { buysNothing } from './buying'
+import { STRATA_SUBTYPES } from './which-insurance-certificate'
 
 const REFINANCE_TEMPLATES = ['refinance_only', 'refinance_equity', 'investment_equity']
 
@@ -416,7 +417,8 @@ function dealItems(deal: any, ff: any, out: DocItem[], gaps: DocGap[]) {
     // will now ask for insurance until somebody decides it should not, which is
     // the safe direction to be wrong in.
     const buying = txt(deal?.bc_data?.purchasePropertySubtype)
-    const STRATA = ['Unit', 'Townhouse']
+    // THE ONE LIST, shared with settlements - see lib/which-insurance-certificate.ts.
+    const STRATA = STRATA_SUBTYPES
     // Said in words, per type. Built from the value it produced sentences like
     // "the property being bought is a commercial, not strata", which is not
     // English and ends up on a document request a client reads.

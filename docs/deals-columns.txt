@@ -210,6 +210,7 @@ settled_splits
 settled_total
 settlement_booked_at
 settlement_checklist
+settlement_documents
 settlement_note
 settlement_stage
 settlement_stage_at

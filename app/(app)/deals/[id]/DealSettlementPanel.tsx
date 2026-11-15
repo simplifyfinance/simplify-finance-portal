@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import TheContracts from '@/components/TheContracts'
+import TheOtherDocuments from '@/components/TheOtherDocuments'
 import SettlementSteps from '@/components/SettlementSteps'
 import { stepOf } from '@/lib/the-seven-steps'
 import SettlementTrail from '@/components/SettlementTrail'
@@ -254,6 +255,15 @@ export default function DealSettlementPanel({ deal, onUpdated, me }: {
           deal. See components/TheContracts.tsx. */}
       {!d.settled_at && stepOf(d) && (
         <TheContracts deal={d} me={me}
+          onSaved={patch => { setD((prev: any) => ({ ...prev, ...patch })); onUpdated?.(patch) }} />
+      )}
+
+      {/* THE OTHER TWO DOCUMENTS. The signed pack arrives at Contracts
+          Reviewing and the insurance certificate at Outstandings. Neither is a
+          comparison against the formal approval - they are completeness checks,
+          and what is MISSING is the finding. See components/TheOtherDocuments.tsx. */}
+      {!d.settled_at && stepOf(d) && (
+        <TheOtherDocuments deal={d} me={me}
           onSaved={patch => { setD((prev: any) => ({ ...prev, ...patch })); onUpdated?.(patch) }} />
       )}
 
