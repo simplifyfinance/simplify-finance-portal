@@ -502,7 +502,8 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                 onDragOver={e => { e.preventDefault(); setOver(p) }}
                 onDragLeave={() => setOver(o => o === p ? '' : o)}
                 onDrop={() => onDrop(phaseFor(p))}
-                className={`flex-1 min-w-[248px] rounded-xl border p-2.5 transition ${
+                style={{ width: OPEN_W }}
+                className={`flex-none rounded-xl border p-2.5 transition ${
                   paneH === null ? '' : 'flex flex-col min-h-0'} ${
                   over === p ? 'border-brand-ink bg-info-bg'
                   : 'border-line-soft bg-gray-50'}`}>
