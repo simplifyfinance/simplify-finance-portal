@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'fs'
 import { creditColour, cardSkin, AGREED } from './who-in-credit-owns-it'
 
 describe('the colour of a deal card', () => {
@@ -41,5 +42,35 @@ describe('the colour of a deal card', () => {
     const skin = cardSkin('#E23D93')
     expect(skin.background).toContain('var(--color-card)')
     expect(skin.borderColor).toContain('var(--color-card-line)')
+  })
+})
+
+describe('the card sits on a shadow', () => {
+  // 18 Nov 2026. The approved mock has one on every card and the live board had
+  // none, so hovering deepened nothing. Fabio: "the shading is still not
+  // showing. It doesn't lift up when I'm hovering."
+  it('tinted with the owner where there is one', () => {
+    expect(cardSkin('#E23D93')['--sh']).toContain('#E23D93')
+    expect(cardSkin('#E23D93')['--shh']).toContain('#E23D93')
+  })
+
+  it('and a plain one on a card nobody in credit has yet', () => {
+    expect(cardSkin(null)['--sh']).toContain('rgba(20,20,15')
+    expect(cardSkin(null)['--sh']).not.toContain('color-mix')
+  })
+
+  // AN INLINE SHADOW BEATS A HOVER CLASS, WHICH IS WHY NOTHING HAPPENED THE
+  // FIRST TIME. Both shadows are variables now and the card wears them through
+  // classes, so :hover can win.
+  it('never hands the shadow back as an inline boxShadow again', () => {
+    expect(cardSkin('#E23D93').boxShadow).toBeUndefined()
+    expect(cardSkin(null).boxShadow).toBeUndefined()
+  })
+
+  it('the board puts it on the card and deepens it on hover', () => {
+    const board = readFileSync('components/DealBoard.tsx', 'utf8')
+    expect(board).toContain('style={skin as React.CSSProperties}')
+    expect(board).toContain('hover:-translate-y-[2px]')
+    expect(board).toContain('shadow-[var(--sh)] hover:shadow-[var(--shh)]')
   })
 })

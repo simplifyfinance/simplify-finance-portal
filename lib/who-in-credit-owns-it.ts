@@ -72,10 +72,39 @@ export const AGREED = '#1C9A63'
  * coloured corner. Fabio: "you just color the corner of it. You didn't color
  * the whole card." The whole card, lightly.
  */
-export function cardSkin(colour: string | null): { background: string; borderColor: string } {
-  if (!colour) return { background: 'var(--color-card)', borderColor: 'var(--color-card-line)' }
+/**
+ * THE SHADOW IS PART OF THE COLOUR, AND IT IS HANDED OVER AS TWO VARIABLES.
+ *
+ * 18 Nov 2026. The mock sits every card on a soft shadow tinted with the
+ * owner's colour, and lifts it into a deeper one on hover. That is most of what
+ * makes the board read as cards rather than coloured rectangles.
+ *
+ * Fabio: "the shading is still not showing. It doesn't lift up when I'm
+ * hovering the arrow on top of the deal card."
+ *
+ * THE FIRST ATTEMPT HANDED THE RESTING SHADOW BACK AS AN INLINE boxShadow, AND
+ * THAT IS WHY NOTHING HAPPENED. An inline style beats a class, hover or not, so
+ * the hover shadow could never win. Measured in a real browser against the real
+ * compiled stylesheet: the card lifted 2px and the shadow never moved.
+ *
+ * So both shadows come back as custom properties and the card wears them
+ * through classes - shadow-[var(--sh)] and hover:shadow-[var(--shh)] - which
+ * are both classes, so :hover wins the way it is supposed to.
+ */
+export function cardSkin(colour: string | null): Record<string, string> {
+  const plain = '0 1px 2px rgba(20,20,15,.05), 0 10px 20px -14px rgba(20,20,15,.32)'
+  if (!colour) return {
+    background: 'var(--color-card)',
+    borderColor: 'var(--color-card-line)',
+    '--sh': plain,
+    '--shh': '0 3px 7px rgba(20,20,15,.09), 0 22px 34px -16px rgba(20,20,15,.46)',
+  }
+  const tint = (p: number, base: string) =>
+    `color-mix(in srgb, ${colour} ${p}%, ${base})`
   return {
-    background: `color-mix(in srgb, ${colour} 15%, var(--color-card))`,
-    borderColor: `color-mix(in srgb, ${colour} 40%, var(--color-card-line))`,
+    background: tint(15, 'var(--color-card)'),
+    borderColor: tint(40, 'var(--color-card-line)'),
+    '--sh': `0 1px 2px rgba(20,20,15,.05), 0 12px 22px -14px ${tint(46, 'rgba(20,20,15,.42)')}`,
+    '--shh': `0 3px 7px rgba(20,20,15,.08), 0 24px 36px -16px ${tint(56, 'rgba(20,20,15,.5)')}`,
   }
 }

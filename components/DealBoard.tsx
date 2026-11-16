@@ -661,10 +661,11 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                       onDragStart={() => setDragging(d.id)}
                       onDragEnd={() => { setDragging(''); setOver('') }}
                       onClick={() => router.push(`/deals/${d.id}`)}
-                      style={skin}
+                      style={skin as React.CSSProperties}
                       className={`group relative overflow-hidden border rounded-[10px] px-2.5 pt-2 pb-2 mb-2 last:mb-0 cursor-pointer
                         flex flex-col h-[118px]
-                        transition hover:-translate-y-[2px] hover:shadow-[0_18px_28px_-18px_rgba(20,20,15,.45)] ${
+                        shadow-[var(--sh)] hover:shadow-[var(--shh)]
+                        transition-[translate,box-shadow] duration-150 hover:-translate-y-[2px] ${
                         dragging === d.id ? 'opacity-40 border-brand-ink'
                         : urgent ? 'ring-2 ring-chase-bg' : ''}`}>
 
@@ -807,7 +808,7 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                         {age.days !== null && (
                           <span className={`max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border ${
                             needsNudge ? 'text-chase bg-chase-bg border-chase-edge' : 'text-faint bg-card border-card-line'}`}>
-                            {needsNudge ? `${age.label} \u00b7 to chase` : age.label}
+                            {needsNudge ? `${age.label} \u00b7 chase` : age.label}
                           </span>
                         )}
                         <span className="ml-auto flex">
