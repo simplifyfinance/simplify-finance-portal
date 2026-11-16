@@ -35,7 +35,11 @@ async function notifyOfficer(supabase: any, userId: string | null, subject: stri
 }
 
 export async function POST(req: NextRequest) {
-  const { dealId, creditOfficerId } = await req.json()
+  // QUIET IS FOR THE CREDIT BAND. 18 Nov 2026 - management moving a file
+  // between two assessors at 9am is not news worth two emails; her own Today
+  // already carries it. The deal card still mails, because a broker moving a
+  // file is the one case where nobody is watching the queue.
+  const { dealId, creditOfficerId, quiet } = await req.json()
   if (!dealId || !creditOfficerId) return NextResponse.json({ ok: false, error: 'Missing dealId or creditOfficerId' }, { status: 400 })
 
   const supabase = await createSupabaseServer()
@@ -116,7 +120,7 @@ export async function POST(req: NextRequest) {
   if (updateError) return NextResponse.json({ ok: false, error: updateError.message }, { status: 500 })
 
   // Notify the previous officer (if there was one, and it's genuinely changing) that they no longer need to work this deal
-  if (previousOfficerId && previousOfficerId !== creditOfficerId) {
+  if (!quiet && previousOfficerId && previousOfficerId !== creditOfficerId) {
     const { data: previousOfficer } = await supabase.from('credit_officers').select('user_id').eq('id', previousOfficerId).single()
     if (previousOfficer?.user_id) {
       await notifyOfficer(
@@ -128,8 +132,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Always notify the newly-assigned officer
-  await notifyOfficer(
+  // Notify the newly-assigned officer, unless this was a quiet move
+  if (!quiet) await notifyOfficer(
     supabase, officer.user_id,
     `New deal assigned: ${deal.deal_name}`,
     `A deal has been assigned to you.`,

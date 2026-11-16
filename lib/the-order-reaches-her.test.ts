@@ -17,15 +17,38 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 
 const RUN = readFileSync('components/RunThrough.tsx', 'utf8')
+const BAND = readFileSync('components/CreditBand.tsx', 'utf8')
 const SET = readFileSync('components/SetHerOrder.tsx', 'utf8')
 const CAME = readFileSync('components/TheOrderCame.tsx', 'utf8')
 const TODAY = readFileSync('components/TodayPlan.tsx', 'utf8')
 const PAGE = readFileSync('app/(app)/dashboard/page.tsx', 'utf8')
 
 describe('management sets it', () => {
-  it('from the credit team column, on every admin\'s Today', () => {
-    expect(RUN).toContain('Set her order')
-    expect(RUN).toContain('<SetHerOrder')
+  // 18 Nov 2026. IT MOVED, AND IT MOVED FOR A REASON.
+  //
+  // It used to be a button in the 316px credit column of RunThrough, shut by
+  // default. Two admins on the same screen therefore saw different things -
+  // Fabio: "why my view is not the same as catherine" - and opened, it cut the
+  // client names in half: "see Catherines screenshot... its cutting out."
+  //
+  // It is now open all day in the Credit band, full width, one column each.
+  it('from the Credit band, on every admin\'s Today', () => {
+    expect(BAND).toContain('<SetHerOrder')
+    expect(PAGE).toContain('<CreditBand')
+  })
+
+  // NOTHING STANDS BETWEEN MANAGEMENT AND THE QUEUE. No button, no toggle: the
+  // band maps the team and draws every one of them open.
+  it('with both assessors open, not behind a button', () => {
+    expect(BAND).toContain('team.map(')
+    expect(BAND, 'a toggle would bring back the two different screens')
+      .not.toContain('useState')
+  })
+
+  // AND THE RAIL KEEPS ITS JOB: who has sent their day, and nothing else.
+  it('while the rail above only reports who has sent', () => {
+    expect(RUN).toContain('The credit team this morning')
+    expect(RUN).not.toContain('<SetHerOrder')
   })
 
   it('and the page gives each assessor her own open files to order', () => {

@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { whichToday } from '@/lib/which-today'
 import TodayPlan from '@/components/TodayPlan'
 import RunThrough from '@/components/RunThrough'
+import CreditBand from '@/components/CreditBand'
 import SettlementsBand from '@/components/SettlementsBand'
 import RateNoticeNag from '@/components/RateNoticeNag'
 import { todayYmd } from '@/lib/periods'
@@ -434,6 +435,18 @@ export default async function Dashboard(
           overloaded={overloaded}
           stuckPushes={stuckPushes}
           weekDone={weekDone}
+        />
+        {/* THE CREDIT QUEUE, UNDER THE RUN-THROUGH.
+          * 18 Nov 2026. Fabio: "the whole point of today for admin which is me
+          * Kylie Mark Alan and Catherine was so we can see credits queue and
+          * reallocate." Lodging is the week's number and comes first; credit is
+          * what you act on once you have read it. See components/CreditBand.tsx.
+          *
+          * ME, NOT THE PERSON BEING VIEWED. An order written while looking at
+          * Catherine's Today is signed by whoever actually wrote it. */}
+        <CreditBand
+          team={creditToday}
+          overloaded={overloaded}
           me={{ id: user.id, name: profile?.full_name || '' }}
         />
         {/* THE SECOND CHAPTER. 17 Nov 2026, Fabio: "the black bar for

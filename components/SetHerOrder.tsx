@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite } from '@/lib/checked-write'
 import { orderPatch, orderFrom, moveBy, takeOff, putOn } from '@/lib/the-order-from-above'
+import { moveWords } from '@/lib/the-credit-morning'
 
 // MANAGEMENT SETS THE ORDER.
 //
@@ -22,7 +23,8 @@ import { orderPatch, orderFrom, moveBy, takeOff, putOn } from '@/lib/the-order-f
 // handover, so it is offered first and never demanded.
 const ARROW = 'rounded-[3px] border border-line bg-page px-[4px] py-[2px] text-[8px] leading-none text-faint'
 
-export default function SetHerOrder({ officerId, name, plan, deals, me, onDone }: {
+export default function SetHerOrder({ officerId, name, plan, deals, me, onDone,
+  others = [], framed = true }: {
   officerId: string
   name: string
   /** Her daily_plans row for today, or null if she has none yet. */
@@ -31,6 +33,13 @@ export default function SetHerOrder({ officerId, name, plan, deals, me, onDone }
   deals: Array<{ id: string; deal_name?: string; where?: string }>
   me: { id?: any; name?: any }
   onDone: () => void
+  /** The other assessors, so a file can be handed over from the row it is on.
+    * 18 Nov 2026 - "so we can see credits queue and reallocate." Empty on the
+    * deal card, where there is no second column to move it to. */
+  others?: Array<{ id: string; name: string }>
+  /** False inside the Credit band, which brings its own card and has the width
+    * to show every open file without a scroller inside a scroller. */
+  framed?: boolean
 }) {
   const supabase = createSupabaseBrowser()
   const existing = orderFrom(plan)
@@ -39,6 +48,32 @@ export default function SetHerOrder({ officerId, name, plan, deals, me, onDone }
   const [note, setNote] = useState(existing?.note || '')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState('')
+  const [moving, setMoving] = useState<string | null>(null)
+
+  // HANDING A FILE TO THE OTHER ASSESSOR.
+  //
+  // The route already existed and already does the hard part - it carries the
+  // open stages across and leaves a finished BC credited to whoever wrote it.
+  // See app/api/reassign-credit-officer/route.ts.
+  //
+  // QUIETLY. 18 Nov 2026, asked whether she should be emailed about it: "we
+  // spoken about this you have a warning sign on their Today."
+  async function moveTo(dealId: string, creditOfficerId: string) {
+    setMoving(dealId); setProblem('')
+    try {
+      const res = await fetch('/api/reassign-credit-officer', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId, creditOfficerId, quiet: true }),
+      })
+      const data = await res.json()
+      if (!data.ok) { setProblem(data.error || 'Not moved.'); setMoving(null); return }
+      setIds(x => takeOff(x, dealId))
+      onDone()
+    } catch (e: any) {
+      setProblem(e?.message || 'Not moved.')
+    }
+    setMoving(null)
+  }
 
   const byId = new Map(deals.map(d => [String(d.id), d]))
   const chosen = ids.map(id => byId.get(id)).filter(Boolean) as typeof deals
@@ -61,10 +96,12 @@ export default function SetHerOrder({ officerId, name, plan, deals, me, onDone }
   }
 
   return (
-    <div className="mb-3 rounded-xl border-2 border-ink bg-card px-4 py-3.5">
+    <div className={framed
+      ? 'mb-3 rounded-xl border-2 border-ink bg-card px-4 py-3.5'
+      : 'mt-2'}>
       <div className="mb-2.5 flex items-center gap-2">
         <span className="text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-muted">
-          {name}&rsquo;s order
+          {framed ? <>{name}&rsquo;s order</> : 'What you want first'}
         </span>
         <span className="ml-auto text-[10.5px] text-faint">move with the arrows</span>
       </div>
@@ -90,8 +127,16 @@ export default function SetHerOrder({ officerId, name, plan, deals, me, onDone }
             <button type="button" className={ARROW}
                     onClick={() => setIds(x => moveBy(x, d.id, 1))}>▼</button>
           </span>
-          <span className="flex-1 truncate font-semibold">{d.deal_name}</span>
+          <span className={`flex-1 font-semibold ${framed ? 'truncate' : ''}`}>{d.deal_name}</span>
           <span className="text-[11px] text-faint">{d.where}</span>
+          {others.map(o => (
+            <button key={o.id} type="button" disabled={moving === d.id}
+                    onClick={() => moveTo(d.id, o.id)}
+                    className="rounded-[7px] border border-line bg-page px-[7px] py-px
+                               text-[11px] text-faint disabled:opacity-40">
+              {moving === d.id ? 'moving...' : moveWords(o.name)}
+            </button>
+          ))}
           <button type="button"
                   onClick={() => setIds(x => takeOff(x, d.id))}
                   className="rounded-[7px] border border-line bg-page px-[7px] py-px
@@ -102,17 +147,18 @@ export default function SetHerOrder({ officerId, name, plan, deals, me, onDone }
       ))}
 
       {rest.length > 0 && (
-        <div className="mt-2.5 max-h-[150px] overflow-y-auto rounded-[10px] border border-line
-                        bg-page px-2.5 py-1.5">
+        <div className={framed
+          ? 'mt-2.5 max-h-[150px] overflow-y-auto rounded-[10px] border border-line bg-page px-2.5 py-1.5'
+          : 'mt-2.5 rounded-[10px] border border-line bg-page px-2.5 py-1.5'}>
           <div className="pb-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-faint">
             Her other open files
           </div>
-          {rest.slice(0, 20).map(d => (
+          {rest.slice(0, framed ? 20 : 40).map(d => (
             <button key={d.id} type="button"
                     onClick={() => setIds(x => putOn(x, d.id))}
                     className="flex w-full items-center gap-2 border-b border-line-soft py-1
                                text-left text-[12.5px] last:border-b-0">
-              <span className="flex-1 truncate">{d.deal_name}</span>
+              <span className={`flex-1 ${framed ? 'truncate' : ''}`}>{d.deal_name}</span>
               <span className="text-[11px] text-faint">{d.where}</span>
               <span className="text-[11px] font-semibold text-brand-ink">add</span>
             </button>
@@ -135,8 +181,10 @@ export default function SetHerOrder({ officerId, name, plan, deals, me, onDone }
                            text-page disabled:opacity-40">
           {busy ? 'Sending…' : 'Send the order'}
         </button>
-        <button type="button" onClick={onDone}
-                className="text-[12px] text-faint">Cancel</button>
+        {framed && (
+          <button type="button" onClick={onDone}
+                  className="text-[12px] text-faint">Cancel</button>
+        )}
         <span className="text-[11.5px] text-faint">
           she will see it the next time she opens Today
         </span>
