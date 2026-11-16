@@ -370,3 +370,57 @@ describe('the name that sits at the end', () => {
     expect(runs[1].total).toBe(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// THE SEARCH REACHES EVERY DEAL, AND AN ANSWER STICKS.
+//
+// 18 Nov 2026. Alan searched a client in the Monday meeting and got nothing
+// back. Daniel Vickery & Kellie King was Mark's, real, and had no BC, no
+// lending options and no compliance - so it sat on no seat, and the search was
+// built out of the seats.
+//
+// Fabio: "sometimes we have deals that come in so early in the process that we
+// can believe that it will be lodged that week. That's what the search bar was
+// for... the search bar should be searching every possible deal."
+describe('the search bar reaches the whole book', () => {
+  const names = (k: string) => k
+  const team = () => 'Simplify Finance'
+  const vickery = {
+    id: 'v', deal_name: 'Daniel Vickery & Kellie King 2026',
+    assigned_broker: 'mark', status: 'in_progress', created_at: ago(5),
+  }
+
+  it('finds a deal that is too early to be on the list', () => {
+    const runs = runThrough([vickery], 'nobody', names, team, NOW, ['mark'])
+    const mark = runs.find(r => r.key === 'mark')!
+    expect(mark.all.filter(d => matches(d, 'vickery'))).toHaveLength(1)
+  })
+
+  it('and it is still not ON the list, which is the point', () => {
+    expect(seatOf(vickery, NOW)).toBe(null)
+  })
+
+  it('leaves out the dead - lost and settled', () => {
+    const runs = runThrough([
+      { ...vickery, id: 'lost', status: 'lost' },
+      { ...vickery, id: 'done', settled_at: ago(9) },
+    ], 'nobody', names, team, NOW, ['mark'])
+    expect(runs.find(r => r.key === 'mark')?.all || []).toHaveLength(0)
+  })
+
+  // The trap under the bug: even found, marking it would not have stuck.
+  it('keeps a deal somebody answered, whatever stage it is at', () => {
+    const said = { ...vickery, lodgement_plan: 'week', lodgement_week: mondayOf(NOW) }
+    expect(couldLodge(said)).toBe(false)
+    expect(seatOf(said, NOW)).toBe('this_week')
+  })
+
+  it('and a client answer too', () => {
+    expect(seatOf({ ...vickery, lodgement_plan: 'client' }, NOW)).toBe('client')
+  })
+
+  it('but an answered deal that then settles is gone', () => {
+    const said = { ...vickery, lodgement_plan: 'client', settled_at: ago(2) }
+    expect(seatOf(said, NOW)).toBe(null)
+  })
+})

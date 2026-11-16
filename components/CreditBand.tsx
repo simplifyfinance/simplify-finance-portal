@@ -34,7 +34,7 @@ const KEY = 'text-[10px] font-extrabold tracking-[0.13em] uppercase text-[#9A948
 const DIM = 'text-[11px] text-[#9A948C]'
 
 export default function CreditBand({ team, overloaded, me }: {
-  team: Array<CreditPerson & { plan?: any; openDeals?: any[] }>
+  team: Array<CreditPerson & { plan?: any; openDeals?: any[]; onLeave?: boolean }>
   overloaded: { name: string; open: number; average: number; unplanned: boolean } | null
   me: { id?: any; name?: any }
 }) {
@@ -124,7 +124,15 @@ export default function CreditBand({ team, overloaded, me }: {
               className="flex-1 min-w-[360px] bg-card border border-card-line rounded-xl px-4 py-3.5">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[15px] font-bold">{t.name}</span>
-                {t.informedAt ? (
+                {/* AWAY, NOT GONE. Her queue can be stacked and waiting; she
+                    is not being asked for a plan this morning, and the round
+                    robin is not sending her anything. */}
+                {t.onLeave ? (
+                  <span className="rounded-full border border-line bg-page text-muted
+                                   px-2 py-px text-[10.5px] font-bold">
+                    On leave
+                  </span>
+                ) : t.informedAt ? (
                   <span className="rounded-full border border-done-edge bg-done-bg text-done
                                    px-2 py-px text-[10.5px] font-bold">
                     Sent {new Date(t.informedAt).toLocaleTimeString('en-AU',

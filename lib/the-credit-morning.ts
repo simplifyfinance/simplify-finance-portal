@@ -16,6 +16,8 @@
 export type CreditPerson = {
   id: string
   name: string
+  /** Away, not gone - on the board, out of the morning count. */
+  onLeave?: boolean
   /** When she told management her day, or null if she has not. */
   informedAt?: string | null
   /** How many she ticked off yesterday. */
@@ -37,6 +39,13 @@ export type CreditMorning = {
 }
 
 export function creditMorning(team: CreditPerson[]): CreditMorning {
+  // SOMEBODY ON LEAVE IS NOT SOMEBODY WHO HAS NOT SENT.
+  //
+  // 18 Nov 2026. Dinisha is on the board so her queue can be stacked while she
+  // is away - but "2 of 3 sent their day" would read as a team member who had
+  // not answered, every morning, for months. She is on the board and out of the
+  // count.
+  team = (team || []).filter(t => !(t as any).onLeave)
   const n = (v: any) => (typeof v === 'number' && isFinite(v) && v > 0 ? Math.floor(v) : 0)
   const onToday = team.reduce((a, t) => a + n(t.todayCount), 0)
   const openTotal = team.reduce((a, t) => a + n(t.open), 0)

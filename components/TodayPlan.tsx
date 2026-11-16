@@ -29,6 +29,7 @@ import {
   type PlanDeal, type Plan,
 } from '@/lib/the-days-plan'
 import MyDay, { type DayDeal } from '@/components/MyDay'
+import { dayHasChanged } from '@/lib/a-day-can-change'
 import PickTheDay from '@/components/PickTheDay'
 
 // THE MORNING, WITHOUT THE EMAIL.
@@ -181,6 +182,19 @@ export default function TodayPlan({
   const mySaved = meOfficerId
     ? plans.find(p => p.officerId === meOfficerId)
     : myPlan ? { deals: myPlan.dealIds.map(id => ({ id })), notes: myPlan.notes, onItNow: myPlan.onItNow } : undefined
+  // WHAT SHE LAST TOLD THEM.
+  //
+  // 18 Nov 2026. Until today the screen had no idea: it knew WHEN she confirmed
+  // and not WHAT, so a day that moved afterwards looked identical to one that
+  // had not. See lib/a-day-can-change.ts.
+  const [daySent, setDaySent] = useState<{ dealIds: string[]; notes: any; onItNow: string | null } | null>(
+    (mySaved as any)?.deals || (mySaved as any)?.notes || (mySaved as any)?.onItNow
+      ? {
+        dealIds: ((mySaved as any)?.deals || []).map((d: any) => String(d.id)),
+        notes: (mySaved as any)?.notes || {},
+        onItNow: (mySaved as any)?.onItNow || null,
+      }
+      : null)
   const [order, setOrder] = useState<string[] | null>(null)
   const [notes, setNotes] = useState<Record<string, string>>((mySaved as any)?.notes || {})
   const [onItNow, setOnItNow] = useState<string | null>((mySaved as any)?.onItNow || null)
@@ -450,6 +464,8 @@ export default function TodayPlan({
     const when = new Date().toISOString()
     if (await save({ deal_ids: todayIds, notes, on_it_now: onItNow, confirmed_at: when })) {
       setSaved(when)
+      // AND WHAT WAS SENT, so the button goes quiet until something moves again.
+      setDaySent({ dealIds: todayIds.map(String), notes, onItNow })
     }
   }
 
@@ -511,6 +527,7 @@ export default function TodayPlan({
       saved={saved}
       busy={busy}
       onConfirm={confirm}
+      changed={dayHasChanged(daySent, { dealIds: todayIds.map(String), notes, onItNow })}
       heading={view === 'credit' ? 'Everything with you' : 'Today, in this order'}
     />
   )

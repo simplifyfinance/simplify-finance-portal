@@ -62,8 +62,13 @@ describe('and the meeting can see it', () => {
   // THE MARK IS ON THE ADMIN SCREEN AND NOWHERE ELSE. Keanen and Justin are
   // not managed - no target, no league table, nothing red at them. See the
   // header of lib/the-brokers-monday.ts.
+  //
+  // 18 Nov 2026: the middle argument is the SEARCH BOX, and it used to be false
+  // here - so Justin and Keanen were the only brokers who could not look a deal
+  // up. It is true now. The third argument is the week mark, and that is still
+  // theirs alone, which is what this test is about.
   it('only in the Simplify Finance Brokers section', () => {
-    expect(RUN).toContain('section(theirs, false, true)')
+    expect(RUN).toContain('section(theirs, true, true)')
     expect(RUN, 'the other section must not carry the mark').toContain('section(mine, true)')
   })
 

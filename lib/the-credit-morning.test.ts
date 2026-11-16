@@ -58,3 +58,23 @@ describe('where a file can be moved', () => {
     expect(moveWords('  ')).toBe('Move to the other one')
   })
 })
+
+// 18 Nov 2026. Dinisha is on maternity leave and on the board, so her queue can
+// be stacked and waiting - but she is not somebody who failed to send a plan.
+describe('somebody on leave', () => {
+  const away = { id: 'd', name: 'Dinisha Devadason', onLeave: true, open: 4 }
+
+  it('is not counted as a team member who has not sent', () => {
+    const s = creditMorning([katie, mel, away])
+    expect(s.team).toBe(2)
+    expect(s.sent).toBe(2)
+  })
+
+  it('and her files are not counted as the team being buried', () => {
+    expect(creditMorning([katie, mel, away]).openTotal).toBe(24)
+  })
+
+  it('a team of nobody but somebody on leave reads as empty', () => {
+    expect(creditMorning([away]).team).toBe(0)
+  })
+})

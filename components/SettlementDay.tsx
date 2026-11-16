@@ -32,6 +32,13 @@ export default function SettlementDay({ deals }: { deals: any[] }) {
   const today = todayYmd()
 
   const [me, setMe] = useState<{ id: string; name: string } | null>(null)
+  // ONLY THE PEOPLE WHOSE JOB THIS IS.
+  //
+  // 18 Nov 2026. The first version drew a My day for anybody who opened the
+  // settlements screen - management included. A plan is owed by the two people
+  // who work settlements, and the band on the admin Today asks exactly the same
+  // column, so the list and the askers cannot drift apart.
+  const [mine, setMine] = useState(false)
   const [order, setOrder] = useState<string[] | null>(null)
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [onItNow, setOnItNow] = useState<string | null>(null)
@@ -48,12 +55,13 @@ export default function SettlementDay({ deals }: { deals: any[] }) {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user || !alive) return
       const { data: profile } = await supabase.from('user_profiles')
-        .select('full_name').eq('id', user.id).maybeSingle()
+        .select('full_name, settlements_team').eq('id', user.id).maybeSingle()
       const { data: plan } = await supabase.from('daily_plans')
         .select('deal_ids, notes, on_it_now, confirmed_at')
         .eq('user_id', user.id).eq('plan_date', today).maybeSingle()
       if (!alive) return
       setMe({ id: user.id, name: (profile as any)?.full_name || '' })
+      setMine(!!(profile as any)?.settlements_team)
       setNotes(((plan as any)?.notes as any) || {})
       setOnItNow((plan as any)?.on_it_now || null)
       setSaved((plan as any)?.confirmed_at || null)
@@ -74,7 +82,7 @@ export default function SettlementDay({ deals }: { deals: any[] }) {
     return extra.length ? [...order, ...extra] : order
   }, [order, draft])
 
-  if (!me || !order) return null
+  if (!me || !order || !mine) return null
 
   const { today: todayIds } = splitAtLine(items)
 

@@ -17,6 +17,7 @@ type UserProfile = {
   active: boolean
   is_admin?: boolean | null
   sees_finance?: boolean | null
+  settlements_team?: boolean | null
   sees_all_deals?: boolean | null
   sees_settlements?: boolean | null
   // NO TODAY PAGE.
@@ -162,7 +163,8 @@ export default function TeamSection() {
 
   async function toggleFlag(
     user: UserProfile,
-    field: 'is_admin' | 'sees_finance' | 'sees_all_deals' | 'sees_settlements' | 'no_today',
+    field: 'is_admin' | 'sees_finance' | 'sees_all_deals' | 'sees_settlements' | 'no_today'
+      | 'settlements_team',
   ) {
     setAccessMsg('')
     const next = !user[field]
@@ -457,6 +459,11 @@ export default function TeamSection() {
                     <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">Permissions</label>
                     {([['is_admin', 'Admin', 'Sets targets and monthly actuals'],
                        ['sees_finance', 'Sees finance', 'Commissions and the finance screens'],
+                       // A JOB, NOT A PERMISSION. 18 Nov 2026 - the morning box
+                       // read sees_settlements and asked a credit assessor and
+                       // five staff for a settlement plan.
+                       ['settlements_team', 'Settlement team',
+                        'Their work is settlements. They say what their day is each morning'],
                        ['sees_all_deals', 'Sees all deals', 'Every deal, not just their own'],
                        ['sees_settlements', 'Settlements', 'The settlements board, every broker, from lodgement on'],
                        ['no_today', 'No Today page', 'Hides the Today tab. For people who work out of one screen']] as const).map(([f, label, why]) => (

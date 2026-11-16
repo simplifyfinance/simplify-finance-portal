@@ -103,7 +103,19 @@ export function seatOf(deal: any, now: Date = new Date()): Seat | null {
     // are on Lodged and settled, which is the page for counting.
     return thisWeek(deal, now) ? 'lodged' : null
   }
-  if (!couldLodge(deal)) return null
+  // A PERSON'S ANSWER BEATS THE STAGE.
+  //
+  // 18 Nov 2026. Fabio, on why the search exists at all: "sometimes we have
+  // deals that come in so early in the process that we can believe that it will
+  // be lodged that week. That's what the search bar was for."
+  //
+  // couldLodge() asks whether a deal is far enough along to be worth the
+  // meeting's time unprompted - compliance issued, lending options, a BC the
+  // client is holding. That is the right rule for what the list OFFERS and the
+  // wrong rule for what a person has already decided. Somebody searching out a
+  // fact find and marking it This week has answered the question; dropping it
+  // off on the next load is the screen arguing with them.
+  if (!couldLodge(deal) && !answerOf(deal, now)) return null
   if (answerOf(deal, now) === 'client') return 'client'
   const tab = tabOf(deal, now)
   if (tab === 'this_week') return 'this_week'
@@ -329,11 +341,24 @@ export function runThrough(
   last: string[] = [],
 ): BrokerRun[] {
   const by = new Map<string, any[]>()
-  // Everything of each broker's that could lodge, on any seat - the search
-  // beside their name reaches all of it, not just the tab on screen.
+  // EVERY LIVE DEAL OF THEIRS, WHATEVER STAGE IT IS AT.
+  //
+  // 18 Nov 2026. Alan searched a client in the Monday meeting and got nothing.
+  // The deal was real and it was Mark's - Daniel Vickery & Kellie King - with no
+  // BC, no lending options and no compliance, so it sat on no seat, and this map
+  // was built out of the seats.
+  //
+  // Fabio: "the search bar should be searching every possible deal, because that
+  // is the point of the search bar... sometimes we have deals that come in so
+  // early in the process that we can believe that it will be lodged that week."
+  //
+  // THE LIST STAYS NARROW AND THE SEARCH GOES WIDE. "I understand that you're
+  // bringing LO, compliance, BC, otherwise it gets too busy. I get that." Two
+  // different jobs: what the meeting is offered, and what a person can go and
+  // find. Only the dead are left out - lost, and already settled.
   const everything = new Map<string, any[]>()
   for (const d of deals || []) {
-    if (!seatOf(d, now)) continue
+    if (txt(d?.status) === 'lost' || txt(d?.settled_at)) continue
     const key = txt(d?.assigned_broker).toLowerCase()
     if (key) everything.set(key, [...(everything.get(key) || []), d])
   }

@@ -63,10 +63,18 @@ export default function SettlementsBand({ deals, brokerRows }: {
     Promise.all([
       supabase.from('pipeline_targets').select('metric, month, broker_key, amount'),
       supabase.from('settings').select('brands, settlements').eq('id', 'singleton').maybeSingle(),
-      // THE TEAM, AND THEIR DAY. Admins are left out: management is who this
-      // box reports TO, not somebody who owes it a plan.
-      supabase.from('user_profiles').select('id, full_name, role, sees_settlements')
-        .eq('sees_settlements', true),
+      // WHOSE JOB IT IS, NOT WHO MAY LOOK.
+      //
+      // 18 Nov 2026. This asked for sees_settlements and got eight people -
+      // Dinisha, who is credit, and five staff who have the tab so they can
+      // read it. Fabio: "Denisha, she's a credit assessor... Why is she even
+      // here? Who are these people?"
+      //
+      // sees_settlements is a permission. settlements_team is a job. Using the
+      // first as the second put six people on a list asking them for a plan
+      // they do not owe. See docs/the-settlement-team.sql.
+      supabase.from('user_profiles').select('id, full_name, role, settlements_team')
+        .eq('settlements_team', true),
       supabase.from('daily_plans').select('user_id, confirmed_at, deal_ids, on_it_now')
         .eq('plan_date', todayYmd()).not('user_id', 'is', null),
     ]).then(([t, s, u, p]: any[]) => {
@@ -74,7 +82,7 @@ export default function SettlementsBand({ deals, brokerRows }: {
       setTargets(t?.data || [])
       setBrands(Array.isArray(s?.data?.brands) ? s.data.brands : [])
       setChase(settlementSettings(s?.data?.settlements))
-      setStaff((u?.data || []).filter((x: any) => x.role !== 'admin' && (x.full_name || '').trim()))
+      setStaff((u?.data || []).filter((x: any) => (x.full_name || '').trim()))
       setDayPlans(p?.data || [])
     })
     return () => { alive = false }

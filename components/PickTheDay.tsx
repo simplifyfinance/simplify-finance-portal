@@ -6,6 +6,7 @@ import { brokerLabel } from '@/lib/broker-key'
 import { reworkChip } from '@/lib/send-it-back'
 import { askChip } from '@/lib/a-slot-each'
 import { OFFICE } from '@/lib/same-date-everywhere'
+import { saveWords, NOT_SENT } from '@/lib/a-day-can-change'
 import { pickedWords } from '@/lib/the-credit-order'
 import { type DayDeal } from '@/components/MyDay'
 
@@ -67,7 +68,7 @@ const hit = (d: DayDeal, needle: string) =>
 
 export default function PickTheDay({
   deals, others = [], order, setOrder, notes, setNote, onItNow, setOnItNow,
-  saved, busy, onConfirm, canEdit = true, heading = 'Everything with you',
+  saved, busy, onConfirm, changed = false, canEdit = true, heading = 'Everything with you',
 }: {
   deals: DayDeal[]
   /** Live files that are NOT hers, reachable by search only. */
@@ -81,6 +82,8 @@ export default function PickTheDay({
   saved: string | null
   busy: boolean
   onConfirm: () => void
+  /** The day has moved since she last told them - see lib/a-day-can-change.ts. */
+  changed?: boolean
   canEdit?: boolean
   heading?: string
 }) {
@@ -274,14 +277,22 @@ export default function PickTheDay({
         )}
 
         <div className="mt-4">
-          {saved ? (
-            <span className="inline-block rounded-[10px] border border-done-edge bg-done-bg px-4 py-2.5 text-[13.5px] font-semibold text-done">
+          {/* THE CHIP STAYS AND THE BUTTON COMES BACK. See MyDay for the
+              morning this was found, and lib/a-day-can-change.ts for the rule.
+              Mellissa ticked three files at ten past nine and had nowhere to
+              put them, because telling them once took the button away. */}
+          {saved && (
+            <span className={`inline-block rounded-[10px] border px-4 py-2.5 text-[13.5px] font-semibold ${changed
+              ? 'border-info-edge bg-info-bg text-brand-ink'
+              : 'border-done-edge bg-done-bg text-done'}`}>
               &#10003; Told the brokers &mdash; {new Date(saved).toLocaleTimeString('en-AU', { timeZone: OFFICE, hour: 'numeric', minute: '2-digit' })}
+              {changed && <span className="font-normal"> &middot; {NOT_SENT}</span>}
             </span>
-          ) : (
+          )}
+          {(!saved || changed) && (
             <button onClick={onConfirm} disabled={busy || !canEdit || today.length === 0}
-              className="w-full rounded-[10px] bg-ink px-5 py-2.5 text-[14px] font-semibold text-page disabled:opacity-40">
-              {busy ? 'Telling them...' : 'Yes — this is my day'}
+              className={`w-full rounded-[10px] bg-ink px-5 py-2.5 text-[14px] font-semibold text-page disabled:opacity-40 ${saved ? 'mt-2' : ''}`}>
+              {saveWords(busy, changed)}
             </button>
           )}
         </div>

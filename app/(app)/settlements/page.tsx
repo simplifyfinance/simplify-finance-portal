@@ -6,6 +6,8 @@ import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { realDealsOnly, REAL_DEALS_OR } from '@/lib/test-deal'
+import { LIGHT_SELECT, HEAVY_SELECT, whoNeedsTheDetail, withTheDetail }
+  from '@/lib/the-columns-a-screen-needs'
 import { todayYmd } from '@/lib/periods'
 import LoanIds, { LoanIdChip } from '@/components/LoanIds'
 import { loanIdStatus } from '@/lib/loan-id'
@@ -138,7 +140,11 @@ export default function SettlementsPage() {
       // EVERY LODGED DEAL, A PAGE AT A TIME. 2 Nov 2026 - one ask returned the
       // newest thousand of 1165 and said nothing, so settlement figures were
       // quietly short. See lib/the-whole-book.ts.
-      everyRow<any>((from, to) => supabase.from('deals').select('*')
+      // EVERY COLUMN BUT THE FIVE BIG ONES. The settlements screen reads a
+      // split total off lo_data and nothing else out of them, so the blobs come
+      // back in a second, much smaller ask below.
+      // See lib/the-columns-a-screen-needs.ts.
+      everyRow<any>((from, to) => supabase.from('deals').select(LIGHT_SELECT)
         .not('lodged_at', 'is', null).or(REAL_DEALS_OR)
         .order('lodged_at', { ascending: false }).order('id').range(from, to)),
       supabase.from('brokers').select('broker_key, name, active').order('name'),
@@ -149,7 +155,15 @@ export default function SettlementsPage() {
     // deals is worse than no figure, because nothing about it looks wrong.
     if (d.truncated) { setLoadError('Not every lodged deal could be read, so these figures would be short. Reload the page.'); setLoading(false); return }
     // A settlement is money. A test deal is not money.
-    setDeals(realDealsOnly(d.rows || []))
+    const light = realDealsOnly(d.rows || [])
+    const need = whoNeedsTheDetail(light)
+    // PAGED, like the ask above it. A list of deals read in one go is short the
+    // day the book passes a thousand, and says nothing about it.
+    const { rows: detail } = need.length
+      ? await everyRow<any>((from, to) => supabase.from('deals')
+          .select(HEAVY_SELECT).in('id', need).order('id').range(from, to))
+      : { rows: [] as any[] }
+    setDeals(withTheDetail(light, detail as any[]))
     setBrokers((b.data || []).filter((r: any) => r.active !== false)
       .map((r: any) => ({ key: String(r.broker_key), name: r.name })))
     setTargets(t.error ? [] : (t.data || []))

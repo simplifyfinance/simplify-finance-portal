@@ -1,5 +1,6 @@
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { everyRow } from '@/lib/the-whole-book'
+import { REPORT_SELECT } from '@/lib/the-columns-a-screen-needs'
 import { realDealsOnly, REAL_DEALS_OR } from '@/lib/test-deal'
 import { redirect } from 'next/navigation'
 import Lodgements from '@/components/Lodgements'
@@ -15,7 +16,12 @@ export default async function LodgementsPage() {
   // deals is a report that quietly stops counting the year. See
   // lib/the-whole-book.ts.
   const { rows } = await everyRow<any>((from, to) => supabase
-    .from('deals').select('*').or(REAL_DEALS_OR)
+    // EVERY COLUMN BUT THE FOUR NOBODY COUNTS. 18 Nov 2026 - this report
+    // carried 2,361 kB of fact finds, BCs, compliance data and internal notes
+    // across the wire to add up loan amounts. lo_data stays, because the
+    // figures fall back to a split total off it. See
+    // lib/the-columns-a-screen-needs.ts.
+    .from('deals').select(REPORT_SELECT).or(REAL_DEALS_OR)
     .order('created_at', { ascending: false }).order('id').range(from, to))
 
   // WHO IS LOOKING. The role already on their login decides what the page

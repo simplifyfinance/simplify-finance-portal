@@ -114,10 +114,16 @@ export default function RunThrough({
     .map(b => String(b?.broker_key || '').toLowerCase())
     .filter(Boolean), [brokerRows])
 
+  // EVERY BROKER IN THE REGISTER, ON EVERY TAB.
+  //
+  // 18 Nov 2026. This left out the second team, so Justin and Keanen appeared
+  // only when they happened to have something on the seat being looked at - and
+  // with nothing there, they had no row, and no search box to look anything up
+  // in. The same "ask the question anyway" that put Kylie on the list with
+  // nothing under her applies to them.
   const ourBrokers = useMemo(() => (brokerRows || [])
-    .filter(b => String(b?.team || '').trim() !== secondTeam)
     .map(b => String(b?.broker_key || '').toLowerCase())
-    .filter(Boolean), [brokerRows, secondTeam])
+    .filter(Boolean), [brokerRows])
 
   const [target, setTarget] = useState(() => readTarget(savedTarget))
   const [editing, setEditing] = useState(false)
@@ -545,7 +551,10 @@ export default function RunThrough({
             ? <div className="text-[12px] text-faint pt-2">
                 Nothing from them on this list.
               </div>
-            : section(theirs, false, true)}
+            /* A SEARCH BOX FOR THEM TOO. 18 Nov 2026 - this section was
+                built with search switched off, so Justin and Keanen were the
+                only two brokers who could not look anything up. */
+            : section(theirs, true, true)}
         </div>
       )}
       </div>

@@ -6,6 +6,7 @@ import { brokerLabel } from '@/lib/broker-key'
 import { reworkChip } from '@/lib/send-it-back'
 import { askChip } from '@/lib/a-slot-each'
 import { OFFICE } from '@/lib/same-date-everywhere'
+import { saveWords, NOT_SENT } from '@/lib/a-day-can-change'
 
 // A DAY THAT IS A DAY.
 //
@@ -44,7 +45,7 @@ export type DayDeal = PlanDeal & {
 
 export default function MyDay({
   deals, order, setOrder, notes, setNote, onItNow, setOnItNow, saved, busy, onConfirm,
-  canEdit = true, heading = 'Today, in this order',
+  changed = false, canEdit = true, heading = 'Today, in this order',
 }: {
   /** Everything sitting with this person, drafted. Keyed by id below. */
   deals: DayDeal[]
@@ -58,6 +59,8 @@ export default function MyDay({
   saved: string | null
   busy: boolean
   onConfirm: () => void
+  /** The day has moved since she last told them - see lib/a-day-can-change.ts. */
+  changed?: boolean
   canEdit?: boolean
   /** "2 — Today, in this order" for a credit assessor, who presses three
     * buttons in order. See lib/the-morning-three.ts. */
@@ -227,14 +230,24 @@ export default function MyDay({
       )}
 
       <div className="flex gap-2.5 items-center mt-4 flex-wrap">
-        {saved ? (
-          <span className="text-[13.5px] font-semibold text-done bg-done-bg border border-done-edge rounded-[10px] px-4 py-2.5">
+        {/* THE CHIP STAYS AND THE BUTTON COMES BACK.
+            18 Nov 2026 - "She has ticked them but they aren't automatically
+            saving when she leaves the screen and there is no option to
+            save/send." The chip used to REPLACE the button, so a day that
+            moved after it was told could not be told again.
+            See lib/a-day-can-change.ts. */}
+        {saved && (
+          <span className={`text-[13.5px] font-semibold rounded-[10px] px-4 py-2.5 border ${changed
+            ? 'text-brand-ink bg-info-bg border-info-edge'
+            : 'text-done bg-done-bg border-done-edge'}`}>
             &#10003; Told the brokers &mdash; {new Date(saved).toLocaleTimeString('en-AU', { timeZone: OFFICE, hour: 'numeric', minute: '2-digit' })}
+            {changed && <span className="font-normal"> &middot; {NOT_SENT}</span>}
           </span>
-        ) : (
+        )}
+        {(!saved || changed) && (
           <button onClick={onConfirm} disabled={busy || !canEdit}
             className="text-[14px] rounded-[10px] px-5 py-2.5 font-semibold bg-ink text-page disabled:opacity-40">
-            {busy ? 'Telling them...' : 'Yes — this is my day'}
+            {saveWords(busy, changed)}
           </button>
         )}
         {canEdit && (

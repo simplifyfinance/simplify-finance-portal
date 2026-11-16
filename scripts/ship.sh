@@ -100,6 +100,16 @@ if ! ./scripts/check-deal-columns.sh; then
   exit 1
 fi
 
+# 18 Nov 2026. Today took ten seconds to load, because two screens asked for
+# every column of every deal and five JSON columns were 84% of the weight.
+# Speed rots quietly - nobody notices the day a select('*') goes back in.
+echo "Checking the screens are not carrying the whole book..."
+if ! ./scripts/check-deal-weight.sh; then
+  echo
+  echo "NOT SHIPPED - fix the above first."
+  exit 1
+fi
+
 # 27 Oct 2026. A capitalised premium was in the purchase box and missing from
 # the split card under it, from the whole of the lending options, and from the
 # two compliance paragraphs that say what somebody is borrowing. Five weeks,

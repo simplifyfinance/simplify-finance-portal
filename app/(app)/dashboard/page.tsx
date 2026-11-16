@@ -1,6 +1,8 @@
 import { everyRow } from '@/lib/the-whole-book'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { realDealsOnly, REAL_DEALS_OR } from '@/lib/test-deal'
+import { LIGHT_SELECT, HEAVY_SELECT, whoNeedsTheDetail, withTheDetail }
+  from '@/lib/the-columns-a-screen-needs'
 import { redirect } from 'next/navigation'
 import { whichToday } from '@/lib/which-today'
 import TodayPlan from '@/components/TodayPlan'
@@ -139,12 +141,30 @@ export default async function Dashboard(
   // EVERY DEAL, A PAGE AT A TIME, AND THE TEST DEALS LEFT WHERE THEY ARE.
   // 2 Nov 2026 - this asked once and got the newest thousand of 1165 without
   // being told. See lib/the-whole-book.ts.
-  const { rows: rawDeals } = await everyRow<any>((from, to) => supabase
+  // TWO ASKS, AND THE SECOND ONE IS SMALL.
+  //
+  // 18 Nov 2026. This said select('*'), which on 280 deals is 3,575 kB - and
+  // 3,099 kB of that is five JSON columns this page reads four facts out of.
+  // Fabio: "when I press today, it takes a good 10 seconds."
+  //
+  // So: every column but those five, for every deal. Then the five, only for
+  // the deals anybody can still act on. See lib/the-columns-a-screen-needs.ts.
+  const { rows: rawLight } = await everyRow<any>((from, to) => supabase
     .from('deals')
-    .select('*, clients(first_name, last_name)')
+    .select(`${LIGHT_SELECT}, clients(first_name, last_name)`)
     .or(REAL_DEALS_OR)
     .order('created_at', { ascending: false }).order('id')
     .range(from, to))
+  const needDetail = whoNeedsTheDetail(rawLight as any[])
+  // PAGED LIKE EVERYTHING ELSE. 18 Nov 2026 - the first version asked for these
+  // in one go with .in(), which is a list of deals read without paging: fine at
+  // 88 ids and silently short at a thousand. scripts/check-the-whole-book.sh
+  // caught it before it shipped, which is what it is for.
+  const { rows: detail } = needDetail.length
+    ? await everyRow<any>((from, to) => supabase.from('deals')
+        .select(HEAVY_SELECT).in('id', needDetail).order('id').range(from, to))
+    : { rows: [] as any[] }
+  const rawDeals = withTheDetail(rawLight as any[], detail as any[])
   // TEST DEALS ARE NOT THE BUSINESS. One rule, in lib/test-deal.ts, asked by
   // every screen that counts - so the dashboard, the workload page and the
   // settlements list can never disagree about what is in the book.
@@ -202,10 +222,24 @@ export default async function Dashboard(
   // lib/rate-notice.ts on 9 Oct. See todayYmd() in lib/periods.ts.
   const today = todayYmd()
   const [{ data: officerRows }, { data: planRows }] = await Promise.all([
-    supabase.from('credit_officers').select('id, name').eq('active', true).order('name'),
+    // AWAY IS NOT GONE.
+    //
+    // 18 Nov 2026. Dinisha is on maternity leave, so she is inactive - which is
+    // right, because inactive is what stops the round robin allocating files to
+    // her. But it also took her off this board, and Fabio wants her queue
+    // stacked and waiting: "Dinisha needs her today page even if its blank for
+    // now built and ready to go."
+    //
+    // Ria is inactive and NOT on leave - she has left credit, and she stays off.
+    // See docs/the-settlement-team.sql for the same mistake made the other way
+    // round, where a permission was read as a job.
+    supabase.from('credit_officers').select('id, name, active, on_leave')
+      .or('active.eq.true,on_leave.eq.true').order('name'),
     supabase.from('daily_plans').select('officer_id, broker_key, plan_date, deal_ids, confirmed_at, notes, on_it_now, yesterday_ok_at, informed_at, yesterday_added, yesterday_removed, order_from, seen_at').eq('plan_date', today),
   ])
-  const officers = (officerRows || []).map((o: any) => ({ id: o.id, name: o.name }))
+  const officers = (officerRows || []).map((o: any) => ({
+    id: o.id, name: o.name, onLeave: !o.active && !!o.on_leave,
+  }))
   const byOfficer = new Map((planRows || []).map((p: any) => [p.officer_id, p]))
   // One row per assessor whether they have a plan or not - the board is about
   // who HAS NOT, so somebody with no row has to appear on it.
@@ -257,6 +291,7 @@ export default async function Dashboard(
     const row: any = byOfficer.get(o.id)
     return {
       name: o.name,
+      onLeave: (o as any).onLeave || false,
       informedAt: row?.informed_at || null,
       yesterdayCount: Array.isArray(row?.yesterday_added)
         ? (row.yesterday_added as any[]).length : 0,
