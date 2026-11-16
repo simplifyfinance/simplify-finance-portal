@@ -17,6 +17,7 @@ import {
 import { useBusyWhile } from '@/components/useBusy'
 import Loading from '@/components/Loading'
 import MorningList from '@/components/MorningList'
+import SettlementDay from '@/components/SettlementDay'
 
 const num = (v: any): number | null => {
   if (v === null || v === undefined || v === '') return null
@@ -470,7 +471,14 @@ export default function SettlementsPage() {
           whole book rather than the month on screen - a deal that went quiet in
           October does not stop needing a chase because somebody clicked into
           November. See components/MorningList.tsx. */}
-      <MorningList deals={deals} />
+      <>
+          {/* WHAT I AM DOING TODAY, ABOVE WHAT IS OWED.
+            * 18 Nov 2026. The list says what the book needs; this says which of
+            * it is mine this morning - and it is the only way management can see
+            * the day rather than the month. See components/SettlementDay.tsx. */}
+          <SettlementDay deals={deals} />
+          <MorningList deals={deals} />
+        </>
 
       <div className="bg-page border border-line rounded-xl p-3 flex items-center gap-3 flex-wrap mb-4">
         <button onClick={() => setMonth(addMonths(month, -1))} className="w-[26px] h-[26px] rounded-lg border border-line bg-card text-muted">‹</button>

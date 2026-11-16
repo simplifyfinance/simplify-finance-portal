@@ -117,6 +117,7 @@ export default function SetHerOrder({ officerId, name, plan, deals, me, onDone,
         </p>
       )}
 
+      <div className={framed ? '' : 'max-h-[232px] overflow-y-auto'}>
       {chosen.map((d, i) => (
         <div key={d.id} className="flex items-center gap-2.5 border-b border-line-soft py-1.5
                                    text-[13px] last:border-b-0">
@@ -146,14 +147,22 @@ export default function SetHerOrder({ officerId, name, plan, deals, me, onDone,
         </div>
       ))}
 
+      </div>
+
+      {/* TEN ROWS, THEN IT SCROLLS.
+            18 Nov 2026. I took the scroller off for the Credit band and her
+            other open files ran to twenty-five rows a column - Fabio: "see the
+            help other open files, like list one. Like it's ridiculous."
+            The rule is his, and it is the same one the run-through uses: a
+            screenful is ten names and a scrollbar, never the whole book. */}
       {rest.length > 0 && (
         <div className={framed
           ? 'mt-2.5 max-h-[150px] overflow-y-auto rounded-[10px] border border-line bg-page px-2.5 py-1.5'
-          : 'mt-2.5 rounded-[10px] border border-line bg-page px-2.5 py-1.5'}>
+          : 'mt-2.5 max-h-[268px] overflow-y-auto rounded-[10px] border border-line bg-page px-2.5 py-1.5'}>
           <div className="pb-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-faint">
             Her other open files
           </div>
-          {rest.slice(0, framed ? 20 : 40).map(d => (
+          {rest.slice(0, 20).map(d => (
             <button key={d.id} type="button"
                     onClick={() => setIds(x => putOn(x, d.id))}
                     className="flex w-full items-center gap-2 border-b border-line-soft py-1

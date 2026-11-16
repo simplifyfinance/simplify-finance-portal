@@ -10,6 +10,7 @@ import {
 import { stepOf, isOverdue, daysOnStep, STEP_LABEL, workdaysBetween } from '@/lib/the-seven-steps'
 import { settlementSettings, SETTLEMENT_DEFAULTS } from '@/lib/settlement-settings'
 import { amountOf } from '@/lib/deal-phase'
+import { howManyPlanned, plannedWords } from '@/lib/the-settlement-day'
 
 // THE SETTLEMENT MONTH, ON THE SCREEN MANAGEMENT ALREADY OPENS.
 //
@@ -50,6 +51,10 @@ export default function SettlementsBand({ deals, brokerRows }: {
   const [brands, setBrands] = useState<any[]>([])
   const [chase, setChase] = useState(SETTLEMENT_DEFAULTS)
   const [who, setWho] = useState<string | null>(null)   // null is both businesses
+  // WHO HAS SAID WHAT TODAY IS. 18 Nov 2026 - the band could see the month and
+  // not the day. See components/SettlementDay.tsx, which writes these rows.
+  const [staff, setStaff] = useState<any[]>([])
+  const [dayPlans, setDayPlans] = useState<any[]>([])
 
   const month = useMemo(() => monthOf(todayYmd()), [])
 
@@ -58,11 +63,19 @@ export default function SettlementsBand({ deals, brokerRows }: {
     Promise.all([
       supabase.from('pipeline_targets').select('metric, month, broker_key, amount'),
       supabase.from('settings').select('brands, settlements').eq('id', 'singleton').maybeSingle(),
-    ]).then(([t, s]: any[]) => {
+      // THE TEAM, AND THEIR DAY. Admins are left out: management is who this
+      // box reports TO, not somebody who owes it a plan.
+      supabase.from('user_profiles').select('id, full_name, role, sees_settlements')
+        .eq('sees_settlements', true),
+      supabase.from('daily_plans').select('user_id, confirmed_at, deal_ids, on_it_now')
+        .eq('plan_date', todayYmd()).not('user_id', 'is', null),
+    ]).then(([t, s, u, p]: any[]) => {
       if (!alive) return
       setTargets(t?.data || [])
       setBrands(Array.isArray(s?.data?.brands) ? s.data.brands : [])
       setChase(settlementSettings(s?.data?.settlements))
+      setStaff((u?.data || []).filter((x: any) => x.role !== 'admin' && (x.full_name || '').trim()))
+      setDayPlans(p?.data || [])
     })
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -231,6 +244,48 @@ export default function SettlementsBand({ deals, brokerRows }: {
               </p>
             )}
           </div>
+
+          {/* THE DAY, NOT THE MONTH.
+            * 18 Nov 2026. Everything above this is the month landing. This is
+            * whether anybody is working on it this morning - the one thing the
+            * band could not say until the settlements screen grew a My day.
+            * One row each, named, because a count of 1 of 2 does not tell you
+            * which one to ring. */}
+          {staff.length > 0 && (() => {
+            const byUser = new Map(dayPlans.map((p: any) => [String(p.user_id), p]))
+            const rows = staff.map((p: any) => ({
+              id: String(p.id),
+              name: p.full_name as string,
+              plan: byUser.get(String(p.id)) || null,
+            }))
+            const n = howManyPlanned(rows.map(r => ({ id: r.id, confirmedAt: r.plan?.confirmed_at })))
+            return (
+              <div className="bg-card border border-card-line rounded-xl px-4 py-3 mt-3">
+                <div className={CAP}>The settlement team this morning
+                  <span className="ml-auto font-normal tracking-normal normal-case text-[11.5px] text-faint">
+                    {n.said} of {n.team} have said
+                  </span>
+                </div>
+                {rows.map(r => (
+                  <div key={r.id}
+                    className={`rounded-lg px-3 py-2 mb-1.5 last:mb-0 border-l-4 ${
+                      r.plan?.confirmed_at ? 'bg-done-bg border-done' : 'bg-page border-line'}`}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[12.5px] font-bold">{r.name}</span>
+                      <span className="text-[11.5px] text-muted">
+                        {plannedWords(r.name, r.plan?.confirmed_at).replace(/^\S+\s/, '')}
+                      </span>
+                      {r.plan?.confirmed_at && (
+                        <span className="ml-auto text-[11.5px] text-faint">
+                          {(r.plan?.deal_ids || []).length} on today
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
         </div>
       </div>
     </>
