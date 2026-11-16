@@ -365,9 +365,16 @@ export default async function Dashboard(
       {/* ONLY ON ONE ACCOUNT, AND LOUD WHEN IT IS IN USE.
         *  12 Nov 2026 - "the view as I dont want everyone to have it just me."
         *  See lib/view-as.ts. */}
-      {viewing && <ViewingAsStrip who={viewing} />}
+      {viewing && (
+        <ViewingAsStrip
+          who={viewing}
+          picker={canLook ? <ViewAsPicker people={canPick} meName={viewing.name} /> : null}
+        />
+      )}
       {canLook && !viewing && (
-        <div className="mb-3 flex"><ViewAsPicker people={canPick} meName="Myself" /></div>
+        <div className="mb-3 flex justify-end">
+          <ViewAsPicker people={canPick} meName="Myself" />
+        </div>
       )}
       <RateNoticeNag />
       {/* ADMIN'S TODAY IS THREE THINGS AND NOTHING ELSE.

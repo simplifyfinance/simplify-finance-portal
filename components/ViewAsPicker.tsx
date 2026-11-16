@@ -11,6 +11,15 @@ import { grouped, SEAT_WORD, type Somebody } from '@/lib/view-as'
 // The page decides whether to draw this at all - see lib/view-as.ts. By the
 // time it renders, the question of who may look has already been answered.
 //
+// IT IS ALWAYS THERE, EVEN WHILE YOU ARE LOOKING AT SOMEBODY.
+//
+// 15 Nov 2026. Fabio: "I can never choose another person once I'm on that
+// view. So I have to always press back to mine to then choose another
+// person. I don't see the point of that." He was right - the page only drew
+// this on his own Today, so every hop between two people went through a
+// third screen. It now rides inside the black strip, so the next person is
+// one click from the last one.
+//
 // IT IS A LINK, NOT A FORM. Each choice is a plain href, so the browser's back
 // button works, the address can be shared with me when something looks wrong,
 // and nothing about the picker needs state on the server.
@@ -22,7 +31,7 @@ export default function ViewAsPicker({ people, meName }: {
   const groups = grouped(people)
 
   return (
-    <div className="relative ml-auto">
+    <div className="relative">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}

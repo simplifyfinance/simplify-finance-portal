@@ -205,6 +205,50 @@ describe('the day is Sydney, wherever the server is', () => {
   })
 })
 
+// THE QUIETEST WAY TO LOSE MONEY ON A SCREEN.
+//
+// 17 Nov 2026. Twelve deals were formally approved, unsettled and carried no
+// settlement date at all, so every one of them was invisible to the month -
+// the band read $2.2m against a spreadsheet saying $24.2m and nothing looked
+// broken. Three of them had a date in a spreadsheet cell and nowhere else.
+describe('approved, and in no month at all', () => {
+  it('is named every morning until somebody puts a date on it', () => {
+    const out = whatThisDealOwes(deal({ formal_approval_at: '2026-11-04' }), S, TODAY)
+    const row = out.find(i => i.kind === 'nodate')!
+    expect(row.words).toBe('Approved, but no settlement date')
+    expect(row.since).toContain('in no month')
+  })
+
+  it('not once it has a date, confirmed or expected', () => {
+    for (const k of ['confirmed_settlement_date', 'expected_settlement_date']) {
+      const out = whatThisDealOwes(
+        deal({ formal_approval_at: '2026-11-04', [k]: inDays(7) }), S, TODAY)
+      expect(out.filter(i => i.kind === 'nodate'), k).toHaveLength(0)
+    }
+  })
+
+  it('not before it is approved - there is nothing to date yet', () => {
+    expect(whatThisDealOwes(deal({}), S, TODAY).filter(i => i.kind === 'nodate')).toHaveLength(0)
+  })
+
+  it('and not once it has settled', () => {
+    const out = whatThisDealOwes(
+      deal({ formal_approval_at: '2026-11-04', settled_at: inDays(-2) }), S, TODAY)
+    expect(out.filter(i => i.kind === 'nodate')).toHaveLength(0)
+  })
+
+  // Dates cannot be moved; a missing date is the next most urgent thing,
+  // because until it exists the deal is in no total anywhere.
+  it('sits under dated work and above the chases', () => {
+    const list = morningList([
+      deal({ id: 'a', deal_name: 'Needs a date', formal_approval_at: '2026-11-04' }),
+      deal({ id: 'b', deal_name: 'Quiet', settlement_stage: 'formal',
+             settlement_stage_at: inDays(-40) }),
+    ], S, TODAY)
+    expect(list.map(i => i.kind)).toEqual(['nodate', 'chase'])
+  })
+})
+
 describe('a quiet book', () => {
   it('produces nothing at all rather than an empty shape', () => {
     expect(morningList([], S, TODAY)).toEqual([])

@@ -177,7 +177,11 @@ export default function SettlementsBand({ deals, brokerRows }: {
         </div>
       </div>
 
-      <div className="flex gap-4 items-start flex-wrap lg:flex-nowrap">
+      {/* ROOM AT THE BOTTOM FOR THE CHAT BUBBLE.
+        * 17 Nov 2026: the support widget floats bottom right and sat on top of
+        * the last row of Expected, not booked. A list whose last line cannot be
+        * read is a list with one fewer line. */}
+      <div className="flex gap-4 items-start flex-wrap lg:flex-nowrap pb-24">
         <div className="flex-1 min-w-[380px]">
           <div className="bg-card border-2 border-brand-ink rounded-xl px-4 py-3 mb-3">
             <div className={CAP}>Settlements stuck

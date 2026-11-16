@@ -27,6 +27,9 @@ import { useSettlementSettings } from '@/lib/use-settlement-settings'
 
 const TONE: Record<MorningKind, string> = {
   dated: 'text-brand-ink',
+  // A PERSON HAS TO TYPE A DATE. Blue, like everything else on this build that
+  // is waiting on a decision rather than on a lender.
+  nodate: 'text-brand-ink',
   chase: 'text-ink',
   checkin: 'text-muted',
 }
@@ -58,7 +61,8 @@ export default function MorningList({ deals }: { deals: any[] }) {
       <div className="mb-4 rounded-xl border border-line bg-card px-4 py-3">
         <span className="text-[13px] font-semibold text-ink">{morningWords(items)}</span>
         <span className="ml-2 text-[12.5px] text-faint">
-          Nothing is past its chase time, nothing falls due today, and no check-in is owed.
+          Nothing is past its chase time, nothing falls due today, every approved deal has a
+          settlement date, and no check-in is owed.
         </span>
       </div>
     )
@@ -75,7 +79,7 @@ export default function MorningList({ deals }: { deals: any[] }) {
         <span className="ml-auto text-[11.5px] text-faint">{shut ? 'show' : 'hide'}</span>
       </button>
 
-      {!shut && (['dated', 'chase', 'checkin'] as MorningKind[]).map(kind => {
+      {!shut && (['dated', 'nodate', 'chase', 'checkin'] as MorningKind[]).map(kind => {
         const rows = groups[kind]
         if (rows.length === 0) return null
         return (

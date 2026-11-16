@@ -85,7 +85,7 @@ function daysUntil(iso: any, today: Date): number | null {
   return n === null ? null : -n
 }
 
-export type MorningKind = 'chase' | 'dated' | 'checkin'
+export type MorningKind = 'chase' | 'dated' | 'checkin' | 'nodate'
 
 export type MorningItem = {
   kind: MorningKind
@@ -155,6 +155,25 @@ export function whatThisDealOwes(
     }
   }
 
+  // --- approved, and in no month at all -----------------------------------
+  //
+  // 17 Nov 2026. The settlements band showed $2.2m for November against a
+  // spreadsheet saying $24.2m. Nothing was broken: twelve deals were formally
+  // approved, unsettled, and carried no settlement date of any kind - and a
+  // deal with no date belongs to no month, so every one of them was invisible
+  // to the total.
+  //
+  // Three of them had a date sitting in a spreadsheet cell and nowhere else.
+  //
+  // IT IS THE QUIETEST WAY TO LOSE MONEY ON A SCREEN. Nothing looks wrong. The
+  // month is simply smaller than the business, and the only way anybody found
+  // out was adding the spreadsheet up by hand. So it is named, every morning,
+  // until somebody puts a date on it.
+  if (!settled && txt(deal?.formal_approval_at) && !on) {
+    add('nodate', 'Approved, but no settlement date',
+      'it is in no month until there is one', 1)
+  }
+
   if (settled) {
     const sinceSettled = daysSince(settled, today)
     if (sinceSettled !== null && sinceSettled >= s.checkInDaysAfter && !lastSent(deal, 'month_in')) {
@@ -173,7 +192,7 @@ export function whatThisDealOwes(
  * Then the check-ins, which are the only ones that can wait a day without
  * costing anything.
  */
-const KIND_ORDER: Record<MorningKind, number> = { dated: 0, chase: 1, checkin: 2 }
+const KIND_ORDER: Record<MorningKind, number> = { dated: 0, nodate: 1, chase: 2, checkin: 3 }
 
 export function morningList(
   deals: any[], s: SettlementSettings, today: Date = new Date(),
@@ -193,6 +212,7 @@ export function morningWords(items: MorningItem[]): string {
 
 export const KIND_HEADING: Record<MorningKind, string> = {
   dated: 'Due on a date',
+  nodate: 'Approved with no settlement date',
   chase: 'Gone quiet',
   checkin: 'A month on',
 }
@@ -201,6 +221,7 @@ export const KIND_HEADING: Record<MorningKind, string> = {
 export function byKind(items: MorningItem[]): Record<MorningKind, MorningItem[]> {
   return {
     dated: items.filter(i => i.kind === 'dated'),
+    nodate: items.filter(i => i.kind === 'nodate'),
     chase: items.filter(i => i.kind === 'chase'),
     checkin: items.filter(i => i.kind === 'checkin'),
   }
