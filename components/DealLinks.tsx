@@ -81,7 +81,7 @@ export default function DealLinks({ deal, onUpdated }: {
   const box = "w-full mt-1 text-[11.5px] border border-gray-200 rounded-lg px-2 py-1 bg-field focus:outline-none focus:border-brand"
 
   return (
-    <Bubble tone="plain" title="SalesTrekker &amp; links"
+    <Bubble tone="links" title="Links"
       icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
              strokeLinecap="round" strokeLinejoin="round">
           <rect x="2" y="4" width="20" height="16" rx="2" /><path d="m2 7 10 6 10-6" /></svg>}>
@@ -98,17 +98,20 @@ export default function DealLinks({ deal, onUpdated }: {
                 </span>
 
                 {r.kind === 'fixed' ? (
-                  <Link href={r.value} target="_blank" aria-label={`Open ${r.label}`} className={open}>Open</Link>
+                  <Link href={r.value} target="_blank" aria-label={`Open ${r.label}`}
+                        className="ml-auto text-[11.5px] font-[650] text-muted hover:text-ink">Open</Link>
                 ) : isBcc && r.value ? (
                   <span className="ml-auto text-[11.5px] text-faint truncate max-w-[55%]" title={r.value}>{r.value}</span>
                 ) : r.value ? (
                   <a href={r.value} target="_blank" rel="noopener noreferrer"
-                     aria-label={`Open ${r.label}`} className={open}>Open</a>
+                     aria-label={`Open ${r.label}`}
+                     className="ml-auto text-[11.5px] font-[650] text-muted hover:text-ink">Open</a>
                 ) : null}
 
                 {r.kind !== 'fixed' && editing !== r.key && (
                   <button onClick={() => { setEditing(r.key); setDraft(r.value) }}
-                          className={(r.value ? 'ml-2' : 'ml-auto') + ' text-[11.5px] font-[650] text-info hover:underline'}>
+                          className={(r.value ? 'ml-2' : 'ml-auto')
+                            + ' text-[11.5px] font-[650] text-muted hover:text-ink'}>
                     {r.value ? 'Edit' : 'Add'}
                   </button>
                 )}
@@ -129,10 +132,16 @@ export default function DealLinks({ deal, onUpdated }: {
         })}
 
         {/* WHAT AN EMPTY BCC ACTUALLY COSTS. Not a blank row - a sentence. */}
+        {/* RED ON THE MARK, NOT ON THE PAPER - 16 Nov 2026, the same rule as
+            every other warning on this page. */}
         {!txt(deal?.salestrekker_bcc) && (
-          <p className="text-[11px] text-chase leading-snug mt-1">
-            Client emails on this deal are not copying SalesTrekker.
-          </p>
+          <div className="quiet-warn mt-2 mb-0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                 strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17h.01" />
+            </svg>
+            <span className="key">Client emails are not copying SalesTrekker.</span>
+          </div>
         )}
 
         {problem && (

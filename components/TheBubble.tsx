@@ -25,7 +25,7 @@ import type { ReactNode, CSSProperties } from 'react'
 // waiting is the client, muted is nothing in particular. Reusing them is the
 // whole point - a green heading on this page means what a green chip means on
 // the board.
-export type Tone = 'info' | 'done' | 'urgent' | 'docs' | 'notes' | 'plain'
+export type Tone = 'info' | 'done' | 'urgent' | 'docs' | 'notes' | 'links' | 'plain'
 
 const ACCENT: Record<Tone, string> = {
   info:   'var(--color-info)',     // the deal, the form you are on, open BC
@@ -33,7 +33,8 @@ const ACCENT: Record<Tone, string> = {
   urgent: 'var(--color-urgent)',   // needs action, mark urgent, send it back
   docs:   'var(--color-docs)',     // what we need from the client
   notes:  'var(--color-waiting)',  // sales notes, and the client's questions
-  plain:  'var(--color-muted)',    // links, something wrong, edit, more
+  links:  'var(--color-links)',    // SalesTrekker and OneDrive, and the commission
+  plain:  'var(--color-muted)',    // something wrong, edit, more
 }
 
 export function toneColour(tone: Tone): string { return ACCENT[tone] }

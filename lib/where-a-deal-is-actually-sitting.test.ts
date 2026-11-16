@@ -158,6 +158,10 @@ describe('the other screens still read it the same way', () => {
 
   it('and the deal page says who in credit has it, once, on Where it is', () => {
     const page = readFileSync('app/(app)/deals/[id]/DealPageClient.tsx', 'utf8')
-    expect(page).toMatch(/With \{String\(dealData\.assigned_credit_officer\)/)
+    // 16 Nov 2026: it read the raw column and printed a uuid at people on
+    // every real deal. It reads showingOwner() now, which answers with a name.
+    // See lib/an-id-is-not-a-name.test.ts for the whole story.
+    expect(page).toContain("showingOwner(dealData, 'bc')")
+    expect(page).toContain('With {first}')
   })
 })

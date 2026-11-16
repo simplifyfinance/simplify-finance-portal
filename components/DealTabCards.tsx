@@ -70,8 +70,18 @@ export default function DealTabCards({ deal, stage, onPick }: {
   }, [officerId])
   const tabs = DEAL_TABS
 
+  // SIX COLUMNS, AND THEY REACH THE EDGE.
+  //
+  // 16 Nov 2026. This grid was six columns PLUS a seventh at 1.45fr, held for
+  // the Next action box that sat beside them. That box was taken off the same
+  // day - it said what the head of the deal already said - and the column it
+  // used to sit in stayed behind as a gap on the right. Fabio: "that blank
+  // hole on the right is useless lost space."
+  //
+  // The tiles stretch to the same height too, so a two-line name no longer
+  // leaves the tile beside it short.
   return (
-    <div className="grid grid-cols-[repeat(6,minmax(0,1fr))_minmax(0,1.45fr)] gap-2.5 mb-2.5 max-[1300px]:grid-cols-4 max-[1100px]:grid-cols-3 max-[700px]:grid-cols-2">
+    <div className="grid grid-cols-6 items-stretch gap-2.5 mb-2.5 max-[1300px]:grid-cols-4 max-[1100px]:grid-cols-3 max-[700px]:grid-cols-2">
       {tabs.map(({ key, label }) => {
         const Icon = ICON[key]
         const bead = BEAD[key] ? beads.find(b => b.key === BEAD[key]) : undefined
@@ -93,14 +103,21 @@ export default function DealTabCards({ deal, stage, onPick }: {
           // six browser specs that click /^Compliance$/ sat waiting until they
           // timed out. The name is stated here; the line underneath is still
           // read by anybody looking at the screen.
+          // OFF-WHITE, NOT WHITE - docs/approved-looks/deal-page-stages.html.
+          // Fabio, 16 Nov 2026: "the little boxes where fact find etc are, it
+          // should be off white." They sit INSIDE the Where it is box, and a
+          // white tile on a white box has nothing holding it.
           <button key={key} onClick={() => onPick(key)} aria-label={label}
-            className={`text-left bg-card border rounded-[11px] px-3 py-[11px] transition-colors ${
-              on ? 'border-brand bg-info-bg shadow-[inset_0_0_0_1px_var(--color-brand)]' : 'border-card-line hover:border-brand'}`}>
-            <span className="w-7 h-7 rounded-lg bg-gray-100 text-muted flex items-center justify-center mb-2">
-              <Icon size={15} strokeWidth={1.9} />
+            className={`text-left border rounded-[11px] px-3 py-[11px] transition-colors
+              flex flex-col ${
+              on ? 'border-brand bg-info-bg shadow-[inset_0_0_0_1px_var(--color-brand)]'
+                 : 'bg-page border-card-line hover:border-brand'}`}>
+            <span className={`w-[25px] h-[25px] rounded-lg flex items-center justify-center mb-2 ${
+              on ? 'bg-info-bg text-info' : 'bg-line-soft text-faint'}`}>
+              <Icon size={14} strokeWidth={1.9} />
             </span>
             <span className="block text-[12.5px] font-[650] text-ink leading-[1.25]">{label}</span>
-            {line && <span className={`block text-[11px] mt-[3px] ${tone}`}>{line}</span>}
+            {line && <span className={`block text-[11px] mt-auto pt-[3px] ${tone}`}>{line}</span>}
           </button>
         )
       })}

@@ -79,13 +79,11 @@
     "PEXA TOL, pending OFI",
     "Ready to settle",
     "Saved at",
-    "Settlement",
     "Yes",
     "chasing the bank, client to call…"
   ],
   "app/(app)/deals/[id]/DealCommission.tsx": [
     "Clawback",
-    "Commission",
     "Expected",
     "Loading the rate…",
     "No commission figure.",

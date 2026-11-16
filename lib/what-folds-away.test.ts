@@ -4,7 +4,7 @@
 // we can make it expandable so we only see when we want to?" And, on the first
 // attempt, which took the colour off as well: "I think you went too far in
 // terms of blending."
-import { describe, it, expect } from 'vitest'
+import { questionsCount, describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import {
   STILL_NEW, firstWords, noteFoldLine, noteStartsOpen,
@@ -110,36 +110,58 @@ describe('the questions, shut', () => {
 })
 
 // THE ONE WAY THIS COULD DO HARM, SO IT IS CHECKED HARDEST.
-describe('a fold never hides something nobody has seen', () => {
+// THE QUESTIONS BLOCK IS ALWAYS SHUT WHEN THE PAGE DRAWS.
+//
+// Fabio, 16 Nov 2026: "questions going out with this email are always always
+// hidden first, then we can expand if we want."
+//
+// It used to open itself on three conditions - a question that had never gone
+// out, one somebody had just unticked, an answer less than two days old - and
+// every one of them was a good argument for opening. The trouble is that on a
+// BC being written all three are true at once, and the block is eight
+// questions tall. It landed on top of the form on the screen where the work
+// actually happens.
+//
+// NOTHING IS HIDDEN BY THIS, and that is what these tests now hold: the
+// folded LINE still carries the count and still says in words what has gone
+// out and whether anybody has answered. The three reasons live on in that
+// line. They just no longer decide the height of the page.
+describe('the questions block is always shut, and the line still says everything', () => {
   const open = [q('a'), q('b')]
   const allAsked = deal({ a: { askedAt: ago(17) }, b: { askedAt: ago(17) } })
 
-  it('a question that has never gone out holds it open', () => {
+  it('a question that has never gone out does NOT hold it open any more', () => {
     const d = deal({ a: { askedAt: ago(17) } })
-    expect(questionsStartOpen(d, open, [], [], NOW)).toBe(true)
+    expect(questionsStartOpen(d, open, [], [], NOW)).toBe(false)
   })
 
-  it('so does one somebody has unticked', () => {
-    expect(questionsStartOpen(allAsked, open, ['a'], [], NOW)).toBe(true)
+  it('nor does one somebody has unticked', () => {
+    expect(questionsStartOpen(allAsked, open, ['a'], [], NOW)).toBe(false)
   })
 
-  it('so does an answer that has just come in', () => {
+  it('nor does an answer that has just come in', () => {
     const fresh = [{ key: 'z', ask: 'x', askedAt: ago(20), closedAt: ago(1), closedBy: 'Katie' }]
-    expect(questionsStartOpen(allAsked, open, [], fresh as any, NOW)).toBe(true)
+    expect(questionsStartOpen(allAsked, open, [], fresh as any, NOW)).toBe(false)
   })
 
-  it('and an old answer does not - that is a record, not news', () => {
-    const old = [{ key: 'z', ask: 'x', askedAt: ago(40), closedAt: ago(30), closedBy: 'Katie' }]
-    expect(questionsStartOpen(allAsked, open, [], old as any, NOW)).toBe(false)
-  })
-
-  it('all asked, all ticked, nothing new - it folds', () => {
+  it('all asked, all ticked, nothing new - shut, as it always was', () => {
     expect(questionsStartOpen(allAsked, open, [], [], NOW)).toBe(false)
   })
 
   it('and an empty deal does not crash it', () => {
     expect(questionsStartOpen(null, [], [], [], NOW)).toBe(false)
     expect(questionsFoldLine(null, [], [], NOW)).toBe('nothing has gone out yet')
+  })
+
+  // THE PART THAT MATTERS NOW. Shut is only acceptable because the one line
+  // you can read without opening anything carries the facts.
+  it('a question that has never gone out still says so on the folded line', () => {
+    const d = deal({ a: { askedAt: ago(17) } })
+    expect(questionsFoldLine(d, open, [], NOW)).toMatch(/not gone out|nothing has gone out/i)
+  })
+
+  it('and the count is on the fold, so eight is eight without opening it', () => {
+    expect(questionsCount(open, open)).toBe('2 of 2')
   })
 })
 

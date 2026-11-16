@@ -1,4 +1,5 @@
 'use client'
+import { Bubble } from '@/components/TheBubble'
 import { useEffect, useState } from 'react'
 import TheContracts from '@/components/TheContracts'
 import TheOtherDocuments from '@/components/TheOtherDocuments'
@@ -114,10 +115,15 @@ export default function DealSettlementPanel({ deal, onUpdated, me }: {
   const lab = 'block text-[10px] font-bold uppercase tracking-[.08em] text-faint mb-1'
   const failed = msg.startsWith('NOT SAVED')
 
+  // THE LAST TWO BOXES ON THE PAGE TO GET THE LOOK - 16 Nov 2026.
+  // Every other section had its colour and its head by the morning ship;
+  // these two did not, so a SETTLED deal read new at the top and old at the
+  // bottom. Fabio: "copy everything." Nothing inside it moved.
   return (
-    <div className="bg-card border border-[#EDE7DD] rounded-xl overflow-hidden mb-6">
-      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-[#F6F2EA] flex-wrap">
-        <span className="text-[13.5px] font-semibold text-ink">Settlement</span>
+    <Bubble tone="done" title={d.settled_at ? 'Settled' : 'Settlement'}
+      icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                 strokeLinecap="round" strokeLinejoin="round"><path d="M4 12l5 5L20 6" /></svg>}
+      actions={<>
         {attention && !d.settled_at && (
           <span className={`text-[10px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[2px] border ${
             attention.level === 'stale'
@@ -127,11 +133,11 @@ export default function DealSettlementPanel({ deal, onUpdated, me }: {
           </span>
         )}
         {d.settlement_updated_at && (
-          <span className="text-[11.5px] text-faint ml-auto">
+          <span className="text-[11.5px] text-faint">
             updated {String(d.settlement_updated_at).slice(0, 10)}
           </span>
         )}
-      </div>
+      </>}>
 
       <div className="grid grid-cols-3 gap-3 px-4 py-4 max-[820px]:grid-cols-1">
         {/* The date a purchaser loses their deposit if finance is not approved.
@@ -280,6 +286,6 @@ export default function DealSettlementPanel({ deal, onUpdated, me }: {
         </button>
         <span className={`text-[12px] ${failed ? 'text-[#C4553B] font-medium' : 'text-faint'}`}>{msg}</span>
       </div>
-    </div>
+    </Bubble>
   )
 }

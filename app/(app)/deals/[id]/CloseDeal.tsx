@@ -1,4 +1,5 @@
 'use client'
+import { Act } from '@/components/TheBubble'
 import { useMemo, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -184,10 +185,14 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
 
   return (
     <>
-      <button onClick={() => setOpen(true)} className={btn}>
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>
-        Close deal
-      </button>
+      {/* On the Something wrong? shelf now - see deal-page-stages.html,
+          16 Nov 2026. Same dialog, same rules, same wording. */}
+      <Act tone="plain" small onClick={() => setOpen(true)}
+        icon={<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8"
+                   strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" /></svg>}>
+        Close this deal
+      </Act>
 
       {open && (
         <div className="fixed inset-0 z-50 bg-black/30 flex items-start justify-center p-6 overflow-y-auto"

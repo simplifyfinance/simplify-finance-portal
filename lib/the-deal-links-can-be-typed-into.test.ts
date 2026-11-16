@@ -94,18 +94,25 @@ describe('nothing a person could read was lost on the way', () => {
   })
 
   it('the only thing genuinely dropped is the heading the rail already has', () => {
-    // "Deal links" was the heading above those three boxes. The rail box is
-    // headed "SalesTrekker & links", so keeping it would be the same words
+    // "Deal links" was the heading above those three boxes. The rail box
+    // carries the only heading now, so keeping it would be the same words
     // twice. It is the single removal in this change.
+    // 16 Nov 2026: the box is headed "Links" rather than "SalesTrekker &
+    // links" - docs/approved-looks/deal-page-stages.html. The three rows
+    // underneath still name SalesTrekker, OneDrive and the summary page, so
+    // nothing a person reads has gone.
     const ff = readFileSync('app/(app)/deals/[id]/FactFindForm.tsx', 'utf8')
     expect(ff).not.toContain('Deal links')
-    expect(src).toContain('SalesTrekker &amp; links')
+    expect(src).toContain('title="Links"')
+    expect(src).toContain('SalesTrekker card')
   })
 })
 
 describe('an empty BCC says what it costs', () => {
   it('names the consequence rather than leaving a blank', () => {
-    expect(src).toContain('Client emails on this deal are not copying SalesTrekker.')
+    // 16 Nov 2026: the sentence got shorter when the warning went quiet -
+    // red triangle, red sentence, nothing else. Same consequence, named.
+    expect(src).toContain('Client emails are not copying SalesTrekker.')
   })
 
   it('and it is the one row that goes red', () => {

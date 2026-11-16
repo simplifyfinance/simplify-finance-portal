@@ -217,15 +217,47 @@ describe('the few values that are not a matter of taste', () => {
     expect(C.SIDEBAR).toBe(C.ON_BRAND)
   })
 
-  it('there is no amber anywhere', () => {
-    // Amber was indistinguishable from the chase red to a red-green colourblind
-    // reader. Anything in this corner of the spectrum is suspect.
-    const amberish = Object.entries(tsColours).filter(([, v]) => {
+  // ONE NAME IS ALLOWED IN THIS CORNER OF THE SPECTRUM, AND ONLY ONE.
+  //
+  // The reason amber was banned on 4 Oct 2026 is not taste. Amber and the
+  // chase red are the same muddy yellow-brown to a red-green colourblind
+  // reader, so a STATUS drawn in amber is a status that cannot be told from
+  // "this is wrong". That rule stands and this test still enforces it.
+  //
+  // LINKS is not a status. It is the accent on two boxes - the links to
+  // SalesTrekker and OneDrive, and the commission figures - and it says
+  // nothing about whether anything is good, bad or waiting. Nobody has to
+  // tell it apart from the chase red to understand the screen, because it is
+  // never used to mean anything.
+  //
+  // Fabio chose it off the real page on 16 Nov 2026, from
+  // docs/approved-looks/deal-page-stages.html: "every icon, every colour,
+  // every line - COPY IT."
+  //
+  // The exemption is BY NAME. A new amber-shaped colour fails, as it should,
+  // and adding one to this list means writing down why it is not a status.
+  const NOT_A_STATUS = ['LINKS']
+
+  it('there is no amber on anything that means something', () => {
+    const amberish = Object.entries(tsColours).filter(([k, v]) => {
+      if (NOT_A_STATUS.includes(k)) return false
       const r = parseInt(v.slice(1, 3), 16), g = parseInt(v.slice(3, 5), 16), b = parseInt(v.slice(5, 7), 16)
       // a strong warm yellow-brown: red high, green middling, blue low
       return r > 120 && g > 70 && g < r && b < g * 0.6
     })
     expect(amberish.map(([k]) => k), 'this looks like amber coming back').toEqual([])
+  })
+
+  it('and the four that DO mean something are nowhere near it', () => {
+    // The real test of the rule: a reader who cannot tell red from green must
+    // still be able to tell the portal's four meanings apart. None of them may
+    // wander into the amber corner, exemption or no exemption.
+    for (const k of ['CHASE', 'DONE', 'INFO', 'WAITING', 'URGENT']) {
+      const v = (tsColours as any)[k]
+      expect(v, `${k} is not defined`).toBeTruthy()
+      const r = parseInt(v.slice(1, 3), 16), g = parseInt(v.slice(3, 5), 16), b = parseInt(v.slice(5, 7), 16)
+      expect(r > 120 && g > 70 && g < r && b < g * 0.6, `${k} has drifted into amber`).toBe(false)
+    }
   })
 
   it('the dark set is present and separate, ready for its own ship', () => {

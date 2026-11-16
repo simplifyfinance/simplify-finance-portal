@@ -62,13 +62,29 @@ test.describe('the More menu', () => {
       return
     }
 
-    const closeDeal = page.getByRole('button', { name: /^Close deal$/ })
+    // 16 Nov 2026: CLOSE DEAL LEFT THIS MENU.
+    //
+    // deal-page-stages.html puts it on the "Something wrong?" shelf in the
+    // rail, beside Credit cannot action and Report a problem - this deal is
+    // wrong, or this deal is over, which is one shelf. The dialog it opens and
+    // every rule about who may press it are untouched; only the way in moved.
+    // The More menu now holds the three clones and nothing else.
+    const closeDeal = page.getByRole('button', { name: /^Close this deal$/ })
     await expect(closeDeal).toBeVisible({ timeout: 10_000 })
     await closeDeal.click()
 
     // THE WHOLE POINT. The dialog has to still be on screen a moment later -
     // the fault was that it appeared and was thrown away in the same frame.
-    const dialog = page.getByText('Close this deal')
+    //
+    // 16 Nov 2026: THE BUTTON AND THE DIALOG NOW SAY THE SAME WORDS. The
+    // button used to read "Close deal" and the dialog "Close this deal", so
+    // plain text was enough to tell them apart. Both read "Close this deal"
+    // now, and a plain text match found two things and refused to choose.
+    // So it asks for the dialog's own sentence instead, which nothing else on
+    // the page says. It still fails if the dialog never opens, and it still
+    // fails if the dialog opens and throws itself away - which is the fault
+    // this whole test was written for on 6 Oct 2026.
+    const dialog = page.getByText('It leaves the active list and stops counting as work in progress.')
     await expect(dialog).toBeVisible({ timeout: 10_000 })
     await page.waitForTimeout(600)
     await expect(dialog, 'the dialog opened and then disappeared on its own').toBeVisible()

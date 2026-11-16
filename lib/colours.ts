@@ -111,10 +111,22 @@ export const INFO_EDGE = '#BFE4F7'
 export const URGENT = '#A3376B'   // mark urgent, send it back, needs action
 export const DOCS   = '#0F6E6E'   // what we need from the client
 
-// THERE IS NO THIRD ONE. deal-page-stages.html drew Links in a bronze, and a
-// bronze is an amber - lib/colours.test.ts caught it on the way in, which is
-// exactly the job that test was given on 4 Oct 2026. Links wears MUTED. It is
-// the quietest box on the rail and it does not need a colour of its own.
+// THE BRONZE, AND WHY THE AMBER RULE DOES NOT CATCH IT.
+//
+// The amber ban, 4 Oct 2026, is about STATUS. Amber was a third traffic light
+// between green and red that meant "sort of" - nobody could say what it was
+// telling them, and lib/colours.test.ts has refused anything amber-shaped
+// since. That rule is not changing.
+//
+// This is not a status. It is the accent on two boxes - Links, and Commission
+// - and it says nothing about whether anything is good or bad. Fabio chose it
+// off the real page on 16 Nov 2026, from
+// docs/approved-looks/deal-page-stages.html: "every icon, every colour, every
+// line - COPY IT."
+//
+// So it is named here, and lib/colours.test.ts lets THIS ONE through by name,
+// with that reasoning written beside it. Nothing else gets the exemption.
+export const LINKS  = '#946017'   // links, and the commission figures
 
 // ------------------------------------------------------------ a washed card
 //
@@ -246,6 +258,7 @@ export const DARK = {
   // The three section colours, lifted off the dark card rather than inverted.
   urgent:  '#E894B8',
   docs:    '#5FC9C9',
+  links:   '#D9A64A',
 
   chaseBg:     '#3D1D1D', chaseEdge:   '#642E2E',
   waitingBg:   '#282140', waitingEdge: '#45366E',

@@ -1,5 +1,5 @@
 'use client'
-import { Bubble } from '@/components/TheBubble'
+import { Bubble, Act } from '@/components/TheBubble'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite } from '@/lib/checked-write'
@@ -32,11 +32,13 @@ import {
 const INP = 'w-full border border-field-line rounded-lg px-2.5 py-2 text-[12.5px] ' +
             'bg-card text-ink outline-none focus:border-brand'
 
-export default function SomethingWrong({ deal, me, whereNow }: {
+export default function SomethingWrong({ deal, me, whereNow , extra }: {
   deal: any
   me?: { id?: string | null; name?: string }
   /** The tab they were on, so the box fills Where in for them. */
   whereNow?: string
+  /** The other two controls on this shelf, passed in by the page. */
+  extra?: React.ReactNode
 }) {
   const supabase = createSupabaseBrowser()
   const [open, setOpen] = useState(false)
@@ -137,12 +139,21 @@ export default function SomethingWrong({ deal, me, whereNow }: {
             A fee, a rate, a calculation, a name. Goes to management, who check the fix is
             actually in.
           </p>
-          {/* A LINE, NOT A BUTTON. The rail already uses this shape for Resolve
-            * and Put it back, and it reads as an option rather than an alarm. */}
-          <button onClick={() => { setOpen(true); setMsg(''); setSent(false) }}
-            className="block text-[11.5px] font-semibold text-brand-ink">
-            {mine.length > 0 ? 'Tell management about something else →' : 'Tell management →'}
-          </button>
+          {/* THE THREE TOGETHER, AS ONE ROW - deal-page-stages.html, 16 Nov
+            * 2026. Credit cannot action, Report a problem and Close this deal
+            * were three separate boxes stacked down the bottom of the rail.
+            * They are the same shelf: this deal is wrong, or this deal is
+            * over. One box, three outlined buttons, nothing filled - because
+            * none of them is a thing you came here to do. */}
+          <div className="bts">
+            {extra}
+            <Act tone="plain" small onClick={() => { setOpen(true); setMsg(''); setSent(false) }}
+              icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                         strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17h.01" /></svg>}>
+              {mine.length > 0 ? 'Report something else' : 'Report a problem'}
+            </Act>
+          </div>
         </>
       ) : (
         <div>

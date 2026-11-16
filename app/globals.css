@@ -40,6 +40,7 @@
      lib/colours.ts for why red is not allowed to do this job. */
   --color-urgent: #A3376B;
   --color-docs: #0F6E6E;
+  --color-links: #946017;
 
   --color-card-chase: #FDF2F2;
   --color-card-chase-edge: #F2CBCB;
@@ -112,6 +113,7 @@
   --color-chase: #FF8F8F;
   --color-urgent: #E894B8;
   --color-docs: #5FC9C9;
+  --color-links: #D9A64A;
   --color-waiting: #B49BF0;
   --color-done: #64E8BB;
 

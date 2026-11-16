@@ -36,11 +36,13 @@ const TICK = (
   </svg>
 )
 
-export default function DocumentsBox({ deal, me, onUpdated }: {
+export default function DocumentsBox({ deal, me, onUpdated, footer }: {
   deal: any
   // The same shape the deal page hands DealAlerts and FileNotes.
   me?: { id: string | null; name: string } | null
   onUpdated?: (patch: any) => void
+  /** Drawn at the foot of the box - Build a PDF. */
+  footer?: React.ReactNode
 }) {
   const supabase = createSupabaseBrowser()
   const [open, setOpen] = useState(false)
@@ -626,6 +628,10 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
           )}
         </div>
       )}
+      {/* BUILD A PDF, at the foot of this box - deal-page-stages.html. It was
+          a box of its own underneath. Handed in by the page so this file does
+          not have to know what a PDF is. */}
+      {footer}
     </Bubble>
 
     {/* RED OFF, WORDS KEPT - 16 Nov 2026.

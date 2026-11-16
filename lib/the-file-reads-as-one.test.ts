@@ -61,9 +61,16 @@ describe('the sixth tab', () => {
     expect(PAGE).toContain("stage === 'FileNotes'")
   })
 
-  it('the row of cards was widened to fit it', () => {
+  it('the row of cards fits all six, and nothing else', () => {
     // Six tabs in a five-column grid puts one on a line of its own.
-    expect(CARDS).toContain('grid-cols-[repeat(6,minmax(0,1fr))_minmax(0,1.45fr)]')
+    //
+    // 16 Nov 2026: it used to be six columns PLUS a seventh at 1.45fr, held
+    // for the Next action box that sat beside them. That box came off, and
+    // its column stayed behind as a gap on the right. Fabio: "that blank hole
+    // on the right is useless lost space."
+    expect(CARDS).toContain('grid-cols-6')
+    expect(CARDS, 'the seventh column is back, and nothing lives in it')
+      .not.toContain('minmax(0,1.45fr)')
   })
 
   it('and it has an icon like the other five', () => {

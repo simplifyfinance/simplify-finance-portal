@@ -35,7 +35,12 @@ describe('THE RAIL GROWS WITH THE WINDOW', () => {
     // now, not just the strip under the tab cards, so the rail is a share of
     // the window rather than a clamp of its own. 330 is still the floor and it
     // still grows - which is the thing this test was written to hold.
-    expect(PAGE).toContain('minmax(330px,1fr)')
+    // 16 Nov 2026: the share changed, the floor did not. Fabio, on the live
+    // page: "everything on the left hand side expands by 30%... the column
+    // needs action, sales, file update, docs etc reduced width by 30%."
+    // 1.62 : 1 became 2.11 : 0.7. What this test holds is the FLOOR, which is
+    // the thing that stopped a name wrapping one word per line.
+    expect(PAGE).toContain('minmax(330px,0.7fr)')
     expect(PAGE, 'the rail must not be pinned to a fixed width again')
       .not.toContain('minmax(0,330px)')
   })

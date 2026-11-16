@@ -6,7 +6,7 @@ import DealPresence from '@/components/DealPresence'
 import DealTabCards, { DEAL_TABS } from '@/components/DealTabCards'
 import FileNotesTab from '@/components/FileNotesTab'
 import DealRail, { RailCard, RailNotes } from '@/components/DealRail'
-import { Bubble, Act, KV } from '@/components/TheBubble'
+import { Bubble, Act, KV, type Tone } from '@/components/TheBubble'
 import DealLinks from '@/components/DealLinks'
 import DealMore from '@/components/DealMore'
 import DealHistory from '@/components/DealHistory'
@@ -42,6 +42,10 @@ import { DealAlerts, FileNotes, AlertChips, useDealFile } from '@/components/Dea
 import { isLocked } from '@/lib/deal-lock'
 import { changeCountLine } from '@/lib/changed-since-lodgement'
 import { isWithLender } from '@/lib/deal-phase'
+import { loanIdRows } from '@/lib/loan-id'
+import { whereTheWorkIs, theBankIsDecided, theRefCanBeTyped } from '@/lib/where-the-work-is'
+import TheBank from '@/components/TheBank'
+import { showingOwner } from '@/lib/who-did-this-stage'
 import DocumentsBox from '@/components/DocumentsBox'
 import SomethingWrong from '@/components/SomethingWrong'
 import MarkUrgent from '@/components/MarkUrgent'
@@ -58,6 +62,38 @@ import { splitOnCommonStart, splitByLife, labelsFor, lifeOf } from '@/lib/same-c
 import { useOtherDeals } from '@/components/useOtherDeals'
 import { CLONE_SELECT, cloneFields, cloneAsks, provenanceLine, type CloneKind } from '@/lib/clone-deal'
 import { positionChanges, applyChanges, type PositionChange } from '@/lib/position-after-settlement'
+
+// THE BANK'S OWN NUMBER FOR THIS LOAN, where there is one. A deal that has
+// not settled has none, and a blank is not worth a row of its own - see
+// loanIdRows in lib/loan-id.ts, which is the one place that knows.
+function loanRef(deal: any): string {
+  const rows = loanIdRows(deal)
+  const first = rows.find(r => r.loanId)
+  return first ? first.loanId : ''
+}
+
+// EACH TAB'S OWN COLOUR AND ICON, taken from
+// docs/approved-looks/deal-page-stages.html. Compliance is purple there and
+// settlement is teal, and the box the form sits in wears it - so the page
+// tells you which of the six you are on before you read a word.
+const TAB_TONE: Record<string, Tone> = {
+  FactFind: 'info', Statements: 'info', BC: 'info',
+  LO: 'info', Compliance: 'notes', FileNotes: 'plain',
+}
+
+const ic = (d: string) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+       strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: d }} />
+)
+
+const TAB_ICON: Record<string, React.ReactNode> = {
+  FactFind: ic('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>'),
+  Statements: ic('<path d="M4 19V5"/><path d="M4 15l4-5 4 4 7-8"/>'),
+  BC: ic('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/>'),
+  LO: ic('<path d="M4 10l8-6 8 6v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>'),
+  Compliance: ic('<path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><path d="M9.5 12l2 2 3.5-4"/>'),
+  FileNotes: ic('<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>'),
+}
 
 export default function DealPageClient({ deal, initialStage, userRole }: { deal: any; initialStage?: string; userRole?: string }) {
   const validStages = ['FactFind', 'Statements', 'BC', 'LO', 'Compliance', 'FileNotes']
@@ -306,12 +342,22 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
         onChanged={(isTest) => setDealData((prev: any) => ({ ...prev, is_test: isTest }))} />
 
       {/* THE PAGE IS TWO COLUMNS NOW, TOP TO BOTTOM - deal-page-stages.html.
+          THE WORK SIDE TAKES THE ROOM. Fabio, 16 Nov 2026, looking at the live
+          page: "everything on the left hand side expands by 30%, so the column
+          needs action, sales, file update, docs etc reduced width by 30%."
+          So 1.62 : 1 became 2.11 : 0.7. The file notes and the BC form are
+          what people read; the rail is what they glance at.
+          330 IS STILL THE FLOOR AND THAT IS DELIBERATE - see
+          lib/the-rail-is-not-a-gutter.test.ts, written the day a credit
+          officer's name wrapped one word per line in a rail that was too
+          narrow. On a normal window the share above never reaches it; on a
+          small one the floor stops the rail becoming a gutter again.
           It used to be one column of full-width bands with a two-column grid
           bolted on at the bottom for the form and the rail, so the rail started
           800px down the page and everything above it was a band. Fabio, 16 Nov
           2026: "look how busy this is." Six boxes, two columns, one colour
           each. */}
-      <div className="grid grid-cols-[minmax(0,1.62fr)_minmax(330px,1fr)] gap-4 items-start
+      <div className="grid grid-cols-[minmax(0,2.11fr)_minmax(330px,0.7fr)] gap-4 items-start
                       max-[1100px]:grid-cols-1">
         <div className={stage === 'Statements' ? 'min-w-0 col-span-2' : 'min-w-0'}>
 
@@ -330,11 +376,18 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           {/* OPEN BC, where the mock puts it: the thing you reach for most, on
               the row rather than two clicks in. It is the same stage change the
               tab cards make. */}
-          <Act tone="info" onClick={() => changeStage('BC')}
-            icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="4" y="2" width="16" height="20" rx="2" /><path d="M8 6h8M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h8" />
-            </svg>}>Open BC</Act>
+          {/* IT SAYS WHAT IT OPENS, and that changes as the deal moves -
+              Open BC, then Open compliance, then Open settlement. Straight off
+              docs/approved-looks/deal-page-stages.html, where the same blue
+              outlined button carries all three names. */}
+          {(() => {
+            const go = whereTheWorkIs(dealData)
+            return (
+              <Act tone="info" onClick={() => changeStage(go.tab)} icon={TAB_ICON[go.tab]}>
+                {go.label}
+              </Act>
+            )
+          })()}
 
           {/* THE CLIENT EMAILS, IN THE HEADER - one-inside-the-deal-v4.html.
               They were a full width band above the tabs. Telling a client their
@@ -651,6 +704,20 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
                 because it answers the same kind of question. It only appears
                 once a pack has actually gone out. */}
             <CompliancePackAssignment row dealId={deal.id} userRole={userRole} />
+            {/* THE BANK, AND THE NUMBER THEY GAVE IT.
+                docs/approved-looks/deal-page-stages.html draws this row
+                between the compliance pack and the scenario. The name comes
+                off the join the page already does - see the select in
+                page.tsx, which is the same `lenders(name)` the board reads.
+                The reference only exists once the bank has issued one, so the
+                row says the bank on its own until then. Changing the bank is
+                a lending options decision, which is where Change goes. */}
+            {theBankIsDecided(dealData) && (dealData.lender_id || loanRef(dealData)) && (
+              <KV label="Lender" end={<button onClick={() => changeStage('LO')}>Change</button>}>
+                <TheBank dealId={dealData.id} lenderId={dealData.lender_id}
+                  loanId={loanRef(dealData)} canTypeRef={theRefCanBeTyped(dealData)} />
+              </KV>
+            )}
             {templateLabel(dealData.bc_data?.template) && (
               <KV label="Scenario" end={<button onClick={() => changeStage('BC')}>Change</button>}>
                 {templateLabel(dealData.bc_data?.template)}
@@ -706,22 +773,37 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           THE BEADS THEMSELVES ARE UNTOUCHED. Fabio, 16 Nov 2026: "the way the
           arrows are with the tick inside every ball on all the stages... last
           time you changed that, it took me forever to get this design." */}
+      {/* WHO IS HOLDING IT, BY NAME.
+          16 Nov 2026 - this printed "With 13544bdc-ef74-41d2-bae4-..." on a
+          real deal, because deals.assigned_credit_officer is an ID, not a
+          name. Fabio caught it on the live page within the hour.
+          The portal already has one answer to "whose is this stage" and the
+          row inside the form reads it - showingOwner() in
+          lib/who-did-this-stage.ts, which returns the NAME. Reading the same
+          one here means the head of this box and the row inside the form can
+          never disagree, and neither of them can print an ID. */}
       <Bubble tone="done" title="Where it is"
         icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                    strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="10" r="3" />
           <path d="M12 2a8 8 0 0 0-8 8c0 5.5 8 12 8 12s8-6.5 8-12a8 8 0 0 0-8-8z" />
         </svg>}
-        actions={dealData.assigned_credit_officer ? (
-          <Act tone="info" small
-            icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                       strokeLinecap="round" strokeLinejoin="round">
-              <path d="M7 11v9H4v-9z" />
-              <path d="M7 11l4-7a2 2 0 0 1 3 2l-1 5h5a2 2 0 0 1 2 2.3l-1 5A2 2 0 0 1 17 20H7" />
-            </svg>}>
-            With {String(dealData.assigned_credit_officer).split(' ')[0]}
-          </Act>
-        ) : null}>
+        actions={(() => {
+          const who = showingOwner(dealData, 'bc')
+          const first = (who?.name || '').trim().split(/\s+/)[0]
+          // An ID is not a name. If all we have is an ID, say nothing.
+          if (!first || /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(who?.name || '')) return null
+          return (
+            <Act tone="info" small
+              icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                         strokeLinecap="round" strokeLinejoin="round">
+                <path d="M7 11v9H4v-9z" />
+                <path d="M7 11l4-7a2 2 0 0 1 3 2l-1 5h5a2 2 0 0 1 2 2.3l-1 5A2 2 0 0 1 17 20H7" />
+              </svg>}>
+              With {first}
+            </Act>
+          )
+        })()}>
         <DealProgress deal={dealData} />
         <DealTabCards deal={dealData} stage={stage} onPick={changeStage} />
       </Bubble>
@@ -837,12 +919,9 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           THE BUTTONS INSIDE EACH FORM ARE UNTOUCHED BY THIS. Done, Send to
           client, Client agreed and Send it back are where they have always
           been. Fabio, 16 Nov 2026: "I do not want to lose functionality." */}
-      <Bubble tone="info" title={tabs.find(t => t.key === stage)?.label || stage}
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                   strokeLinecap="round" strokeLinejoin="round">
-          <rect x="5" y="3" width="14" height="18" rx="2" />
-          <path d="M9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01" />
-        </svg>}>
+      <Bubble tone={TAB_TONE[stage] || 'info'}
+        title={tabs.find(t => t.key === stage)?.label || stage}
+        icon={TAB_ICON[stage] || TAB_ICON.BC}>
       <TabLock locked={isLocked(dealData) && !dealUnlocked} tab={stage} dealId={dealData.id}
         deal={dealData} role={userRole} me={me}
         onUnlocked={() => { setDealUnlocked(true); reloadFile() }}
@@ -875,9 +954,11 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           <RailNotes dealId={dealData.id} initial={dealData.internal_notes || ''} meId={me?.id} />
           <FileNotes dealId={dealData.id} me={me} notes={notes} onChanged={reloadFile} />
           <DocumentsBox deal={dealData} me={me}
-            onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
-          <DealDocuments deal={dealData} me={me} version={documentsVersion}
-            onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+            onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))}
+            footer={
+              <DealDocuments row deal={dealData} me={me} version={documentsVersion}
+                onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+            } />
           <DealLinks deal={dealData}
             onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
           {/* LAST, ON PURPOSE. Needs action and the documents are today's work;
@@ -890,13 +971,13 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
               of the More menu to sit with them, because "this deal is wrong"
               and "this deal is over" are the same shelf. */}
           <SomethingWrong deal={dealData} me={me}
-            whereNow={tabs.find(t => t.key === stage)?.label || stage} />
-          <CreditCannotAction deal={dealData} me={me}
-            onDone={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
-          <div className="bub" style={{ ['--acc' as any]: 'var(--color-muted)', opacity: .78 }}>
-            <CloseDeal deal={dealData}
-              onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
-          </div>
+            whereNow={tabs.find(t => t.key === stage)?.label || stage}
+            extra={<>
+              <CreditCannotAction deal={dealData} me={me}
+                onDone={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+              <CloseDeal deal={dealData}
+                onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+            </>} />
         </DealRail>}
       </div>
     </div>

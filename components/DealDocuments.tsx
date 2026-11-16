@@ -1,5 +1,5 @@
 'use client'
-import { Bubble } from '@/components/TheBubble'
+import { Bubble, Act } from '@/components/TheBubble'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { builtFrom, behindLine, documentsAreCurrent } from '@/lib/keeping-up'
@@ -80,16 +80,20 @@ type Kind = keyof typeof KINDS
 // tabs do not delete old handover." Its own path, its own row, its own name.
 // See lib/the-purchase-handover.ts.
 
-export default function DealDocuments({ deal, me, version, onUpdated }: {
+export default function DealDocuments({ deal, me, version, onUpdated, row }: {
   deal: any
   me?: { id: string | null; name: string }
   // Bumped by the Fact Find tab when somebody adds a document there. The list
   // moved off that tab on 30 Sep 2026 - see the note in FactFindForm.
   version?: number
   onUpdated?: (patch: any) => void
+  /** One line at the foot of the documents box, as the mock draws it. */
+  row?: boolean
 }) {
   const supabase = createSupabaseBrowser()
   const [busy, setBusy] = useState<Kind | '' | 'all' | 'purchase'>('')
+  // Shut until somebody presses Build - see the row mode below.
+  const [showing, setShowing] = useState(false)
   const [err, setErr] = useState('')
   const [note, setNote] = useState('')
   const [filed, setFiled] = useState<{ id: string; file_name: string; file_path: string }[]>([])
@@ -284,11 +288,13 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
     }
   }
 
-  return (
-    <Bubble tone="docs" title="Build a PDF"
-      icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-             strokeLinecap="round" strokeLinejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>}>
+  // EVERY LINE OF THIS BOX, LIFTED WHOLE. Not one character changed on
+  // 16 Nov 2026 - it is held in a variable so the same thing can be drawn
+  // two ways: as its own box, and as a row at the foot of "What we need from
+  // the client", which is what docs/approved-looks/deal-page-stages.html
+  // draws on the deal page.
+  const body = (
+    <>
       <div>
         {(Object.keys(KINDS) as Kind[]).map(kind => (
           <div key={kind} className="flex items-baseline gap-2 py-[3px]">
@@ -361,6 +367,38 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
           ))}
         </div>
       )}
+    </>
+  )
+
+  // A ROW, NOT A BOX. Fabio, 16 Nov 2026: "Build PDF, once you press that,
+  // I'm assuming you choose between the handover, the broker notes..." That
+  // is exactly what the press does. The three documents, the purchase
+  // handover, Rebuild all three and what is on file are all still here - one
+  // press away instead of always open.
+  if (row) return (
+    <>
+      <div className="flex items-center gap-2.5 text-[12.5px] text-ink
+                      border-t border-line mt-3 pt-3">
+        Build a PDF
+        <span className="ml-auto">
+          <Act tone="plain" small onClick={() => setShowing(v => !v)}
+            icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                       strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 4v11M8 11l4 4 4-4M5 20h14" /></svg>}>
+            {showing ? 'Hide' : 'Build'}
+          </Act>
+        </span>
+      </div>
+      {showing && <div className="mt-1.5">{body}</div>}
+    </>
+  )
+
+  return (
+    <Bubble tone="docs" title="Build a PDF"
+      icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+             strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>}>
+      {body}
     </Bubble>
   )
 }

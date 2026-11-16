@@ -90,6 +90,12 @@ export function questionsFoldLine(
     .sort()
   const bits: string[] = []
 
+  // SOME HAVE NEVER GONE OUT. This used to be the block's business: a
+  // question nobody had sent held it open, so the fact announced itself by
+  // taking up the screen. The block is always shut now - Fabio, 16 Nov 2026 -
+  // so the line has to carry it, or the fact disappears.
+  const never = (open || []).filter(q => !txt(markFor(deal, q.key).askedAt)).length
+
   if (asked.length === 0) {
     bits.push('nothing has gone out yet')
   } else {
@@ -97,6 +103,9 @@ export function questionsFoldLine(
     const days = daysSince(last, today)
     bits.push(`asked ${shortDate(last)}`)
     if (days !== null && days > 0) bits.push(`${days} ${days === 1 ? 'day' : 'days'}`)
+    if (never > 0) {
+      bits.push(`${never} ${never === 1 ? 'has' : 'have'} not gone out`)
+    }
     // NOBODY HAS ANSWERED is worth saying out loud. It is the whole reason a
     // broker would open this, and it was previously only findable by reading
     // three rows.
@@ -111,29 +120,30 @@ export function questionsCount(going: Question[], open: Question[]): string {
 }
 
 /**
- * WHEN THE QUESTIONS BLOCK IS OPEN THE MOMENT THE PAGE DRAWS.
+ * IT IS ALWAYS SHUT. ALWAYS.
  *
- * Three reasons, and all three are the same reason: somebody has not seen
- * this yet.
+ * Fabio, 16 Nov 2026: "questions going out with this email are always always
+ * hidden first, then we can expand if we want."
  *
- *   NOT SENT      a question that has never gone out. The broker is about to
- *                 press Send and this is what will go with it.
- *   UNTICKED      somebody took one off this email. A decision in progress is
- *                 never folded away underneath them.
- *   JUST ANSWERED a client replied in the last two days. That is news.
+ * This used to open itself on three conditions, and every one of them was a
+ * good argument: a question that had never gone out, a question somebody had
+ * just unticked, a client who had answered in the last two days. All three
+ * said "somebody has not seen this yet".
  *
- * Everything else - all asked, all ticked, nothing new - folds. There is
- * nothing to do with it and it is the tallest thing on the page.
+ * The trouble is that on a BC being written, all three are true at once and
+ * the block is eight questions tall. It opened on top of the form, every
+ * time, on the screen where the work actually happens.
+ *
+ * NOTHING IS HIDDEN BY THIS. The folded line still carries the count - "8 of
+ * 8" - and still says in words whether they have gone out and whether anybody
+ * has answered. See questionsFoldLine above, which is the line you read
+ * without opening anything. One press and it is all there.
+ *
+ * The three reasons live on in that line. They just no longer decide the
+ * height of the page.
  */
 export function questionsStartOpen(
-  deal: any, open: Question[], dropped: string[], closed: Closed[], today = new Date(),
+  _deal?: any, _open?: Question[], _dropped?: string[], _closed?: Closed[], _today?: Date,
 ): boolean {
-  if ((dropped || []).length > 0) return true
-
-  if ((open || []).some(q => !txt(markFor(deal, q.key).askedAt))) return true
-
-  return (closed || []).some(c => {
-    const d = daysSince(c?.closedAt, today)
-    return d !== null && d < STILL_NEW
-  })
+  return false
 }

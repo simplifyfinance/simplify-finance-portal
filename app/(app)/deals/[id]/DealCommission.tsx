@@ -1,4 +1,5 @@
 'use client'
+import { Bubble } from '@/components/TheBubble'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { calcCommission, lvrOf, money, type CommissionRate } from '@/lib/commission'
@@ -54,15 +55,19 @@ export default function DealCommission({ deal }: { deal: any }) {
   const box = 'bg-card border border-[#EDE7DD] rounded-xl overflow-hidden mb-6'
   const k = 'text-[10px] font-bold uppercase tracking-[.08em] text-faint mb-1'
 
+  // THE BRONZE, as docs/approved-looks/deal-page-stages.html draws it. Not a
+  // status - see the note beside LINKS in lib/colours.ts for why this one
+  // colour is allowed to be warm.
   return (
-    <div className={box}>
-      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-[#F6F2EA] flex-wrap">
-        <span className="text-[13.5px] font-semibold text-ink">Commission</span>
-        <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-page border border-line text-muted rounded-full px-2 py-[2px]">
-          Expected
-        </span>
-        {lenderName && <span className="text-[11.5px] text-faint ml-auto">{lenderName}</span>}
-      </div>
+    <Bubble tone="links" title="Commission"
+      icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                 strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="9" /><path d="M12 7v10M9.5 10a2 2 0 0 1 2-2h2M14.5 14a2 2 0 0 1-2 2h-2" /></svg>}
+      actions={<>
+        <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-page border border-card-line
+          text-muted rounded-full px-2 py-[2px]">Expected</span>
+        {lenderName && <span className="text-[11.5px] text-faint">{lenderName}</span>}
+      </>}>
 
       {loading ? (
         <div className="px-4 py-5 text-[13px] text-faint">Loading the rate…</div>
@@ -115,6 +120,6 @@ export default function DealCommission({ deal }: { deal: any }) {
           </div>
         </>
       )}
-    </div>
+    </Bubble>
   )
 }

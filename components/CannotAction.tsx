@@ -1,4 +1,5 @@
 'use client'
+import { Act } from '@/components/TheBubble'
 import { useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite } from '@/lib/checked-write'
@@ -93,23 +94,22 @@ export default function CannotAction({ deal, stage, me, onDone }: {
     )
   }
 
+  // ON THE "SOMETHING WRONG?" SHELF - deal-page-stages.html, 16 Nov 2026.
+  // It was a box of its own at the bottom of the rail with a heading reading
+  // "Cannot action this?". It is one of three buttons now. Same words once it
+  // opens, same rules about who may press it.
   return (
-    <div className="bg-card border border-card-line rounded-xl px-3.5 py-3">
-      <p className="text-[9.5px] font-bold tracking-[.09em] uppercase text-faint m-0 mb-2">
-        Cannot action this?
-      </p>
-
+    <>
       {!open ? (
-        <>
-          <p className="text-[12px] text-muted leading-[1.5] m-0 mb-2">
-            It leaves your list and goes back to {broker || 'the broker'} with your words on it.
-          </p>
-          <button onClick={() => { setOpen(true); setProblem('') }}
-            className="block text-[11.5px] font-semibold text-brand-ink">
-            Send it back →
-          </button>
-        </>
+        <Act tone="plain" small onClick={() => { setOpen(true); setProblem('') }}
+          title={`It leaves your list and goes back to ${broker || 'the broker'} with your words on it.`}
+          icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                     strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 9h11a5 5 0 0 1 0 10H9" /><path d="M7 5L3 9l4 4" /></svg>}>
+          Credit cannot action
+        </Act>
       ) : (
+        <div className="basis-full border border-card-line rounded-xl px-3.5 py-3 mt-1">
         <div>
           <p className="text-[10px] font-bold tracking-[.08em] uppercase text-muted m-0 mb-1.5">
             What is stopping you?
@@ -132,7 +132,8 @@ export default function CannotAction({ deal, stage, me, onDone }: {
             </button>
           </div>
         </div>
+        </div>
       )}
-    </div>
+    </>
   )
 }

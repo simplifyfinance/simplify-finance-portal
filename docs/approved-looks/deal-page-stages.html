@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="en" data-theme="light" data-st="bc">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The deal page - every stage</title>
+<style>
+  :root[data-theme="light"]{
+    --page:#F7F5F0;--ink:#14140F;--muted:#5C584F;--faint:#938D83;--card:#FFFFFF;
+    --line:#EBE6DB;--line2:#DFD9CC;--soft:#F4F1EA;--accent:#0E7FBF;
+    --good:#1C9A63;--goodEdge:#9FD9BC;--late:#C64B50;
+    --glow1:#EAF3F8;--glow2:#FBF0F4;--cardBg:#fff;--chaseBg:#fff;--chaseLine:#F0CCCD;--panel:#FBFAF7;
+    --bar:#15171B;--barInk:#FFFFFF;--barDim:#9A948C;
+  }
+  :root[data-theme="dark"]{
+    --page:#0C0C0F;--ink:#F3F1ED;--muted:#A8A39C;--faint:#6F6A64;--card:#141418;
+    --line:#26262D;--line2:#303039;--soft:#1C1C21;--accent:#38BDF8;
+    --good:#34D399;--goodEdge:#2A6B4E;--late:#F2777D;
+    --glow1:#13303F;--glow2:#1A1326;--cardBg:#141418;--chaseBg:#141418;--chaseLine:rgba(242,119,125,.4);
+    --panel:#121216;--bar:#1A1C21;--barInk:#F3F1ED;--barDim:#7E7872;
+  }
+  /* WHO IN CREDIT OWNS IT */
+  :root{--katie:#E23D93;--mel:#6D5DF6;--dinisha:#B5762F;--none:#9BA3AD}
+  :root[data-theme="dark"]{--katie:#F75FAE;--mel:#8B7BFF;--dinisha:#D08E3C;--none:#6E7682}
+  /* ONE COLOUR PER STAGE */
+  :root{--s-lead:#8E96A3;--s-bc:#17A398;--s-lo:#2E7BC4;--s-comp:#7257C8;--s-settle:#2FA36B}
+  :root[data-theme="dark"]{--s-lead:#79818E;--s-bc:#2DD4BF;--s-lo:#60A5FA;--s-comp:#A78BFA;--s-settle:#4ADE80}
+  /* WITH THE LENDER IS NOT GREEN. Green is the money landing - it belongs to
+     settlement and to a client who has said yes, and nowhere else. */
+  :root[data-lender="steel"]{--s-lender:#5B6B84}
+  :root[data-lender="steel"][data-theme="dark"]{--s-lender:#8C9BB5}
+  :root[data-lender="indigo"]{--s-lender:#4A54B5}
+  :root[data-lender="indigo"][data-theme="dark"]{--s-lender:#7C87E8}
+  :root[data-lender="cyan"]{--s-lender:#0E8FA8}
+  :root[data-lender="cyan"][data-theme="dark"]{--s-lender:#38C9E0}
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);display:flex;min-height:100vh;
+       font:14px/1.45 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+       -webkit-font-smoothing:antialiased}
+  .mono{font-variant-numeric:tabular-nums}
+  .side{width:188px;flex:none;background:#121214;color:#CFCAC2;display:flex;flex-direction:column;
+        position:sticky;top:0;height:100vh}
+  .brand{padding:18px 16px 12px}
+  .brand .logo{font-size:23px;font-weight:700;letter-spacing:-.04em;color:#fff;line-height:1}
+  .brand .by{font-size:10px;color:#6E6A64;margin-top:2px}
+  .navsec{font-size:9px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#56524C;padding:12px 16px 5px}
+  .nav a{display:block;padding:6px 16px;font-size:12.5px;color:#B7B2AA;text-decoration:none;border-left:2px solid transparent}
+  .nav a.on{color:#fff;background:#1B1B22;border-left-color:#38BDF8;font-weight:600}
+  .side .foot{margin-top:auto;padding:12px;border-top:1px solid #1E1E22}
+  .theme{display:flex;background:#1B1B21;border-radius:9px;padding:3px;gap:2px}
+  .theme button{flex:1;background:transparent;border:0;color:#8D887F;font-size:11px;font-weight:600;padding:6px 0;border-radius:7px;cursor:pointer}
+  .theme button.on{background:#2A2A33;color:#fff}
+
+  .main{flex:1;min-width:0;padding:20px 0 36px 20px;overflow:hidden;
+        background-image:radial-gradient(820px 380px at 6% -10%,var(--glow1),transparent 65%),
+                         radial-gradient(700px 340px at 94% -12%,var(--glow2),transparent 65%);
+        background-attachment:fixed}
+  .head{display:flex;align-items:flex-end;gap:12px;margin-bottom:12px;padding-right:20px}
+  h1{font-size:22px;font-weight:700;letter-spacing:-.035em;margin:0}
+  .head p{margin:2px 0 0;font-size:12px;color:var(--faint)}
+  .tools{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .seg{display:flex;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:3px}
+  .seg b{font-size:12px;font-weight:600;color:var(--faint);padding:5px 13px;border-radius:7px;cursor:default}
+  .seg b.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(20,20,15,.07)}
+  .find{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);
+        border-radius:10px;padding:8px 12px;width:230px;color:var(--faint);font-size:12.5px}
+  .btn{display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--line);
+       border-radius:10px;color:var(--muted);font-size:12.5px;font-weight:600;padding:8px 13px;cursor:pointer}
+  .btn.go{background:linear-gradient(180deg,#1990D1,#0E7FBF);border-color:#0C6FA7;color:#fff;
+          box-shadow:0 6px 16px -9px rgba(14,127,191,.8)}
+
+  /* the picker is a mock-only thing */
+  .picker{display:flex;align-items:center;gap:8px;margin:0 20px 14px 0;background:var(--card);
+          border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+  .picker i{font-style:normal;font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+  .picker button{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px 11px;
+                 font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
+  .picker button.on{background:var(--ink);border-color:var(--ink);color:var(--page)}
+
+  .board{display:flex;align-items:flex-start;overflow-x:auto;padding:0 20px 16px 0;gap:18px}
+  .group{flex:none}
+  .cols{display:flex;gap:10px}
+  .col{width:248px;flex:none;display:flex;flex-direction:column}
+  .chead{display:flex;align-items:center;gap:7px;padding:2px 3px 8px 4px}
+  .dot{width:7px;height:7px;border-radius:2px;background:var(--s);flex:none}
+  .cname{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+  .pillc{display:inline-flex;align-items:center;height:16px;line-height:1;font-size:10px;font-weight:700;
+         color:var(--faint);background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:0 7px}
+  .sum{margin-left:auto;font-size:11px;font-weight:700;color:var(--faint)}
+  .subs{display:flex;gap:4px;overflow-x:auto;padding:0 2px 7px 4px;scrollbar-width:none}
+  .subs::-webkit-scrollbar{display:none}
+  .subs b{font-size:9.5px;font-weight:700;letter-spacing:.03em;white-space:nowrap;color:var(--faint);
+          background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:3px 7px;cursor:pointer}
+  .subs b.on{background:var(--card);color:var(--ink);border-color:var(--line2)}
+  .stack{height:520px;overflow-y:auto;padding:1px 3px 6px 1px}
+  .stack::-webkit-scrollbar{width:9px}
+  .stack::-webkit-scrollbar-thumb{background:var(--line2);border-radius:9px}
+  .empty{height:138px;border:1px dashed var(--line2);border-radius:13px;display:flex;align-items:center;
+         justify-content:center;font-size:11.5px;color:var(--faint)}
+
+  /* ============ EVERY CARD THE SAME SIZE. ALWAYS. ============ */
+  .card{position:relative;height:138px;display:flex;flex-direction:column;overflow:hidden;
+        border-radius:13px;padding:11px 12px 9px;margin-bottom:9px;
+        background:color-mix(in srgb,var(--who) 15%,var(--cardBg));
+        border:1px solid color-mix(in srgb,var(--who) 40%,var(--line));
+        box-shadow:0 1px 2px rgba(20,20,15,.05),0 12px 22px -14px color-mix(in srgb,var(--who) 46%,rgba(20,20,15,.42));
+        transition:transform .12s ease}
+  .card:hover{transform:translateY(-2px);
+        box-shadow:0 2px 5px rgba(20,20,15,.07),0 20px 32px -16px color-mix(in srgb,var(--who) 54%,rgba(20,20,15,.5))}
+  .card.plain{background:var(--cardBg);border-color:var(--line);
+              box-shadow:0 1px 2px rgba(20,20,15,.05),0 10px 20px -14px rgba(20,20,15,.32)}
+  .card.plain .ini{background:var(--soft);color:var(--faint);border:1px solid var(--line)}
+  .card.ready{background:color-mix(in srgb,var(--good) 15%,var(--cardBg));border-color:var(--goodEdge);
+              box-shadow:0 1px 2px rgba(20,20,15,.05),0 12px 22px -14px rgba(28,154,99,.5)}
+  .ctop{display:flex;align-items:flex-start;gap:8px}
+  .nm{flex:1;min-width:0;font-size:12.5px;font-weight:650;letter-spacing:-.012em;line-height:1.3;height:32px;
+      display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .look{flex:none;color:var(--faint)}
+  .meta{font-size:10.5px;color:var(--faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row2{display:flex;align-items:flex-end;gap:8px;margin-top:7px}
+  .amt{font-size:16px;font-weight:700;letter-spacing:-.035em;line-height:1}
+  .amt.none{font-size:11.5px;font-weight:500;color:var(--faint);letter-spacing:0}
+  .ini{width:20px;height:20px;border-radius:6px;background:var(--who);color:#fff;margin-left:auto;
+       font-size:8.5px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+  /* THE TAG. 18 Nov 2026 - the strip was 16px and the pill wanted 17, so every
+     tag on the board was shaved along its bottom edge and read as sitting high.
+     Fixed height, flex centring, no line-height doing the work. */
+  .tags{display:flex;align-items:center;gap:4px;margin-top:7px;height:18px}
+  .tag{display:inline-flex;align-items:center;height:18px;line-height:1;
+       font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);
+       border:1px solid color-mix(in srgb,var(--who) 28%,var(--line2));
+       background:color-mix(in srgb,var(--cardBg) 76%,transparent);border-radius:5px;padding:0 6px;white-space:nowrap}
+  .tag.ok{color:var(--good);border-color:var(--goodEdge)}
+  .foot{display:flex;align-items:center;gap:7px;margin-top:auto;padding-top:7px;
+        font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden}
+  .chase{display:inline-flex;align-items:center;height:18px;line-height:1;margin-left:auto;
+         font-size:9.5px;font-weight:700;color:var(--late);background:var(--chaseBg);
+         border:1px solid var(--chaseLine);border-radius:5px;padding:0 6px;flex:none}
+  .age{margin-left:auto;font-size:10px;color:var(--faint);flex:none}
+
+  /* ============ THE DARK BAR ============
+     Three columns of equal weight either side, so the name sits on the true
+     centre of the bar however long the count on the right is. */
+  .ghead{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+         background:var(--bar);border-radius:11px;padding:9px 13px;margin-bottom:10px}
+  .ghead .nm2{display:flex;align-items:center;justify-content:center;gap:9px}
+  .ghead .sq{width:8px;height:8px;border-radius:2px;background:var(--s);flex:none}
+  .ghead b{font-size:10.5px;font-weight:800;letter-spacing:.13em;
+           text-transform:uppercase;color:var(--barInk);white-space:nowrap}
+  .ghead span.tot{justify-self:end;font-size:11px;font-weight:700;color:var(--barDim);white-space:nowrap}
+
+  body{display:block;background:var(--page);padding:0 0 60px}
+  .bar{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:1px solid var(--line);
+       padding:10px 30px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .bar i{font-style:normal;font-size:9.5px;font-weight:800;letter-spacing:.11em;
+         text-transform:uppercase;color:var(--faint);margin:0 4px 0 10px}
+  .bar i:first-child{margin-left:0}
+  .bar button{background:var(--soft);border:1px solid var(--line);border-radius:8px;
+              padding:6px 12px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
+  .bar button.on{background:var(--ink);border-color:var(--ink);color:var(--page)}
+  .wrap{max-width:1420px;margin:0 auto;padding:22px 30px 0}
+  h1.t{font-size:20px;margin:0 0 4px}
+  .lede{font-size:12.5px;color:var(--muted);margin:0 0 18px;max-width:900px;line-height:1.6}
+  .crumb{font-size:12px;color:var(--faint);margin:0 0 10px}
+  .crumb b{color:var(--ink);font-weight:650}
+
+  .page{display:grid;grid-template-columns:1.62fr 1fr;gap:16px;align-items:start}
+  .bub{border:1px solid var(--line);background:var(--card);border-radius:16px;
+       padding:17px 19px;margin-bottom:13px;
+       box-shadow:0 1px 2px rgba(20,20,15,.04),0 16px 30px -26px rgba(20,20,15,.3)}
+  .bh{display:flex;align-items:center;gap:9px;margin:0 0 13px}
+  .bh h2{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;
+         color:var(--acc);margin:0}
+  .bh .act{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .ic{width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;
+      flex:none;background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc)}
+  .ic svg{width:13px;height:13px}
+  .lnk{font-size:11px;font-weight:650;color:#0E7FBF;white-space:nowrap}
+
+  .bt{display:inline-flex;align-items:center;gap:6px;font-size:12px;border-radius:9px;
+      padding:7px 12px;background:var(--card);color:var(--c,var(--muted));white-space:nowrap;
+      font-weight:500;border:1px solid color-mix(in srgb,var(--c,var(--line2)) 30%,var(--line2))}
+  .bt svg{width:13px;height:13px;flex:none}
+  .bt[data-main]{background:var(--c);border-color:var(--c);color:#fff;font-weight:650;
+                 box-shadow:0 6px 14px -9px var(--c)}
+  .bt.s{padding:5px 10px;font-size:11px}
+  .bt.lo{opacity:.45}
+  .bts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+
+  .kv{display:flex;align-items:baseline;gap:12px;padding:6px 0;font-size:13px;color:var(--ink)}
+  .kv + .kv{border-top:1px solid var(--line)}
+  .kv .k{font-size:9px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
+         color:var(--faint);width:104px;flex:none}
+  .kv .lnk{margin-left:auto}
+  .nm{font-size:19px;font-weight:700;letter-spacing:-.03em;margin:0}
+  .sub{font-size:11.5px;color:var(--faint);margin:3px 0 0}
+
+  .band{border-radius:11px;padding:11px 14px;font-size:12.5px;line-height:1.5;
+        background:#F3EEFB;border:1px solid #DCCFF2;color:#5B3A9E;margin-bottom:13px;
+        display:flex;align-items:center;gap:10px}
+  :root[data-theme="dark"] .band{background:#231B33;border-color:#3E2F57;color:#C3ABF0}
+  .band .bt{margin-left:auto}
+
+  .beads{display:flex;align-items:flex-start;padding:6px 2px 2px}
+  .bd{flex:1;text-align:center;position:relative;min-width:0}
+  .bd .o{width:21px;height:21px;border-radius:50%;border:2px solid var(--line2);
+         background:var(--card);margin:0 auto 9px;position:relative;z-index:2;
+         display:flex;align-items:center;justify-content:center}
+  .bd .o svg{width:0;height:0}
+  .bd.done .o{background:#137A55;border-color:#137A55}
+  .bd.done .o svg{width:12px;height:12px;color:#fff;stroke-width:3.2}
+  .bd.on .o{border-color:#0E7FBF;border-width:4px;width:22px;height:22px}
+  .bd:not(:first-child):before{content:"";position:absolute;left:-50%;top:10px;width:100%;
+    height:2px;background:var(--line);z-index:1}
+  .bd.done:before{background:#137A55;height:2.5px;top:9.5px}
+  .bd.on:before{background:#137A55;height:2.5px;top:9.5px}
+  .bd span{display:block;font-size:11px;color:var(--faint);line-height:1.3;
+           white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bd.on span{color:#0E7FBF;font-weight:700}
+  .bd.done span{color:var(--ink);font-weight:600}
+  .bd em{display:block;font-size:10px;font-style:normal;color:var(--faint);margin-top:3px}
+  .bd.on em{color:#0E7FBF;font-style:italic}
+  .tc{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:15px}
+  .t1{border:1px solid var(--line2);border-radius:11px;padding:10px 11px;background:var(--page)}
+  .t1 .ti{width:25px;height:25px;border-radius:8px;background:var(--soft);color:var(--faint);
+          display:flex;align-items:center;justify-content:center;margin-bottom:9px}
+  .t1 .ti svg{width:14px;height:14px}
+  .t1 b{display:block;font-size:11.5px;font-weight:650;color:var(--ink);margin:0 0 2px;line-height:1.25}
+  .t1 i{font-style:normal;font-size:10px;color:var(--faint)}
+  .t1 i.g{color:#137A55;font-weight:650}
+  .t1 i.b{color:#0B5F89;font-weight:650}
+  .t1.on{border-color:#A8D3EC;background:#EAF6FD}
+  :root[data-theme="dark"] .t1.on{background:#12303F;border-color:#2A6186}
+  .t1.on .ti{background:#D3EAF8;color:#0B5F89}
+  :root[data-theme="dark"] .t1.on .ti{background:#1B4560;color:#8FD0F0}
+
+  .r{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--muted);padding:6px 0}
+  .r + .r{border-top:1px solid var(--line)}
+  .r b{color:var(--ink);font-weight:650}
+  .r .e{margin-left:auto}
+  .q{font-size:11.5px;color:var(--faint);line-height:1.6;margin:0}
+  .body{font-size:12.5px;color:var(--ink);line-height:1.65;margin:9px 0 0}
+  .body p{margin:0 0 8px}
+  .note{border:1px dashed var(--line2);border-radius:10px;padding:10px 12px;font-size:11.5px;
+        color:var(--faint);margin-top:10px}
+  .ph{border:1px dashed var(--line2);border-radius:13px;padding:22px;text-align:center;
+      font-size:12px;color:var(--faint);background:var(--page);line-height:1.6}
+  .drop{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line2);
+        border-radius:9px;padding:7px 12px;background:var(--card);font-size:12px;color:var(--ink)}
+  .drop em{font-style:normal;color:var(--faint);font-size:9px;font-weight:800;
+           letter-spacing:.1em;text-transform:uppercase}
+  .hot{display:inline-flex;align-items:center;height:18px;font-size:9.5px;font-weight:700;
+       border-radius:999px;padding:0 8px;background:var(--soft);border:1px solid var(--line);
+       color:var(--faint)}
+  .sec{border-top:1px solid var(--line);margin-top:13px;padding-top:12px}
+  .sec:first-of-type{border-top:0;margin-top:0;padding-top:0}
+  .sec h4{font-size:9px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
+          color:var(--faint);margin:0 0 7px;display:flex;align-items:center;gap:7px}
+  .sec h4 svg{width:13px;height:13px;flex:none}
+  .sec h4 .n{margin-left:auto;font-size:9.5px;font-weight:700;background:var(--soft);
+             border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--faint)}
+  .sec h4 .n.hot{background:#FDEDED;border-color:#F5C9C9;color:#C0392B}
+  :root[data-theme="dark"] .sec h4 .n.hot{background:#301A1A;border-color:#55302F;color:#F0A39D}
+  .late{color:#C0392B;font-weight:650}
+  .band svg{width:15px;height:15px;flex:none}
+  .quote{border-left:3px solid #DACFF1;padding-left:12px;margin-left:1px}
+  :root[data-theme="dark"] .quote{border-left-color:#3E2F57}
+  .who{font-size:10.5px;color:var(--faint);margin:0 0 7px}
+  .who b{color:var(--muted);font-weight:650}
+  .grab{height:5px;width:34px;border-radius:99px;background:var(--line2);margin:12px auto 0}
+  /* RED ON THE MARK, NOT ON THE PAPER. */
+  .quiet{border-radius:10px;padding:9px 12px;font-size:12px;line-height:1.55;display:flex;
+         align-items:center;gap:9px;flex-wrap:wrap;background:var(--card);
+         border:1px solid var(--line2);color:var(--ink);margin-bottom:12px}
+  .quiet svg{width:14px;height:14px;flex:none;color:#C0392B}
+  :root[data-theme="dark"] .quiet svg{color:#F0776D}
+  .quiet .k{color:#C0392B;font-weight:700}
+  :root[data-theme="dark"] .quiet .k{color:#F0A39D}
+  .quiet .rest{color:var(--muted)}
+  .quiet .bt{margin-left:auto}
+  .gband{display:flex;align-items:center;gap:9px;flex-wrap:wrap;border-radius:11px;
+         border:1px solid #BFE7D5;background:#F0FBF6;padding:10px 14px;margin-bottom:13px;
+         font-size:12.5px;color:#137A55}
+  :root[data-theme="dark"] .gband{background:#10251D;border-color:#2A5F45;color:#5ECFA0}
+  .gband svg{width:15px;height:15px;flex:none}
+  .gband b{font-weight:700}
+  .gband .when{margin-left:auto;color:color-mix(in srgb,currentColor 65%,transparent);
+               font-size:11.5px;white-space:nowrap}
+  .qband{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-radius:10px;
+         border:1px solid #DCCFF2;border-left:4px solid #5B3A9E;background:#F6F2FC;
+         padding:9px 12px;margin-bottom:12px;font-size:12px;color:#5B3A9E}
+  :root[data-theme="dark"] .qband{background:#231B33;border-color:#3E2F57;border-left-color:#A78BFA;
+         color:#C3ABF0}
+  .qband b{font-weight:700}
+  .qband span{color:color-mix(in srgb,currentColor 72%,transparent)}
+  .qband .pill{background:#5B3A9E;color:#fff;border-radius:999px;padding:2px 9px;
+               font-size:10.5px;font-weight:700}
+  .qband .bt{margin-left:auto}
+  .cap{font-size:11.5px;color:var(--faint);margin:10px 2px 0;line-height:1.65;max-width:1060px}
+  .cap b{color:var(--muted)}
+  .stage{display:none}
+  :root[data-st="bc"] .s-bc,:root[data-st="agreed"] .s-agreed,:root[data-st="comp"] .s-comp,
+  :root[data-st="settle"] .s-settle,:root[data-st="settled"] .s-settled{display:block}
+</style></head>
+<body>
+<div class="bar"><i>Stage</i>
+  <button class="on" onclick="st('bc',this)">BC</button>
+  <button onclick="st('agreed',this)">Client agreed</button>
+  <button onclick="st('comp',this)">Compliance</button>
+  <button onclick="st('settle',this)">Settlement</button>
+  <button onclick="st('settled',this)">Settled</button>
+  <span style="margin-left:auto"></span><i>Theme</i>
+  <button class="on" onclick="th('light',this)">Light</button>
+  <button onclick="th('dark',this)">Dark</button></div>
+
+<div class="wrap">
+<h1 class="t">The deal page &mdash; the static part, through the whole deal</h1>
+<p class="lede">Step through the stages at the top. The six boxes never move. Only the one in the
+middle changes, and the deal box grows a row when the stage has somebody new in it. Notes is three
+separate boxes again, full size.</p>
+<p class="crumb">&larr; Deals &nbsp;/&nbsp; <b>Refinance + equity release</b></p>
+<div class="stage s-bc"><div class="page"><div>
+
+  <div class="bub" style="--acc:#0E6FA0">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M8 6V4h8v2"/><path d="M3 11h18"/></svg></span><h2>The deal</h2>
+      <span class="act"><span class="bt " style="--c:#A3376B"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 5h11l-2 3 2 3H5"/></svg>Mark urgent</span><span class="bt " style="--c:#0E6FA0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/></svg>Open BC</span>
+      <span class="bt " style="--c:#0E6FA0" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>Client emails</span><span class="bt " style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/></svg>Edit</span><span class="bt " style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>More</span></span></div>
+    <p class="nm">Rachel Welton &amp; Steven Welton 2026</p>
+    <p class="sub">&#10003; All changes saved &nbsp;&middot;&nbsp;
+      <span class="lnk" style="text-decoration:underline">History</span> &nbsp;&middot;&nbsp;
+      Not shared &mdash; this one is all ours &nbsp;&middot;&nbsp; Change it on the fact find</p>
+    <div style="margin-top:13px">
+      <div class="kv"><span class="k">Broker</span> Fabio de Castro <span class="lnk">Reassign</span></div>
+      <div class="kv"><span class="k">Credit</span> Mellissa Sedin <span class="lnk">Reassign</span></div>
+      
+      <div class="kv"><span class="k">Scenario</span> Refinance + equity release <span class="lnk">Change</span></div>
+    </div>
+  </div>
+<div class="quiet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg><span class="k">Nobody is down as doing the BC.</span><span class="rest">It has been sitting since 16 Nov.</span><span class="bt s" style="--c:#0E6FA0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11v9H4v-9z"/><path d="M7 11l4-7a2 2 0 0 1 3 2l-1 5h5a2 2 0 0 1 2 2.3l-1 5A2 2 0 0 1 17 20H7"/></svg>I will do it</span></div>
+<div class="bub" style="--acc:#137A55">
+  <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.5 8 12 8 12s8-6.5 8-12a8 8 0 0 0-8-8z"/></svg></span><h2>Where it is</h2>
+    <span class="act"><span class="bt " style="--c:#0E6FA0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11v9H4v-9z"/><path d="M7 11l4-7a2 2 0 0 1 3 2l-1 5h5a2 2 0 0 1 2 2.3l-1 5A2 2 0 0 1 17 20H7"/></svg>With Mellissa</span></span></div>
+  <div class="beads"><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Fact Find</span><em>13 Nov</em></div><div class="bd on"><div class="o"></div><span>BC</span><em>16 Nov</em></div><div class="bd "><div class="o"></div><span>Lending Options</span></div><div class="bd "><div class="o"></div><span>Compliance</span></div><div class="bd "><div class="o"></div><span>Lodged</span></div><div class="bd "><div class="o"></div><span>Preapproved</span></div><div class="bd "><div class="o"></div><span>Offer accepted</span></div><div class="bd "><div class="o"></div><span>Formal</span></div><div class="bd "><div class="o"></div><span>Contracts returned</span></div><div class="bd "><div class="o"></div><span>Settlement booked</span></div><div class="bd "><div class="o"></div><span>Settled</span></div></div>
+  <div class="tc"><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></span><b>Fact Find</b><i class="g">Complete</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M4 15l4-5 4 4 7-8"/></svg></span><b>Statements</b><i class="g">Complete</i></div><div class="t1 on"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/></svg></span><b>BC — Borrowing capacity</b><i class="b">In progress</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l8-6 8 6v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg></span><b>Lending options</b><i class="">Not started</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><path d="M9.5 12l2 2 3.5-4"/></svg></span><b>Compliance</b><i class="">Not started</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><b>File notes</b><i class="">Not started</i></div></div>
+</div>
+
+  <div class="bub" style="--acc:#0E6FA0">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/></svg></span><h2>BC &mdash; Borrowing capacity</h2>
+      <span class="act"><span class="drop"><em>View</em> Form &nbsp;&#9662;</span></span></div>
+    <div class="bts" style="margin-bottom:12px">
+      <span class="bt " style="--c:#137A55" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>Done</span><span class="bt " style="--c:#0E6FA0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3L3 10l7 3 3 7z"/></svg>Send to client</span>
+      <span class="bt lo" style="--c:#137A55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11v9H4v-9z"/><path d="M7 11l4-7a2 2 0 0 1 3 2l-1 5h5a2 2 0 0 1 2 2.3l-1 5A2 2 0 0 1 17 20H7"/></svg>Client agreed</span><span class="bt " style="--c:#A3376B"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h11a5 5 0 0 1 0 10H9"/><path d="M7 5L3 9l4 4"/></svg>Send it back</span>
+      <span class="bt " style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>More</span>
+      <span class="drop" style="margin-left:auto"><em>Template</em> Refinance + equity release &nbsp;&#9662;</span></div>
+    <div class="qband"><b>&#9654; Questions going out with this email</b>
+      <span>nothing has gone out yet</span>
+      <span class="pill">8 of 8</span><span class="bt s" style="--c:#5B4B8A"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2-2.5 3.6"/><path d="M12 17h.01"/></svg>Show</span></div>
+    <div class="ph">The BC form, as it is today. <b>More</b> holds Order a valuation.</div>
+  </div>
+</div><div>
+  
+  <div class="bub" style="--acc:#A3376B">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg></span><h2>Needs action</h2>
+      <span class="act"><span class="hot">0</span><span class="bt s" style="--c:#A3376B" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add</span></span></div>
+    <p class="q">Shows as a red chip on the pipeline, so somebody who never opens this deal still
+      sees it. Tick it off when it is done.</p>
+    <p class="body" style="color:var(--muted)">Nothing needs action.</p>
+  </div>
+
+  <div class="bub" style="--acc:#5B4B8A">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v12l-4 4H5z"/><path d="M15 20v-4h4"/><path d="M8 9h8M8 13h5"/></svg></span><h2>Sales notes</h2>
+      <span class="act"><span class="bt s" style="--c:#5B4B8A" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/></svg>Edit</span></span></div>
+    <p class="q">Goes to SalesTrekker, the Fact Find PDF and the assessment. Write it as if credit
+      will read it.</p>
+    <p class="who">Written <b>13 Nov</b> by <b>Fabio de Castro</b></p>
+    <div class="body quote">
+      <p>Mandy and I are considering some options in relation to the possibility of turning our
+        Breakfast Point property into a rental (negatively gearing it) and then buying another place
+        to move into.</p>
+      <p>Seeing that we recently sent all of our info through to get the mortgage for Breakfast Point
+        moved over to Macquarie we wanted to see what you thought was possible.</p>
+      <p>We are looking at, if possible, a terrace house or similar in the inner west for around
+        $1,700,000.</p>
+      <p style="margin-bottom:0;color:var(--faint)">Explore non bank lenders if need be.</p>
+    </div>
+    <div class="grab"></div>
+  </div>
+
+  <div class="bub" style="--acc:#5C584F">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><h2>File update</h2>
+      <span class="act"><span class="hot">5</span><span class="bt s" style="--c:#5C584F" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add note</span></span></div>
+    <p class="q">The log. Nothing here can be typed over, and the portal writes to it as well.</p>
+    <div class="body quote">
+      <p style="margin-bottom:4px"><b>16 Nov, 3:29pm &middot; Mellissa Sedin</b></p>
+      <p>Before I do BC for this one I just wanted to flag a few things so you can have a look.</p>
+      <p style="margin-bottom:4px;color:var(--faint)"><b>16 Nov, 11:02am &middot; the portal</b></p>
+      <p style="margin-bottom:0;color:var(--faint)">23 documents requested from the client.</p>
+    </div>
+    <div class="note">Add a note&hellip;</div>
+    <div class="grab"></div>
+  </div>
+  <div class="bub" style="--acc:#0F6E6E">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h5l2 3h4l2-3h5"/><path d="M5 5h14l2 8v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4z"/></svg></span><h2>What we need from the client</h2>
+      <span class="act"><span class="bt s" style="--c:#0F6E6E" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3L3 10l7 3 3 7z"/></svg>Request</span></span></div>
+    <div class="sec"><h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2-2.5 3.6"/><path d="M12 17h.01"/></svg> Questions <span class="n">4 of 4</span></h4>
+      <p class="q">Gaps in the fact find, going out with the lending options email.
+        Asked 13 Nov &middot; 3 days &middot; nobody has answered.</p>
+      <div class="r">Open the list <span class="e"><span class="lnk">On the LO tab &rarr;</span></span></div>
+    </div>
+    <div class="sec"><h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M10 13h6M10 17h4"/></svg> Documents <span class="n ">0 due</span></h4>
+      <p class="q">Nothing is due yet. Twenty-eight are waiting behind <b>later</b> &mdash; they become due the day the client agrees to the BC.</p>
+      <div class="r" style="color:var(--faint)">Nothing to request yet</div>
+    </div>
+    <div class="r" style="margin-top:11px;border-top:1px solid var(--line)">Build a PDF
+      <span class="e"><span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>Build</span></span></div>
+  </div>
+  <div class="bub" style="--acc:#946017">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a4 4 0 0 0 6 .5l2-2a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 11a4 4 0 0 0-6-.5l-2 2A4 4 0 0 0 11.7 18l1-1"/></svg></span><h2>Links</h2>
+      <span class="act"><span class="bt s" style="--c:#946017" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add</span></span></div>
+    <div class="r">SalesTrekker card</div>
+    <div class="r">OneDrive folder</div>
+    <div class="r">Summary page</div>
+  </div>
+  <div class="bub" style="--acc:#7A7266;opacity:.78">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></svg></span><h2>Something wrong?</h2></div>
+    <div class="bts"><span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></svg>Credit cannot action</span>
+      <span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>Report a problem</span><span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></svg>Close this deal</span></div>
+  </div></div></div></div><div class="stage s-agreed"><div class="page"><div>
+
+  <div class="bub" style="--acc:#0E6FA0">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M8 6V4h8v2"/><path d="M3 11h18"/></svg></span><h2>The deal</h2>
+      <span class="act"><span class="bt " style="--c:#A3376B"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 5h11l-2 3 2 3H5"/></svg>Mark urgent</span><span class="bt " style="--c:#0E6FA0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/></svg>Open BC</span>
+      <span class="bt " style="--c:#0E6FA0" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>Client emails</span><span class="bt " style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/></svg>Edit</span><span class="bt " style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>More</span></span></div>
+    <p class="nm">Rachel Welton &amp; Steven Welton 2026</p>
+    <p class="sub">&#10003; All changes saved &nbsp;&middot;&nbsp;
+      <span class="lnk" style="text-decoration:underline">History</span> &nbsp;&middot;&nbsp;
+      Not shared &mdash; this one is all ours &nbsp;&middot;&nbsp; Change it on the fact find</p>
+    <div style="margin-top:13px">
+      <div class="kv"><span class="k">Broker</span> Fabio de Castro <span class="lnk">Reassign</span></div>
+      <div class="kv"><span class="k">Credit</span> Mellissa Sedin <span class="lnk">Reassign</span></div>
+      
+      <div class="kv"><span class="k">Scenario</span> Refinance + equity release <span class="lnk">Change</span></div>
+    </div>
+  </div>
+<div class="gband"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg><b>The client agreed to proceed</b> &mdash; Monday 16 November, recorded by Kylie Searle<span class="when">BC &middot; today</span></div>
+<div class="bub" style="--acc:#137A55">
+  <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.5 8 12 8 12s8-6.5 8-12a8 8 0 0 0-8-8z"/></svg></span><h2>Where it is</h2>
+    <span class="act"><span class="bt " style="--c:#0E6FA0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11v9H4v-9z"/><path d="M7 11l4-7a2 2 0 0 1 3 2l-1 5h5a2 2 0 0 1 2 2.3l-1 5A2 2 0 0 1 17 20H7"/></svg>With Mellissa</span></span></div>
+  <div class="beads"><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Fact Find</span><em>13 Nov</em></div><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>BC</span><em>16 Nov</em></div><div class="bd on"><div class="o"></div><span>Lending Options</span><em>with credit</em></div><div class="bd "><div class="o"></div><span>Compliance</span></div><div class="bd "><div class="o"></div><span>Lodged</span></div><div class="bd "><div class="o"></div><span>Preapproved</span></div><div class="bd "><div class="o"></div><span>Offer accepted</span></div><div class="bd "><div class="o"></div><span>Formal</span></div><div class="bd "><div class="o"></div><span>Contracts returned</span></div><div class="bd "><div class="o"></div><span>Settlement booked</span></div><div class="bd "><div class="o"></div><span>Settled</span></div></div>
+  <div class="tc"><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></span><b>Fact Find</b><i class="g">Complete</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M4 15l4-5 4 4 7-8"/></svg></span><b>Statements</b><i class="g">Complete</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/></svg></span><b>BC — Borrowing capacity</b><i class="g">Complete</i></div><div class="t1 on"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l8-6 8 6v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg></span><b>Lending options</b><i class="b">In progress</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><path d="M9.5 12l2 2 3.5-4"/></svg></span><b>Compliance</b><i class="">Not started</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><b>File notes</b><i class="">Not started</i></div></div>
+</div>
+
+  <div class="bub" style="--acc:#0E6FA0">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l8-6 8 6v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg></span><h2>Lending options</h2>
+      <span class="act"><span class="drop"><em>View</em> Form &nbsp;&#9662;</span></span></div>
+    <div class="bts" style="margin-bottom:12px">
+      <span class="bt " style="--c:#137A55" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>Done</span><span class="bt " style="--c:#0E6FA0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3L3 10l7 3 3 7z"/></svg>Send to client</span>
+      <span class="bt lo" style="--c:#137A55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11v9H4v-9z"/><path d="M7 11l4-7a2 2 0 0 1 3 2l-1 5h5a2 2 0 0 1 2 2.3l-1 5A2 2 0 0 1 17 20H7"/></svg>Client agreed</span><span class="bt " style="--c:#A3376B"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h11a5 5 0 0 1 0 10H9"/><path d="M7 5L3 9l4 4"/></svg>Send it back</span>
+      <span class="bt " style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>More</span></div>
+    <div class="qband"><b>&#9654; Questions going out with this email</b>
+      <span>asked 13 Nov &middot; 3 days &middot; nobody has answered</span>
+      <span class="pill">4 of 4</span><span class="bt s" style="--c:#5B4B8A"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2-2.5 3.6"/><path d="M12 17h.01"/></svg>Show</span></div>
+    <div class="ph">The lending options form, as it is today.</div>
+  </div>
+</div><div>
+  
+  <div class="bub" style="--acc:#A3376B">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg></span><h2>Needs action</h2>
+      <span class="act"><span class="hot">0</span><span class="bt s" style="--c:#A3376B" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add</span></span></div>
+    <p class="q">Shows as a red chip on the pipeline, so somebody who never opens this deal still
+      sees it. Tick it off when it is done.</p>
+    <p class="body" style="color:var(--muted)">Nothing needs action.</p>
+  </div>
+
+  <div class="bub" style="--acc:#5B4B8A">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v12l-4 4H5z"/><path d="M15 20v-4h4"/><path d="M8 9h8M8 13h5"/></svg></span><h2>Sales notes</h2>
+      <span class="act"><span class="bt s" style="--c:#5B4B8A" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/></svg>Edit</span></span></div>
+    <p class="q">Goes to SalesTrekker, the Fact Find PDF and the assessment. Write it as if credit
+      will read it.</p>
+    <p class="who">Written <b>13 Nov</b> by <b>Fabio de Castro</b></p>
+    <div class="body quote">
+      <p>Mandy and I are considering some options in relation to the possibility of turning our
+        Breakfast Point property into a rental (negatively gearing it) and then buying another place
+        to move into.</p>
+      <p>Seeing that we recently sent all of our info through to get the mortgage for Breakfast Point
+        moved over to Macquarie we wanted to see what you thought was possible.</p>
+      <p>We are looking at, if possible, a terrace house or similar in the inner west for around
+        $1,700,000.</p>
+      <p style="margin-bottom:0;color:var(--faint)">Explore non bank lenders if need be.</p>
+    </div>
+    <div class="grab"></div>
+  </div>
+
+  <div class="bub" style="--acc:#5C584F">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><h2>File update</h2>
+      <span class="act"><span class="hot">5</span><span class="bt s" style="--c:#5C584F" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add note</span></span></div>
+    <p class="q">The log. Nothing here can be typed over, and the portal writes to it as well.</p>
+    <div class="body quote">
+      <p style="margin-bottom:4px"><b>16 Nov, 3:29pm &middot; Mellissa Sedin</b></p>
+      <p>Before I do BC for this one I just wanted to flag a few things so you can have a look.</p>
+      <p style="margin-bottom:4px;color:var(--faint)"><b>16 Nov, 11:02am &middot; the portal</b></p>
+      <p style="margin-bottom:0;color:var(--faint)">23 documents requested from the client.</p>
+    </div>
+    <div class="note">Add a note&hellip;</div>
+    <div class="grab"></div>
+  </div>
+  <div class="bub" style="--acc:#0F6E6E">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h5l2 3h4l2-3h5"/><path d="M5 5h14l2 8v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4z"/></svg></span><h2>What we need from the client</h2>
+      <span class="act"><span class="bt s" style="--c:#0F6E6E" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3L3 10l7 3 3 7z"/></svg>Request</span></span></div>
+    <div class="sec"><h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2-2.5 3.6"/><path d="M12 17h.01"/></svg> Questions <span class="n">4 of 4</span></h4>
+      <p class="q">Gaps in the fact find, going out with the lending options email.
+        Asked 13 Nov &middot; 3 days &middot; nobody has answered.</p>
+      <div class="r">Open the list <span class="e"><span class="lnk">On the LO tab &rarr;</span></span></div>
+    </div>
+    <div class="sec"><h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M10 13h6M10 17h4"/></svg> Documents <span class="n hot">18 to request</span></h4>
+      <p class="q">The client has agreed, so the proceed round is now due.</p>
+      <div class="r">To request <span class="e"><b>18</b></span></div><div class="r">Received <span class="e"><b>0</b></span></div><div class="r">Still out <span class="e"><b>0</b></span></div>
+    </div>
+    <div class="r" style="margin-top:11px;border-top:1px solid var(--line)">Build a PDF
+      <span class="e"><span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>Build</span></span></div>
+  </div>
+  <div class="bub" style="--acc:#946017">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a4 4 0 0 0 6 .5l2-2a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 11a4 4 0 0 0-6-.5l-2 2A4 4 0 0 0 11.7 18l1-1"/></svg></span><h2>Links</h2>
+      <span class="act"><span class="bt s" style="--c:#946017" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add</span></span></div>
+    <div class="r">SalesTrekker card</div>
+    <div class="r">OneDrive folder</div>
+    <div class="r">Summary page</div>
+  </div>
+  <div class="bub" style="--acc:#7A7266;opacity:.78">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></svg></span><h2>Something wrong?</h2></div>
+    <div class="bts"><span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></svg>Credit cannot action</span>
+      <span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>Report a problem</span><span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></svg>Close this deal</span></div>
+  </div></div></div></div><div class="stage s-comp"><div class="page"><div>
+
+  <div class="bub" style="--acc:#0E6FA0">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M8 6V4h8v2"/><path d="M3 11h18"/></svg></span><h2>The deal</h2>
+      <span class="act"><span class="bt " style="--c:#A3376B"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 5h11l-2 3 2 3H5"/></svg>Mark urgent</span><span class="bt " style="--c:#0E6FA0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/></svg>Open compliance</span>
+      <span class="bt " style="--c:#0E6FA0" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>Client emails</span><span class="bt " style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/></svg>Edit</span><span class="bt " style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>More</span></span></div>
+    <p class="nm">Rachel Welton &amp; Steven Welton 2026</p>
+    <p class="sub">&#10003; All changes saved &nbsp;&middot;&nbsp;
+      <span class="lnk" style="text-decoration:underline">History</span> &nbsp;&middot;&nbsp;
+      Not shared &mdash; this one is all ours &nbsp;&middot;&nbsp; Change it on the fact find</p>
+    <div style="margin-top:13px">
+      <div class="kv"><span class="k">Broker</span> Fabio de Castro <span class="lnk">Reassign</span></div>
+      <div class="kv"><span class="k">Credit</span> Mellissa Sedin <span class="lnk">Reassign</span></div>
+      <div class="kv"><span class="k">Compliance pack</span> Ellesse Moran <span class="lnk">Reassign</span></div>
+      <div class="kv"><span class="k">Scenario</span> Refinance + equity release <span class="lnk">Change</span></div>
+    </div>
+  </div>
+<div class="gband"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg><b>The client agreed to proceed</b> &mdash; Monday 16 November, recorded by Kylie Searle<span class="when">BC &middot; today</span></div>
+<div class="bub" style="--acc:#137A55">
+  <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.5 8 12 8 12s8-6.5 8-12a8 8 0 0 0-8-8z"/></svg></span><h2>Where it is</h2>
+    <span class="act"><span class="bt " style="--c:#0E6FA0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11v9H4v-9z"/><path d="M7 11l4-7a2 2 0 0 1 3 2l-1 5h5a2 2 0 0 1 2 2.3l-1 5A2 2 0 0 1 17 20H7"/></svg>With Mellissa</span></span></div>
+  <div class="beads"><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Fact Find</span><em>13 Nov</em></div><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>BC</span><em>16 Nov</em></div><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Lending Options</span><em>with credit</em></div><div class="bd on"><div class="o"></div><span>Compliance</span></div><div class="bd "><div class="o"></div><span>Lodged</span></div><div class="bd "><div class="o"></div><span>Preapproved</span></div><div class="bd "><div class="o"></div><span>Offer accepted</span></div><div class="bd "><div class="o"></div><span>Formal</span></div><div class="bd "><div class="o"></div><span>Contracts returned</span></div><div class="bd "><div class="o"></div><span>Settlement booked</span></div><div class="bd "><div class="o"></div><span>Settled</span></div></div>
+  <div class="tc"><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></span><b>Fact Find</b><i class="g">Complete</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M4 15l4-5 4 4 7-8"/></svg></span><b>Statements</b><i class="g">Complete</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/></svg></span><b>BC — Borrowing capacity</b><i class="g">Complete</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l8-6 8 6v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg></span><b>Lending options</b><i class="g">Complete</i></div><div class="t1 on"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><path d="M9.5 12l2 2 3.5-4"/></svg></span><b>Compliance</b><i class="b">In progress</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><b>File notes</b><i class="">Not started</i></div></div>
+</div>
+
+  <div class="bub" style="--acc:#7257C8">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><path d="M9.5 12l2 2 3.5-4"/></svg></span><h2>Compliance</h2>
+      <span class="act"><span class="drop"><em>View</em> Form &nbsp;&#9662;</span></span></div>
+    <div class="bts" style="margin-bottom:13px">
+      <span class="bt " style="--c:#137A55" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>Done</span><span class="bt " style="--c:#0E6FA0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3L3 10l7 3 3 7z"/></svg>Push to SalesTrekker</span>
+      <span class="bt " style="--c:#A3376B"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 5h11l-2 3 2 3H5"/></svg>Flag an issue</span><span class="bt " style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>More</span></div>
+    <div class="ph">The compliance form, as it is today.<br>
+      Ellesse is named up in <b>the deal</b> box, beside the broker and credit &mdash; the same row,
+      only on the stages that have one.</div>
+  </div>
+</div><div>
+  
+  <div class="bub" style="--acc:#A3376B">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg></span><h2>Needs action</h2>
+      <span class="act"><span class="hot">0</span><span class="bt s" style="--c:#A3376B" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add</span></span></div>
+    <p class="q">Shows as a red chip on the pipeline, so somebody who never opens this deal still
+      sees it. Tick it off when it is done.</p>
+    <p class="body" style="color:var(--muted)">Nothing needs action.</p>
+  </div>
+
+  <div class="bub" style="--acc:#5B4B8A">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v12l-4 4H5z"/><path d="M15 20v-4h4"/><path d="M8 9h8M8 13h5"/></svg></span><h2>Sales notes</h2>
+      <span class="act"><span class="bt s" style="--c:#5B4B8A" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/></svg>Edit</span></span></div>
+    <p class="q">Goes to SalesTrekker, the Fact Find PDF and the assessment. Write it as if credit
+      will read it.</p>
+    <p class="who">Written <b>13 Nov</b> by <b>Fabio de Castro</b></p>
+    <div class="body quote">
+      <p>Mandy and I are considering some options in relation to the possibility of turning our
+        Breakfast Point property into a rental (negatively gearing it) and then buying another place
+        to move into.</p>
+      <p>Seeing that we recently sent all of our info through to get the mortgage for Breakfast Point
+        moved over to Macquarie we wanted to see what you thought was possible.</p>
+      <p>We are looking at, if possible, a terrace house or similar in the inner west for around
+        $1,700,000.</p>
+      <p style="margin-bottom:0;color:var(--faint)">Explore non bank lenders if need be.</p>
+    </div>
+    <div class="grab"></div>
+  </div>
+
+  <div class="bub" style="--acc:#5C584F">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><h2>File update</h2>
+      <span class="act"><span class="hot">5</span><span class="bt s" style="--c:#5C584F" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add note</span></span></div>
+    <p class="q">The log. Nothing here can be typed over, and the portal writes to it as well.</p>
+    <div class="body quote">
+      <p style="margin-bottom:4px"><b>16 Nov, 3:29pm &middot; Mellissa Sedin</b></p>
+      <p>Before I do BC for this one I just wanted to flag a few things so you can have a look.</p>
+      <p style="margin-bottom:4px;color:var(--faint)"><b>16 Nov, 11:02am &middot; the portal</b></p>
+      <p style="margin-bottom:0;color:var(--faint)">23 documents requested from the client.</p>
+    </div>
+    <div class="note">Add a note&hellip;</div>
+    <div class="grab"></div>
+  </div>
+  <div class="bub" style="--acc:#0F6E6E">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h5l2 3h4l2-3h5"/><path d="M5 5h14l2 8v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4z"/></svg></span><h2>What we need from the client</h2>
+      <span class="act"><span class="bt s" style="--c:#0F6E6E" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3L3 10l7 3 3 7z"/></svg>Request</span></span></div>
+    <div class="sec"><h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2-2.5 3.6"/><path d="M12 17h.01"/></svg> Questions <span class="n">4 of 4</span></h4>
+      <p class="q">Gaps in the fact find, going out with the lending options email.
+        Asked 13 Nov &middot; 3 days &middot; nobody has answered.</p>
+      <div class="r">Open the list <span class="e"><span class="lnk">On the LO tab &rarr;</span></span></div>
+    </div>
+    <div class="sec"><h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M10 13h6M10 17h4"/></svg> Documents <span class="n hot">3 over 14 days</span></h4>
+      <p class="q">23 went out on 16 Nov. The client is never asked twice for the same thing.</p>
+      <div class="r">To request <span class="e"><b>1</b></span></div><div class="r">Received <span class="e"><b>11</b></span></div><div class="r">Still out <span class="e"><b class="late">12 &middot; 3 over 14 days</b></span></div><div class="r">To check <span class="e"><b>0</b></span></div><div class="r">On file <span class="e"><b>11</b></span></div>
+    </div>
+    <div class="r" style="margin-top:11px;border-top:1px solid var(--line)">Build a PDF
+      <span class="e"><span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>Build</span></span></div>
+  </div>
+  <div class="bub" style="--acc:#946017">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a4 4 0 0 0 6 .5l2-2a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 11a4 4 0 0 0-6-.5l-2 2A4 4 0 0 0 11.7 18l1-1"/></svg></span><h2>Links</h2>
+      <span class="act"><span class="bt s" style="--c:#946017" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add</span></span></div>
+    <div class="r">SalesTrekker card</div>
+    <div class="r">OneDrive folder</div>
+    <div class="r">Summary page</div>
+  </div>
+  <div class="bub" style="--acc:#7A7266;opacity:.78">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></svg></span><h2>Something wrong?</h2></div>
+    <div class="bts"><span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></svg>Credit cannot action</span>
+      <span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>Report a problem</span><span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></svg>Close this deal</span></div>
+  </div></div></div></div><div class="stage s-settle"><div class="page"><div>
+
+  <div class="bub" style="--acc:#0E6FA0">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M8 6V4h8v2"/><path d="M3 11h18"/></svg></span><h2>The deal</h2>
+      <span class="act"><span class="bt " style="--c:#A3376B"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 5h11l-2 3 2 3H5"/></svg>Mark urgent</span><span class="bt " style="--c:#0E6FA0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/></svg>Open settlement</span>
+      <span class="bt " style="--c:#0E6FA0" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>Client emails</span><span class="bt " style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/></svg>Edit</span><span class="bt " style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>More</span></span></div>
+    <p class="nm">Rachel Welton &amp; Steven Welton 2026</p>
+    <p class="sub">&#10003; All changes saved &nbsp;&middot;&nbsp;
+      <span class="lnk" style="text-decoration:underline">History</span> &nbsp;&middot;&nbsp;
+      Not shared &mdash; this one is all ours &nbsp;&middot;&nbsp; Change it on the fact find</p>
+    <div style="margin-top:13px">
+      <div class="kv"><span class="k">Broker</span> Fabio de Castro <span class="lnk">Reassign</span></div>
+      <div class="kv"><span class="k">Credit</span> Mellissa Sedin <span class="lnk">Reassign</span></div>
+      <div class="kv"><span class="k">Compliance pack</span> Ellesse Moran <span class="lnk">Reassign</span></div><div class="kv"><span class="k">Lender</span> Macquarie &middot; ref 884 2201 <span class="lnk">Change</span></div>
+      <div class="kv"><span class="k">Scenario</span> Refinance + equity release <span class="lnk">Change</span></div>
+    </div>
+  </div>
+<div class="gband"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg><b>The client agreed to proceed</b> &mdash; Monday 16 November, recorded by Kylie Searle<span class="when">BC &middot; today</span></div>
+<div class="bub" style="--acc:#137A55">
+  <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.5 8 12 8 12s8-6.5 8-12a8 8 0 0 0-8-8z"/></svg></span><h2>Where it is</h2>
+    <span class="act"><span class="bt " style="--c:#0E6FA0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11v9H4v-9z"/><path d="M7 11l4-7a2 2 0 0 1 3 2l-1 5h5a2 2 0 0 1 2 2.3l-1 5A2 2 0 0 1 17 20H7"/></svg>With Mellissa</span></span></div>
+  <div class="beads"><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Fact Find</span><em>13 Nov</em></div><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>BC</span><em>16 Nov</em></div><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Lending Options</span><em>with credit</em></div><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Compliance</span></div><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Lodged</span></div><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Preapproved</span></div><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Offer accepted</span></div><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Formal</span></div><div class="bd on"><div class="o"></div><span>Contracts returned</span></div><div class="bd "><div class="o"></div><span>Settlement booked</span></div><div class="bd "><div class="o"></div><span>Settled</span></div></div>
+  <div class="tc"><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></span><b>Fact Find</b><i class="g">Complete</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M4 15l4-5 4 4 7-8"/></svg></span><b>Statements</b><i class="g">Complete</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/></svg></span><b>BC — Borrowing capacity</b><i class="g">Complete</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l8-6 8 6v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg></span><b>Lending options</b><i class="g">Complete</i></div><div class="t1 on"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><path d="M9.5 12l2 2 3.5-4"/></svg></span><b>Compliance</b><i class="b">In progress</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><b>File notes</b><i class="">Not started</i></div></div>
+</div>
+
+  <div class="bub" style="--acc:#0F6E6E">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-6 9 6"/><path d="M5 10v9M19 10v9M9 10v9M15 10v9"/><path d="M3 20h18"/></svg></span><h2>Settlement</h2>
+      <span class="act"><span class="drop"><em>Step</em> Contracts reviewing &nbsp;&#9662;</span></span></div>
+    <div class="bts" style="margin-bottom:13px">
+      <span class="bt " style="--c:#137A55" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>Ready to settle</span><span class="bt " style="--c:#0E6FA0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3L3 10l7 3 3 7z"/></svg>Book settlement</span>
+      <span class="bt " style="--c:#A3376B"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>Outstandings</span><span class="bt " style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>More</span></div>
+    <div class="ph">The settlement panel, as it is today &mdash; expected and confirmed date,
+      finance clause, reference and handler, lender solicitor, loan docs, esign or wet sign,
+      discharge, funds to complete, next action.<br>
+      More holds <b>Mortgage only to be wet signed</b> and <b>Outstanding on the discharge</b>.</div>
+  </div>
+</div><div>
+  
+  <div class="bub" style="--acc:#A3376B">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg></span><h2>Needs action</h2>
+      <span class="act"><span class="hot">0</span><span class="bt s" style="--c:#A3376B" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add</span></span></div>
+    <p class="q">Shows as a red chip on the pipeline, so somebody who never opens this deal still
+      sees it. Tick it off when it is done.</p>
+    <p class="body" style="color:var(--muted)">Nothing needs action.</p>
+  </div>
+
+  <div class="bub" style="--acc:#5B4B8A">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v12l-4 4H5z"/><path d="M15 20v-4h4"/><path d="M8 9h8M8 13h5"/></svg></span><h2>Sales notes</h2>
+      <span class="act"><span class="bt s" style="--c:#5B4B8A" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/></svg>Edit</span></span></div>
+    <p class="q">Goes to SalesTrekker, the Fact Find PDF and the assessment. Write it as if credit
+      will read it.</p>
+    <p class="who">Written <b>13 Nov</b> by <b>Fabio de Castro</b></p>
+    <div class="body quote">
+      <p>Mandy and I are considering some options in relation to the possibility of turning our
+        Breakfast Point property into a rental (negatively gearing it) and then buying another place
+        to move into.</p>
+      <p>Seeing that we recently sent all of our info through to get the mortgage for Breakfast Point
+        moved over to Macquarie we wanted to see what you thought was possible.</p>
+      <p>We are looking at, if possible, a terrace house or similar in the inner west for around
+        $1,700,000.</p>
+      <p style="margin-bottom:0;color:var(--faint)">Explore non bank lenders if need be.</p>
+    </div>
+    <div class="grab"></div>
+  </div>
+
+  <div class="bub" style="--acc:#5C584F">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><h2>File update</h2>
+      <span class="act"><span class="hot">5</span><span class="bt s" style="--c:#5C584F" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add note</span></span></div>
+    <p class="q">The log. Nothing here can be typed over, and the portal writes to it as well.</p>
+    <div class="body quote">
+      <p style="margin-bottom:4px"><b>16 Nov, 3:29pm &middot; Mellissa Sedin</b></p>
+      <p>Before I do BC for this one I just wanted to flag a few things so you can have a look.</p>
+      <p style="margin-bottom:4px;color:var(--faint)"><b>16 Nov, 11:02am &middot; the portal</b></p>
+      <p style="margin-bottom:0;color:var(--faint)">23 documents requested from the client.</p>
+    </div>
+    <div class="note">Add a note&hellip;</div>
+    <div class="grab"></div>
+  </div>
+  <div class="bub" style="--acc:#0F6E6E">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h5l2 3h4l2-3h5"/><path d="M5 5h14l2 8v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4z"/></svg></span><h2>What we need from the client</h2>
+      <span class="act"><span class="bt s" style="--c:#0F6E6E" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3L3 10l7 3 3 7z"/></svg>Request</span></span></div>
+    <div class="sec"><h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2-2.5 3.6"/><path d="M12 17h.01"/></svg> Questions <span class="n">4 of 4</span></h4>
+      <p class="q">Gaps in the fact find, going out with the lending options email.
+        Asked 13 Nov &middot; 3 days &middot; nobody has answered.</p>
+      <div class="r">Open the list <span class="e"><span class="lnk">On the LO tab &rarr;</span></span></div>
+    </div>
+    <div class="sec"><h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M10 13h6M10 17h4"/></svg> Documents <span class="n ">all in</span></h4>
+      <p class="q">Everything asked for has come back.</p>
+      <div class="r">Received <span class="e"><b>23</b></span></div><div class="r">Still out <span class="e"><b>0</b></span></div><div class="r">On file <span class="e"><b>23</b></span></div>
+    </div>
+    <div class="r" style="margin-top:11px;border-top:1px solid var(--line)">Build a PDF
+      <span class="e"><span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>Build</span></span></div>
+  </div>
+  <div class="bub" style="--acc:#946017">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a4 4 0 0 0 6 .5l2-2a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 11a4 4 0 0 0-6-.5l-2 2A4 4 0 0 0 11.7 18l1-1"/></svg></span><h2>Links</h2>
+      <span class="act"><span class="bt s" style="--c:#946017" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add</span></span></div>
+    <div class="r">SalesTrekker card</div>
+    <div class="r">OneDrive folder</div>
+    <div class="r">Summary page</div>
+  </div>
+  <div class="bub" style="--acc:#7A7266;opacity:.78">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></svg></span><h2>Something wrong?</h2></div>
+    <div class="bts"><span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></svg>Credit cannot action</span>
+      <span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>Report a problem</span><span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></svg>Close this deal</span></div>
+  </div></div></div></div><div class="stage s-settled"><div class="page"><div>
+
+  <div class="bub" style="--acc:#0E6FA0">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M8 6V4h8v2"/><path d="M3 11h18"/></svg></span><h2>The deal</h2>
+      <span class="act"><span class="bt " style="--c:#A3376B"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 5h11l-2 3 2 3H5"/></svg>Mark urgent</span><span class="bt " style="--c:#0E6FA0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/></svg>Open settlement</span>
+      <span class="bt " style="--c:#0E6FA0" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>Client emails</span><span class="bt " style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/></svg>Edit</span><span class="bt " style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>More</span></span></div>
+    <p class="nm">Rachel Welton &amp; Steven Welton 2026</p>
+    <p class="sub">&#10003; All changes saved &nbsp;&middot;&nbsp;
+      <span class="lnk" style="text-decoration:underline">History</span> &nbsp;&middot;&nbsp;
+      Not shared &mdash; this one is all ours &nbsp;&middot;&nbsp; Change it on the fact find</p>
+    <div style="margin-top:13px">
+      <div class="kv"><span class="k">Broker</span> Fabio de Castro <span class="lnk">Reassign</span></div>
+      <div class="kv"><span class="k">Credit</span> Mellissa Sedin <span class="lnk">Reassign</span></div>
+      <div class="kv"><span class="k">Compliance pack</span> Ellesse Moran <span class="lnk">Reassign</span></div><div class="kv"><span class="k">Lender</span> Macquarie &middot; ref 884 2201 <span class="lnk">Change</span></div>
+      <div class="kv"><span class="k">Scenario</span> Refinance + equity release <span class="lnk">Change</span></div>
+    </div>
+  </div>
+<div class="gband"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg><b>The client agreed to proceed</b> &mdash; Monday 16 November, recorded by Kylie Searle<span class="when">BC &middot; today</span></div>
+<div class="bub" style="--acc:#137A55">
+  <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.5 8 12 8 12s8-6.5 8-12a8 8 0 0 0-8-8z"/></svg></span><h2>Where it is</h2>
+    <span class="act"><span class="bt " style="--c:#0E6FA0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11v9H4v-9z"/><path d="M7 11l4-7a2 2 0 0 1 3 2l-1 5h5a2 2 0 0 1 2 2.3l-1 5A2 2 0 0 1 17 20H7"/></svg>With Mellissa</span></span></div>
+  <div class="beads"><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Fact Find</span><em>13 Nov</em></div><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>BC</span><em>16 Nov</em></div><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Lending Options</span><em>with credit</em></div><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Compliance</span></div><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Lodged</span></div><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Preapproved</span></div><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Offer accepted</span></div><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Formal</span></div><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Contracts returned</span></div><div class="bd done"><div class="o"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div><span>Settlement booked</span></div><div class="bd on"><div class="o"></div><span>Settled</span></div></div>
+  <div class="tc"><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></span><b>Fact Find</b><i class="g">Complete</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M4 15l4-5 4 4 7-8"/></svg></span><b>Statements</b><i class="g">Complete</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/></svg></span><b>BC — Borrowing capacity</b><i class="g">Complete</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l8-6 8 6v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg></span><b>Lending options</b><i class="g">Complete</i></div><div class="t1 on"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><path d="M9.5 12l2 2 3.5-4"/></svg></span><b>Compliance</b><i class="b">In progress</i></div><div class="t1 "><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><b>File notes</b><i class="">Not started</i></div></div>
+</div>
+
+  <div class="bub" style="--acc:#137A55">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></span><h2>Settled &mdash; 24 Nov</h2></div>
+    <div class="r">Google review sent <span class="e"><span class="bt s" style="--c:#137A55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>Mark done</span></span></div>
+    <div class="r">Compliance finalised <span class="e"><span class="bt s" style="--c:#137A55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>Mark done</span></span></div>
+    <div class="r">Commission paid <span class="e"><span class="bt s" style="--c:#137A55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>Mark done</span></span></div>
+    <p class="q" style="margin-top:10px">The three that keep a settled deal on the close-out list.
+      All three ticked and it leaves.</p>
+  </div>
+
+  <div class="bub" style="--acc:#946017">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 7v10M14.5 9.5c-.6-.6-4-1-4 1s4 1 4 2.6c0 1.8-3.4 1.5-4 .9"/></svg></span><h2>Commission</h2>
+      <span class="act"><span class="lnk">Open the ledger</span></span></div>
+    <div class="r">Upfront <span class="e"><b>$3,120</b></span></div>
+    <div class="r">Trail <span class="e"><b>$141 / month</b></span></div>
+    <div class="r">Clawback <span class="e">None</span></div>
+  </div>
+</div><div>
+  
+  <div class="bub" style="--acc:#A3376B">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg></span><h2>Needs action</h2>
+      <span class="act"><span class="hot">0</span><span class="bt s" style="--c:#A3376B" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add</span></span></div>
+    <p class="q">Shows as a red chip on the pipeline, so somebody who never opens this deal still
+      sees it. Tick it off when it is done.</p>
+    <p class="body" style="color:var(--muted)">Nothing needs action.</p>
+  </div>
+
+  <div class="bub" style="--acc:#5B4B8A">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v12l-4 4H5z"/><path d="M15 20v-4h4"/><path d="M8 9h8M8 13h5"/></svg></span><h2>Sales notes</h2>
+      <span class="act"><span class="bt s" style="--c:#5B4B8A" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/></svg>Edit</span></span></div>
+    <p class="q">Goes to SalesTrekker, the Fact Find PDF and the assessment. Write it as if credit
+      will read it.</p>
+    <p class="who">Written <b>13 Nov</b> by <b>Fabio de Castro</b></p>
+    <div class="body quote">
+      <p>Mandy and I are considering some options in relation to the possibility of turning our
+        Breakfast Point property into a rental (negatively gearing it) and then buying another place
+        to move into.</p>
+      <p>Seeing that we recently sent all of our info through to get the mortgage for Breakfast Point
+        moved over to Macquarie we wanted to see what you thought was possible.</p>
+      <p>We are looking at, if possible, a terrace house or similar in the inner west for around
+        $1,700,000.</p>
+      <p style="margin-bottom:0;color:var(--faint)">Explore non bank lenders if need be.</p>
+    </div>
+    <div class="grab"></div>
+  </div>
+
+  <div class="bub" style="--acc:#5C584F">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><h2>File update</h2>
+      <span class="act"><span class="hot">5</span><span class="bt s" style="--c:#5C584F" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add note</span></span></div>
+    <p class="q">The log. Nothing here can be typed over, and the portal writes to it as well.</p>
+    <div class="body quote">
+      <p style="margin-bottom:4px"><b>16 Nov, 3:29pm &middot; Mellissa Sedin</b></p>
+      <p>Before I do BC for this one I just wanted to flag a few things so you can have a look.</p>
+      <p style="margin-bottom:4px;color:var(--faint)"><b>16 Nov, 11:02am &middot; the portal</b></p>
+      <p style="margin-bottom:0;color:var(--faint)">23 documents requested from the client.</p>
+    </div>
+    <div class="note">Add a note&hellip;</div>
+    <div class="grab"></div>
+  </div>
+  <div class="bub" style="--acc:#0F6E6E">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h5l2 3h4l2-3h5"/><path d="M5 5h14l2 8v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4z"/></svg></span><h2>What we need from the client</h2>
+      <span class="act"><span class="bt s" style="--c:#0F6E6E" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3L3 10l7 3 3 7z"/></svg>Request</span></span></div>
+    <div class="sec"><h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2-2.5 3.6"/><path d="M12 17h.01"/></svg> Questions <span class="n">4 of 4</span></h4>
+      <p class="q">Gaps in the fact find, going out with the lending options email.
+        Asked 13 Nov &middot; 3 days &middot; nobody has answered.</p>
+      <div class="r">Open the list <span class="e"><span class="lnk">On the LO tab &rarr;</span></span></div>
+    </div>
+    <div class="sec"><h4><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M10 13h6M10 17h4"/></svg> Documents <span class="n ">all in</span></h4>
+      <p class="q">Everything asked for has come back.</p>
+      <div class="r">Received <span class="e"><b>23</b></span></div><div class="r">On file <span class="e"><b>23</b></span></div>
+    </div>
+    <div class="r" style="margin-top:11px;border-top:1px solid var(--line)">Build a PDF
+      <span class="e"><span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>Build</span></span></div>
+  </div>
+  <div class="bub" style="--acc:#946017">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a4 4 0 0 0 6 .5l2-2a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 11a4 4 0 0 0-6-.5l-2 2A4 4 0 0 0 11.7 18l1-1"/></svg></span><h2>Links</h2>
+      <span class="act"><span class="bt s" style="--c:#946017" data-main><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add</span></span></div>
+    <div class="r">SalesTrekker card</div>
+    <div class="r">OneDrive folder</div>
+    <div class="r">Summary page</div>
+  </div>
+  <div class="bub" style="--acc:#7A7266;opacity:.78">
+    <div class="bh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></svg></span><h2>Something wrong?</h2></div>
+    <div class="bts"><span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></svg>Credit cannot action</span>
+      <span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>Report a problem</span><span class="bt s" style="--c:#5C584F"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></svg>Close this deal</span></div>
+  </div></div></div></div>
+
+<p class="cap"><b>The stage bar is untouched.</b> A white tick inside a filled green ball for
+everything behind you, the date under it, the green line joining them; a blue ring on the one you
+are on with its word underneath; grey and hollow for everything ahead. That design took you a long
+time to get right and I am not touching it.</p>
+<p class="cap"><b>The three notes boxes keep the sizes they have now.</b> Needs action short, Sales
+notes tall enough for a real note, File update tall enough for a few entries. The only change inside
+them is the rule down the left of the writing and the handle at the foot.</p>
+<p class="cap"><b>Red is the triangle and one word, nowhere else.</b> No red panels, no red
+borders, no red fields. Look at the BC stage for the one prompt that survives &mdash; nobody is down
+as doing the BC &mdash; drawn the quiet way.</p>
+<p class="cap"><b>Taller is gone.</b> The two boxes that hold writing have a grab handle on the
+bottom edge instead, and the writing itself sits behind a rule with the date and the author above
+it, so it reads as somebody&rsquo;s words rather than portal text.</p>
+<p class="cap"><b>The green line is on every stage from the moment the client agrees</b> &mdash;
+what they agreed to, the date, and who recorded it. It is the one band worth keeping: nothing on it
+needs doing, it is a thing that went right, said once where the broker lands.</p>
+<p class="cap"><b>History is underlined in the deal box</b>, beside All changes saved. You and Kylie
+both see it on every deal, every stage.</p>
+<p class="cap"><b>Send it back is back on the row, not hidden.</b> Done, Send to client, Client
+agreed, Send it back, More. It is the one button that undoes somebody else's work, so it is the
+last thing I should have buried. More now holds only Order a valuation.</p>
+<p class="cap"><b>The questions stay where they are</b> &mdash; under the stage, collapsed, exactly
+as they are today: asked date, days waiting, how many are going out, and Show. They belong to the
+email going out from that tab, and they carry the tick per question, the reason the portal found
+it, and Ask something else. None of that fits in the rail, and none of it should move. What the
+rail box carries is the <b>count and the wait</b>, with a link straight to the list.</p>
+<p class="cap"><b>The band is gone from every stage.</b> You were right &mdash; it said the same
+sentence and pressed the same button as the box in the rail. The box carries it instead: when
+documents become due the count goes red and the Request button is the one filled thing in the box.
+One place, one press.</p>
+<p class="cap"><b>Every box has its one strong button back.</b> Add on Needs action, Edit on Sales
+notes, Add note on File update, Request on what we need, Add on Links. Taller stays a quiet link,
+because it changes the view rather than doing anything.</p>
+<p class="cap"><b>Documents and questions are one box now</b> &mdash; what we need from the client.
+Both are things asked of the same person. The purple band at the top is gone from every stage but
+one: it appears the day the client agrees to the BC, because that is the day eighteen documents
+genuinely become due. Step through the stages and watch the box fill and the band come and go.</p>
+<p class="cap"><b>Mark urgent moved to the top</b>, beside Open BC, with the flag. You were right
+&mdash; it is not a thing that has gone wrong, it is a thing you are doing on purpose. Something
+wrong? keeps the three that really are faults: Credit cannot action, Report a problem, Close this
+deal.</p>
+<p class="cap"><b>Your concern about the static part as the deal moves.</b> The deal box carries a
+row per person, and it gains one when the stage has one: <b>Compliance pack &mdash; Ellesse Moran</b>
+appears at compliance, <b>Lender &mdash; Macquarie &middot; ref 884 2201</b> appears once it is
+lodged. Same row, same Reassign, same place. Flip to Compliance and Settlement and watch it grow.</p>
+<p class="cap"><b>Everything that appears later has a home.</b> Push to SalesTrekker and Flag an
+issue at compliance. Ready to settle, Book settlement and Outstandings at settlement, with the seven
+steps behind the Step picker. Google review sent, Compliance finalised and Commission paid when it
+settles, plus the commission figures. Nothing in the deal's life is left without a box.</p>
+</div>
+<script>
+function set(k,v,el){
+  document.documentElement.dataset[k]=v
+  el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'))
+  el.classList.add('on')
+}
+const st=(v,el)=>set('st',v,el)
+const th=(v,el)=>set('theme',v,el)
+</script>
+</body></html>
