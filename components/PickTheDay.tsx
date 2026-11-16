@@ -63,8 +63,12 @@ const BAND_NOTE: Record<string, string> = {
 /** Typing two letters is enough to start looking. One letter matches the book. */
 const ENOUGH = 2
 
+// WHAT THE BOX ACTUALLY LOOKS AT. The deal's name and the client's.
+//
+// 19 Nov 2026. It said "type a client name" and read deal_name only, so a deal
+// named for anything else could not be found by the person on it.
 const hit = (d: DayDeal, needle: string) =>
-  String(d.name || '').toLowerCase().includes(needle)
+  `${d.name || ''} ${d.client || ''}`.toLowerCase().includes(needle)
 
 export default function PickTheDay({
   deals, others = [], order, setOrder, notes, setNote, onItNow, setOnItNow,

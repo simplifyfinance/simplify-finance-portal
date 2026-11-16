@@ -51,6 +51,13 @@ export type PlanDeal = {
   priority?: Ask | null
   /** Whose file it is. Catherine, 27 Oct 2026: credit's lists never said. */
   broker?: string
+  // THE CLIENT'S OWN NAME, FOR THE SEARCH BOX AND NOTHING ELSE.
+  //
+  // 19 Nov 2026. The box says "type a client name" and the search only ever
+  // read deal_name, so a deal named for the property or for the purpose could
+  // not be found by typing the person on it. components/MilestoneFromTemplates
+  // has matched both for weeks; this is the same rule, in the same words.
+  client?: string
   // SENT BACK BY A BROKER, which beats a priority and beats the queue.
   //
   // 27 Oct 2026. See lib/send-it-back.ts. A rework is not a new deal arriving;

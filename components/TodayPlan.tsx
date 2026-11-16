@@ -9,7 +9,7 @@ import WhereMyDealsAre from '@/components/WhereMyDealsAre'
 import { askAbout } from '@/lib/the-brokers-monday'
 import TheOrderCame from '@/components/TheOrderCame'
 import { whoHasIt } from '@/lib/who-has-it'
-import { isFinished } from '@/lib/deal-phase'
+import { isFinished, phaseOf, PHASE_LABEL } from '@/lib/deal-phase'
 import { whichToday, type TodayView } from '@/lib/which-today'
 import { creditDay, openWithSuggestion, PRE_TICKED } from '@/lib/the-credit-order'
 import { daysWaiting, waitedWords, oldestFirst } from '@/lib/how-long-waiting'
@@ -114,6 +114,11 @@ function Card({ children, live }: { children: React.ReactNode; live?: boolean })
 //
 // isFinished() is the honest one and it is now the only one.
 const live = (d: any) => !isFinished(d)
+
+// THE PERSON ON THE DEAL, for the search box. Same two columns
+// components/MilestoneFromTemplates.tsx reads, in the same order.
+const clientName = (d: any) =>
+  `${d?.clients?.first_name || ''} ${d?.clients?.last_name || ''}`.trim()
 
 export default function TodayPlan({
   deals, officers, plans, brokerPlans = [], meOfficerId, meName, today,
@@ -226,6 +231,7 @@ export default function TodayPlan({
         // lib/a-slot-each.ts, which is also why this stopped being d.priority.
         priority: askWaiting(d, today),
         broker: d.assigned_broker || '',
+        client: clientName(d),
         // A DEAL A BROKER SENT BACK GOES TO THE TOP. See draftDay().
         rework: reworkWaiting(d),
       }))
@@ -241,6 +247,24 @@ export default function TodayPlan({
   //
   // It is NOT a suggestion and it is not in any list. It is only ever found by
   // typing a name. Nothing from here is ticked for her.
+  //
+  // AND IT IS THE WHOLE BOOK, NOT THE PART OF IT SITTING WITH US.
+  //
+  // 19 Nov 2026. Fabio: "the 'today' section for credit mellissa Katie and
+  // Dinisha the search button is not working". It was working, on a quarter of
+  // the book. stageWaitingOn() answers "which stage is waiting on US", and it
+  // is null on every deal that is with the client, with the lender, lodged or
+  // settled - so the line that threw away a deal with no stage threw away most
+  // of what a credit assessor types a name into a box to find. Typing a real
+  // client's name and reading "Nothing matches" is the whole complaint.
+  //
+  // A deal with no stage waiting on us is labelled with where it actually is -
+  // Lodged, Settled, Compliance sent - read off phaseOf(), the one function
+  // every screen in the portal asks that question of.
+  //
+  // NOTHING NEW IS SUGGESTED. This list is still reached only by typing; it is
+  // in no band, it is ticked for nobody, and the day she is shown is unchanged
+  // until she goes and finds something herself.
   const otherFiles = useMemo<PlanDeal[]>(() => {
     if (!meOfficerId) return []
     const hers = new Set(mine.map(d => d.id))
@@ -248,11 +272,12 @@ export default function TodayPlan({
       .filter(live)
       .filter(d => !hers.has(d.id))
       .map(d => ({
-        id: d.id, name: d.deal_name, stage: stageWaitingOn(d) || '',
+        id: d.id, name: d.deal_name,
+        stage: stageWaitingOn(d) || PHASE_LABEL[phaseOf(d)],
         since: stageOpenedAt(d) || d.credit_assigned_at || d.created_at,
         priority: null, broker: d.assigned_broker || '', rework: null,
+        client: clientName(d),
       }))
-      .filter(x => x.stage)
   }, [deals, mine, meOfficerId])
 
   // AND ONE SHE PICKED UP YESTERDAY IS STILL HERS TODAY.
