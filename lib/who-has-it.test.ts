@@ -2,7 +2,7 @@
 //
 // 22 Oct 2026, both asked for by Fabio on the same morning.
 import { describe, it, expect } from 'vitest'
-import { whoHasIt } from './who-has-it'
+import { whoHasIt, holderLabel } from './who-has-it'
 import { currentStage, dealBeads, getWaitingOnLabel } from './deal-status'
 import { derivedPhaseOf } from './deal-phase'
 
@@ -93,5 +93,44 @@ describe('the sentence behind the two words is unchanged', () => {
   it('getWaitingOnLabel still says what is next', () => {
     const sent = deal({ bc_completed_at: '1', bc_sent_at: '1' })
     expect(getWaitingOnLabel(sent)!.text).toContain('Client to respond')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// COMPLIANCE SENT IS THE CLIENT'S TURN.
+//
+// 18 Nov 2026. Catherine, on a deal that read two things at once: "The info can
+// be confusing to tell exactly where it is. It is also affecting the time Mel is
+// shown to have a deal as she can't do anything with it."
+//
+// The ladder ends at "compliance written", so a pack sitting with a client for
+// signature fell off the end and was reported as being with the lender.
+describe('a compliance pack out for signature', () => {
+  const sent = {
+    fact_find_data: { applicants: [{ dob: '1990-01-01' }] },
+    bc_completed_at: '2026-10-01T00:00:00Z',
+    bc_sent_at: '2026-10-02T00:00:00Z',
+    client_proceeded: true,
+    lo_completed_at: '2026-10-05T00:00:00Z',
+    lo_sent_at: '2026-10-06T00:00:00Z',
+    lo_client_proceeded: true,
+    compliance_completed_at: '2026-10-09T00:00:00Z',
+    compliance_sent_at: '2026-10-10T00:00:00Z',
+  }
+
+  it('is with the client, not the lender', () => {
+    expect(whoHasIt(sent)?.holder).toBe('client')
+  })
+
+  it('and says what it is waiting for', () => {
+    expect(holderLabel(whoHasIt(sent))).toBe('With client — signing')
+  })
+
+  it('but once it is lodged the lender has it', () => {
+    expect(whoHasIt({ ...sent, lodged_at: '2026-10-14T00:00:00Z' })?.holder).toBe('lender')
+  })
+
+  it('and a settled deal is waiting on nobody', () => {
+    expect(whoHasIt({ ...sent, settled_at: '2026-11-01T00:00:00Z' })).toBe(null)
   })
 })

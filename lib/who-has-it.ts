@@ -24,7 +24,7 @@
 // that make the reports possible are the next ship, not this one.
 
 import { waitingIndex } from './deal-status'
-import { isFinished } from './deal-phase'
+import { isFinished, phaseOf } from './deal-phase'
 import { requestRounds, progressOf } from './document-progress'
 
 export type Holder = 'us' | 'client' | 'lender'
@@ -98,6 +98,19 @@ export function whoHasIt(deal: any): WhoHasIt | null {
   // settlement date in the diary and nothing pressed is still live, which is
   // what isFinished() says.
   if (isFinished(deal)) return null
+
+  // COMPLIANCE SENT IS THE CLIENT'S TURN, NOT THE BANK'S.
+  //
+  // 18 Nov 2026. The ladder in lib/deal-status.ts ends at "compliance written",
+  // so the moment it went out for signature this fell off the end and read as
+  // being with the lender - weeks before any lender has seen it.
+  //
+  // Nobody noticed because the chip was roughly right by accident: the deal was
+  // out of the office either way. It stops being roughly right the moment the
+  // board has a column for it, and it has always been wrong on the deal page.
+  if (phaseOf(deal) === 'compliance_sent') {
+    return { holder: 'client', ...CHIP.client, why: 'signing' }
+  }
 
   const i = waitingIndex(deal)
   const holder: Holder = i === -1 ? 'lender' : (i === 3 || i === 6) ? 'client' : 'us'

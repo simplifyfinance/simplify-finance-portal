@@ -148,8 +148,16 @@ export const THE_LOOK: Piece[] = [
   // nothing counts is a mock nobody is answerable for.
   { mock: 'board-filters-one-button.html', piece: 'Board: the filters live behind one button',
     proof: { file: 'components/BoardFilters.tsx', contains: 'one button' } },
-  { mock: 'one-deals-board.html', piece: 'Board: four tiles that agree with the cards under them',
-    proof: { file: 'app/(app)/deals/page.tsx', contains: 'TILE_SKIN' } },
+  // THE FOUR TILES WERE TAKEN OFF ON 18 NOV 2026.
+  //
+  // Fabio: "remove that completely. I don't need that. I actually find that
+  // it's too much information we're not looking at." They were a filter wearing
+  // a summary's clothes. The board answers all four questions better - a column
+  // per stage and holder, the owner's colour on the card, a chase chip where a
+  // clock has run out.
+  //
+  // The entry stays on the list, unbuilt, because a piece that was approved and
+  // then deliberately removed is worth remembering. See docs/approved-looks.
   { mock: 'one-card-marking.html', piece: 'Board: a card is coloured all the way round, not outlined',
     proof: { file: 'lib/board-tiles.ts', contains: 'WHAT COLOUR THE CARD ITSELF WEARS' } },
 

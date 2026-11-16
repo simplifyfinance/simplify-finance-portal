@@ -19,8 +19,10 @@ type DealRow = {
   credit_assigned_at: string | null
 }
 
-type BrokerStat = { key: string; name: string; total: number; inBC: number; inLO: number; inCompliance: number; completed: number }
-type OfficerStat = { id: string; name: string; total: number; active: number; completed: number; avgBcDays: number | null; avgLoComplianceDays: number | null }
+type BrokerStat = { key: string; name: string; live: number; inBC: number; inLO: number;
+  inCompliance: number; settled: number; lost: number }
+type OfficerStat = { id: string; name: string; onLeave: boolean; total: number; open: number;
+  complianceIssued: number; avgBcDays: number | null; avgLoComplianceDays: number | null }
 
 const BAR_COLOR = '#4FBBEA'
 const DONUT_COLORS = ['#EF9F27', '#378ADD', '#639922', '#888780']
@@ -51,8 +53,12 @@ export default function WorkloadClient() {
 
     const { data: officers, error: officersError } = await supabase
       .from('credit_officers')
-      .select('id, name')
-      .eq('active', true)
+      // AWAY IS NOT GONE. 18 Nov 2026 - this asked for active officers only, so
+      // somebody on maternity leave vanished from the workload page along with
+      // every month of work they had done. See docs/the-settlement-team.sql for
+      // the same mistake made the other way round.
+      .select('id, name, active, on_leave')
+      .or('active.eq.true,on_leave.eq.true')
       .order('name')
     if (officersError) { setError(officersError.message); setLoading(false); return }
 
@@ -82,12 +88,17 @@ export default function WorkloadClient() {
       // Nothing has ever written 'completed', so this test was dead and every
       // settled deal counted as live. isFinished() reads settled_at, which is
       // written by the Mark as settled button and by nothing else.
+      // LIVE IS LIVE. 18 Nov 2026 - the total counted every deal with their
+      // key, dead or alive, so Kylie read four when all four were lost. A
+      // broker's number is what they are carrying, and what died is its own
+      // column rather than hidden inside the first one.
       const activeDeals = myDeals.filter(d => !isFinished(d))
-      const completed = myDeals.filter(d => d.compliance_completed_at).length
+      const settled = myDeals.filter(d => d.settled_at).length
+      const lost = myDeals.filter(d => d.status === 'lost').length
       const inCompliance = activeDeals.filter(d => d.lo_completed_at && !d.compliance_completed_at).length
       const inLO = activeDeals.filter(d => d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at).length
       const inBC = activeDeals.filter(d => !d.bc_completed_at).length
-      return { key: b.key, name: b.name, total: myDeals.length, inBC, inLO, inCompliance, completed }
+      return { key: b.key, name: b.name, live: activeDeals.length, inBC, inLO, inCompliance, settled, lost }
     })
 
     function daysBetween(startIso: string, endIso: string): number {
@@ -97,9 +108,13 @@ export default function WorkloadClient() {
     const officerRows: OfficerStat[] = (officers || []).map((o: any) => {
       const myDeals = dealRows.filter(d => d.assigned_credit_officer === o.id)
       const completedDeals = myDeals.filter(d => d.compliance_completed_at)
-      // Same fix as broker stats above - "active" must exclude deals already marked
-      // completed/lost overall, not just rely on compliance_completed_at being blank.
-      const active = myDeals.filter(d => d.status !== 'completed' && d.status !== 'lost' && !d.compliance_completed_at).length
+      // OPEN MEANS NOT SETTLED AND NOT LOST.
+      //
+      // 18 Nov 2026. This asked for status !== 'completed', and nothing in the
+      // database has ever written 'completed' - the broker side was fixed on
+      // 12 November and this half was left behind. It also counted a deal as
+      // closed the moment compliance went out, months before settlement.
+      const open = myDeals.filter(d => !isFinished(d)).length
 
       const bcTimes = myDeals
         .filter(d => d.credit_assigned_at && d.bc_completed_at && d.bc_completed_at > d.credit_assigned_at)
@@ -111,7 +126,8 @@ export default function WorkloadClient() {
         .map(d => daysBetween(d.credit_assigned_at!, d.compliance_completed_at!))
       const avgLoComplianceDays = loComplianceTimes.length > 0 ? loComplianceTimes.reduce((a, b) => a + b, 0) / loComplianceTimes.length : null
 
-      return { id: o.id, name: o.name, total: myDeals.length, active, completed: completedDeals.length, avgBcDays, avgLoComplianceDays }
+      return { id: o.id, name: o.name, onLeave: !o.active && !!o.on_leave, total: myDeals.length,
+        open, complianceIssued: completedDeals.length, avgBcDays, avgLoComplianceDays }
     })
 
     setBrokerStats(brokers)
@@ -151,7 +167,7 @@ export default function WorkloadClient() {
     return `${seg.color} ${start}% ${cumulativePct}%`
   }).join(', ')
 
-  const maxBrokerTotal = Math.max(1, ...brokerStats.map(b => b.total))
+  const maxBrokerTotal = Math.max(1, ...brokerStats.map(b => b.live))
   const maxOfficerTotal = Math.max(1, ...officerStats.map(o => o.total))
 
   return (
@@ -171,16 +187,16 @@ export default function WorkloadClient() {
 
           <div className="grid grid-cols-2 gap-6 mb-8">
             <div className="bg-card border border-gray-100 rounded-xl p-5">
-              <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Deals per broker</div>
+              <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Live deals per broker</div>
               <div className="flex flex-col gap-3">
                 {brokerStats.map(b => (
                   <div key={b.key}>
                     <div className="flex justify-between text-xs text-gray-500 mb-1">
                       <span className="font-medium text-ink">{b.name}</span>
-                      <span>{b.total}</span>
+                      <span>{b.live} live{b.lost > 0 ? ` · ${b.lost} lost` : ''}</span>
                     </div>
                     <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${(b.total / maxBrokerTotal) * 100}%`, background: BAR_COLOR }} />
+                      <div className="h-full rounded-full" style={{ width: `${(b.live / maxBrokerTotal) * 100}%`, background: BAR_COLOR }} />
                     </div>
                   </div>
                 ))}
@@ -216,40 +232,48 @@ export default function WorkloadClient() {
           </div>
 
           <div className="bg-card border border-gray-100 rounded-xl p-5 mb-8">
-            <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Deals per credit officer (active vs completed)</div>
+            <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Deals per credit officer (open vs compliance issued)</div>
             <div className="flex flex-col gap-3">
               {officerStats.map(o => (
                 <div key={o.id}>
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
-                    <span className="font-medium text-ink">{o.name}</span>
-                    <span>{o.total} total</span>
+                    <span className="font-medium text-ink">
+                      {o.name}{o.onLeave ? ' · on leave' : ''}
+                    </span>
+                    <span>{o.total} ever</span>
                   </div>
                   <div className="h-3 bg-gray-100 rounded-full overflow-hidden flex">
-                    <div className="h-full" style={{ width: `${(o.active / maxOfficerTotal) * 100}%`, background: '#EF9F27' }} />
-                    <div className="h-full" style={{ width: `${(o.completed / maxOfficerTotal) * 100}%`, background: '#639922' }} />
+                    <div className="h-full" style={{ width: `${(o.open / maxOfficerTotal) * 100}%`, background: '#EF9F27' }} />
+                    <div className="h-full" style={{ width: `${(o.complianceIssued / maxOfficerTotal) * 100}%`, background: '#639922' }} />
                   </div>
                 </div>
               ))}
               {officerStats.length === 0 && <div className="text-sm text-gray-400">No active credit officers found.</div>}
             </div>
             <div className="flex gap-4 mt-4 text-xs text-gray-500">
-              <span className="flex items-center gap-1.5"><span style={{ width: 10, height: 10, borderRadius: 2, background: '#EF9F27', display: 'inline-block' }} />Active</span>
-              <span className="flex items-center gap-1.5"><span style={{ width: 10, height: 10, borderRadius: 2, background: '#639922', display: 'inline-block' }} />Completed</span>
+              <span className="flex items-center gap-1.5"><span style={{ width: 10, height: 10, borderRadius: 2, background: '#EF9F27', display: 'inline-block' }} />Open</span>
+              <span className="flex items-center gap-1.5"><span style={{ width: 10, height: 10, borderRadius: 2, background: '#639922', display: 'inline-block' }} />Compliance issued</span>
             </div>
           </div>
 
           <div className="flex flex-col gap-4">
             {officerStats.map(o => (
               <div key={o.id} className="border border-gray-200 rounded-xl p-5 bg-card">
-                <div className="font-medium text-ink mb-3">{o.name}</div>
+                <div className="font-medium text-ink mb-3">
+                  {o.name}
+                  {o.onLeave && (
+                    <span className="ml-2 text-[11px] font-semibold text-muted border border-line
+                                     rounded-full px-2 py-[1px] align-middle">On leave</span>
+                  )}
+                </div>
                 <div className="grid grid-cols-4 gap-3">
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="text-xs text-gray-500 mb-1">Total</div>
+                    <div className="text-xs text-gray-500 mb-1">Ever</div>
                     <div className="text-xl font-semibold text-ink">{o.total}</div>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="text-xs text-gray-500 mb-1">Active</div>
-                    <div className="text-xl font-semibold text-info">{o.active}</div>
+                    <div className="text-xs text-gray-500 mb-1">Open</div>
+                    <div className="text-xl font-semibold text-info">{o.open}</div>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3">
                     <div className="text-xs text-gray-500 mb-1">Avg. BC</div>

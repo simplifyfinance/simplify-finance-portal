@@ -96,7 +96,8 @@ export default function DealsPage() {
   // Was 'all' | 'bc' | 'lo' | 'compliance'; the two review tiles became one and
   // "In application" became "Waiting on someone". See lib/board-tiles.ts, which
   // holds every one of those rules so the tile and the cards cannot disagree.
-  const [tile, setTile] = useState<TileKey>('all')
+  // NO TILE FILTER. The four tiles came off on 18 Nov 2026; what is left is the
+  // search box and Filters, which is where that belonged all along.
   // TEST DEALS ARE HIDDEN UNTIL ASKED FOR, AND THEN THEY ARE ALL THAT SHOWS.
   //
   // Not a chip on a card mixed in among real deals - somebody scanning the
@@ -317,7 +318,7 @@ export default function DealsPage() {
   // THE SAME FUNCTION THE TILE COUNTED WITH. Asked once, in lib/board-tiles.ts,
   // so pressing a tile can never open a screen that disagrees with the number
   // printed on it - which is exactly what the old "Compliance completed" box did.
-  const matchesBox = (d: any) => tile === 'all' || matchesTile(d, tile, look.thresholds)
+  const matchesBox = (_d: any) => true
 
   // A SEARCH OVERRIDES THE TOGGLES.
   //
@@ -377,76 +378,32 @@ export default function DealsPage() {
   // prove the chase count is exactly the deals the board paints red.
   const counts = tileCounts(summaryDeals, look.thresholds)
 
-  // The number each tile shows, and the quiet line underneath it.
-  const TILE_COUNT: Record<TileKey, number> = {
-    chase: counts.chase, review: counts.review, waiting: counts.waiting, all: counts.all,
-  }
-  const TILE_NOTE: Record<TileKey, string> = {
-    chase: '', review: reviewSplit(counts), waiting: '',
-    all: closedLine(summaryDeals.length, live.length),
-  }
-  // AND THE SAME TINT ON THE CARD ITSELF - one-card-marking.html, the option
-  // Fabio marked SHIP THIS: "the stripe is gone, colour all the way round".
-  // These are the tile skins below with a hover on them, deliberately, so a
-  // card and the tile that counts it are never two different colours.
-  const CARD_SKIN: Record<'chase' | 'review' | 'waiting' | 'none', string> = {
+  // THE LIST STILL MARKS ITS ROWS, EVEN THOUGH THE TILES HAVE GONE.
+  //
+  // 18 Nov 2026. The four tiles came off the top of this page, and the skins
+  // they shared with the rows went with them. The rows themselves still answer
+  // the same three questions - needs you, ready to review, waiting on somebody
+  // else - so they keep their marking until the list is rebuilt in the board's
+  // new language, where colour means who in credit owns the file.
+  const CARD_SKIN: Record<string, string> = {
     chase:   'bg-card-chase border-card-chase-edge hover:border-chase',
     review:  'bg-info-bg border-info-edge hover:border-info',
     waiting: 'bg-card-waiting border-card-waiting-edge hover:border-waiting',
     none:    'bg-card border-gray-100 hover:border-brand',
   }
-  // The tint each one wears. Grey for the total, because a total is not a state.
-  const TILE_SKIN: Record<TileKey, string> = {
-    chase:   'bg-card-chase border-card-chase-edge',
-    review:  'bg-info-bg border-info-edge',
-    waiting: 'bg-card-waiting border-card-waiting-edge',
-    all:     'bg-card border-line',
-  }
-  const TILE_DOT: Record<TileKey, string> = {
-    chase: 'bg-chase', review: 'bg-info', waiting: 'bg-waiting', all: 'bg-faint',
-  }
-  const TILE_INK: Record<TileKey, string> = {
-    chase: 'text-chase', review: 'text-info', waiting: 'text-waiting', all: 'text-ink',
-  }
+
   return (
     <div className={PAGE_WIDE}>
-      {/* FOUR QUESTIONS, FOUR PRESSES. What is on fire, what is waiting for me,
-          what is out of my hands, and how much is there altogether.
-
-          AND THEY TEACH THE COLOURS WITHOUT A WORD OF EXPLANATION. Somebody new
-          reads "Needs you today" beside a red square, then sees red cards on the
-          board, and has learnt what red means without anybody telling them.
-
-          Pressing the one already on turns it off, so a tile can never leave
-          somebody on a filtered board wondering where the deals went. */}
-      {!loading && (
-        <div className="grid grid-cols-4 gap-3 mb-4">
-          {TILE_KEYS.map(k => {
-            const on = tile === k
-            return (
-              <button key={k} onClick={() => setTile(on ? 'all' : k)}
-                aria-pressed={on}
-                className={`text-left border rounded-xl px-3.5 py-3 transition flex items-center gap-2.5 ${TILE_SKIN[k]} ${
-                  on ? 'ring-2 ring-brand ring-inset' : 'hover:brightness-[.985]'}`}>
-                <span className={`w-2.5 h-2.5 rounded-[3px] flex-none ${TILE_DOT[k]}`} />
-                <span className="min-w-0">
-                  <span className="block text-[11px] text-muted truncate">
-                    {k === 'all' ? summaryLabel : TILE_LABEL[k]}
-                  </span>
-                  <span className={`block text-[21px] font-semibold leading-[1.15] tracking-[-.02em] ${TILE_INK[k]}`}>
-                    {TILE_COUNT[k]}
-                  </span>
-                </span>
-                {TILE_NOTE[k] && (
-                  <span className="ml-auto text-[10px] text-faint whitespace-nowrap self-center">
-                    {TILE_NOTE[k]}
-                  </span>
-                )}
-              </button>
-            )
-          })}
-        </div>
-      )}
+      {/* THE FOUR TILES ARE GONE.
+        *
+        * 18 Nov 2026. Fabio: "at the top on the deals tab, it says needs you
+        * today, ready for your review, waiting on someone, and your deals.
+        * Remove that completely. I don't need that. I actually find that it's
+        * too much information we're not looking at."
+        *
+        * They were a filter wearing a summary's clothes, and the board itself
+        * answers all four questions better: a column per stage and holder, the
+        * owner's colour on the card, the chase chip where a clock has run out. */}
       {userRole === 'staff' && (
         <div className="flex gap-3 mb-4">
           <div className="flex-1 bg-card border border-gray-100 rounded-xl p-4">
