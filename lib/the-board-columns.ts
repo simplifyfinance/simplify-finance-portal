@@ -28,6 +28,14 @@ export type Lane = {
 }
 
 export type Group = {
+  // ITS OWN NAME, FOR REMEMBERING THINGS ABOUT IT.
+  //
+  // 17 Nov 2026, when a stage became foldable. A fold has to be written down
+  // against something, and the title is a sentence that will be reworded one
+  // day - which would silently unfold everybody's board. The tone was the
+  // other candidate and it is a COLOUR; folding should not break because two
+  // stages end up the same shade.
+  key: string
   /** The stage, in the words the business uses. */
   title: string
   /** One colour per stage, whatever the sub-column - Fabio, 18 Nov.
@@ -46,18 +54,18 @@ export type Group = {
 // The written half is split by who is holding it. The lodged half is not: once
 // it is with a bank there is one wait and splitting it would say nothing.
 export const GROUPS: Group[] = [
-  { title: 'New lead', tone: 'lead', lanes: [
+  { key: 'lead', title: 'New lead', tone: 'lead', lanes: [
     { key: 'lead', label: 'Awaiting fact find' },
   ] },
-  { title: 'Borrowing capacity', tone: 'bc', lanes: [
+  { key: 'bc', title: 'Borrowing capacity', tone: 'bc', lanes: [
     { key: 'bc_us', label: 'With credit' },
     { key: 'bc_client', label: 'With client' },
   ] },
-  { title: 'Lending options', tone: 'lo', lanes: [
+  { key: 'lo', title: 'Lending options', tone: 'lo', lanes: [
     { key: 'lo_us', label: 'With credit' },
     { key: 'lo_client', label: 'With client' },
   ] },
-  { title: 'Compliance', tone: 'compliance', lanes: [
+  { key: 'compliance', title: 'Compliance', tone: 'compliance', lanes: [
     { key: 'comp_us', label: 'With credit' },
     { key: 'comp_client', label: 'Sent · signing' },
   ] },
@@ -74,12 +82,12 @@ export const GROUPS: Group[] = [
   // What is new is only the bar above them, which gathers them into the three
   // things they actually are: a bank deciding, a team working to a date, and
   // done.
-  { title: 'With the lender', tone: 'lender', lanes: [
+  { key: 'lender', title: 'With the lender', tone: 'lender', lanes: [
     { key: 'lodged', label: 'Lodged' },
     { key: 'preapproved', label: 'Preapproved' },
     { key: 'offer_accepted', label: 'Offer accepted' },
   ] },
-  { title: 'To settlement', tone: 'settlement', lanes: [
+  { key: 'settlement', title: 'To settlement', tone: 'settlement', lanes: [
     { key: 'formal', label: 'Formal approval' },
     { key: 'contracts_returned', label: 'Contracts returned' },
     { key: 'settlement_booked', label: 'Settlement booked' },
@@ -87,12 +95,20 @@ export const GROUPS: Group[] = [
   // ITS OWN BAR. Fabio chose this over folding it in with the settlement run:
   // the deal is done, and closing one out - the review, the compliance file,
   // the commission - is a different job from getting one to the table.
-  { title: 'Settled', tone: 'settled', lanes: [
+  { key: 'settled', title: 'Settled', tone: 'settled', lanes: [
     { key: 'settled', label: 'Settled' },
   ] },
 ]
 
 export const LANE_KEYS: string[] = GROUPS.flatMap(g => g.lanes.map(l => l.key))
+
+// A FOLD IS WRITTEN DOWN AGAINST ONE OF THESE.
+//
+// Prefixed, because a group's key and a lane's key can be the same word -
+// 'lead' is both - and one list holds both kinds. Without the prefix, folding
+// the New lead STAGE would fold the New lead COLUMN and nothing else.
+export const GROUP_FOLD_KEYS: string[] = GROUPS.map(g => `group:${g.key}`)
+export const groupFoldKey = (g: Group) => `group:${g.key}`
 
 /**
  * WHICH COLUMN A DEAL IS IN, OR NOWHERE.

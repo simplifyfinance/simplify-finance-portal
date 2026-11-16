@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createSupabaseBrowser } from './supabase-browser'
 import { PHASE_ORDER } from './deal-phase'
-import { LANE_KEYS } from './the-board-columns'
+import { LANE_KEYS, GROUP_FOLD_KEYS } from './the-board-columns'
 
 // Which board columns this person has folded away, remembered against their login.
 //
@@ -28,7 +28,17 @@ import { LANE_KEYS } from './the-board-columns'
 // accepted, because somebody who folded "bc" away last week should not log in
 // to a board that quietly unfolded itself - and an old key that no longer
 // matches a column simply folds nothing, which is what it already did.
-const REAL_COLUMNS: string[] = [...LANE_KEYS, 'lost', ...PHASE_ORDER]
+// 17 Nov 2026: A WHOLE STAGE CAN BE FOLDED NOW, not only a column.
+//
+// Fabio: "when settlements is looking at one, they don't care about new
+// inquiries, BC, LO... and credit don't care about settlements. I want to be
+// able to press a button on the black bar and that black bar will fold." So
+// the group keys join the list, prefixed - see GROUP_FOLD_KEYS.
+//
+// Per person, per browser, any combination. Fabio, asked whether there should
+// be named views for Credit and Settlements: "I don't want any rules... they
+// choose what they want to fold, they do whatever they want."
+const REAL_COLUMNS: string[] = [...LANE_KEYS, 'lost', ...PHASE_ORDER, ...GROUP_FOLD_KEYS]
 
 export function useColumnFolds() {
   const [folds, setFolds] = useState<string[]>([])

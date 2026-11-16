@@ -13,7 +13,7 @@ import { brokerKey as keyOf } from '@/lib/broker-key'
 import { sentOn } from '@/lib/bc-lanes'
 // THE BOARD IS A VIEW, NOT A PLACE A DEAL IS KEPT. A column is the stage
 // plus who we are waiting on, and both of those already exist.
-import { GROUPS, TONE_INK, laneOf, newestFirst, readyToPush, type Group } from '@/lib/the-board-columns'
+import { GROUPS, TONE_INK, groupFoldKey, laneOf, newestFirst, readyToPush, type Group } from '@/lib/the-board-columns'
 import { creditColour, cardSkin, AGREED } from '@/lib/who-in-credit-owns-it'
 import { paneHeight, dragScrollBy } from '@/lib/board-pane'
 import { columnCountLabel } from '@/lib/board-filters'
@@ -310,7 +310,7 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
   // THE BARS, AND THE COLUMNS UNDER EACH ONE. Lost is its own group when
   // somebody has asked to see it, and nothing can be dragged into or out of it.
   const bars: Group[] = showLost
-    ? [...GROUPS, { title: 'Lost', tone: 'settled', lanes: [{ key: 'lost', label: 'Lost' }] }]
+    ? [...GROUPS, { key: 'lost', title: 'Lost', tone: 'settled', lanes: [{ key: 'lost', label: 'Lost' }] }]
     : GROUPS
   const columns: string[] = bars.flatMap(g => g.lanes.map(l => l.key))
   const shutCount = columns.filter(p => folds.includes(p)).length
@@ -433,19 +433,54 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
           // nothing to say with.
           const mine = g.lanes.flatMap(l => byColumn[l.key] || [])
           const worth = mine.reduce((t, d) => t + (amountOf(d) || 0), 0)
+          // FOLD THE WHOLE STAGE, BY PRESSING ITS BAR.
+          //
+          // 17 Nov 2026. Fabio: "when settlements is looking at one, they
+          // don't care about new inquiries, BC, LO, they don't care about
+          // that. They just focus on settlements. And credit don't care about
+          // settlements. I want to be able to press a button on the black bar
+          // and that black bar will fold."
+          //
+          // A folded stage keeps its bar and loses its columns: 44px instead
+          // of eight hundred. The name turns on its side so it stays readable,
+          // and it KEEPS ITS COUNT AND ITS TOTAL - "22 · $15.6m" is still
+          // there without unfolding anything, which is the whole reason you
+          // can afford to fold it.
+          //
+          // Per person, per browser, any combination - see
+          // lib/use-column-folds.ts. Fabio, asked whether Credit and
+          // Settlements should be named views: "I don't want any rules."
+          const foldKey = groupFoldKey(g)
+          const shut = folds.includes(foldKey)
+          const count = `${mine.length}${worth > 0 ? ` \u00b7 ${money(worth)}` : ''}`
           return (
             <div key={g.title}
-                 className={`flex-none flex flex-col ${paneH === null ? '' : 'h-full min-h-0'}`}>
-              <div className="mb-2.5 flex items-center gap-2.5 rounded-[11px] bg-ink px-3.5 py-2.5">
+                 className={`flex-none flex flex-col ${shut ? 'w-[44px]' : ''} ${
+                   paneH === null ? '' : 'h-full min-h-0'}`}>
+              <button type="button" onClick={() => toggle(foldKey)}
+                aria-expanded={!shut}
+                title={shut ? `Open ${g.title}` : `Fold ${g.title} away`}
+                className={`mb-2.5 rounded-[11px] bg-ink hover:bg-ink/90 transition ${
+                  shut
+                    ? 'flex-1 min-h-[260px] flex flex-col items-center justify-center gap-3 px-1.5 py-3.5'
+                    : 'flex items-center gap-2.5 px-3.5 py-2.5'}`}>
                 <span className="h-2 w-2 rounded-[2px] flex-none"
                       style={{ background: TONE_INK[g.tone] }} />
-                <span className="text-[10.5px] font-extrabold tracking-[.13em] uppercase text-page whitespace-nowrap">
+                <span className={`text-[10.5px] font-extrabold tracking-[.13em] uppercase text-page whitespace-nowrap ${
+                  shut ? '[writing-mode:vertical-rl] rotate-180' : ''}`}>
                   {g.title}
                 </span>
-                <span className="ml-auto text-[11px] font-bold text-faint whitespace-nowrap tabular-nums">
-                  {mine.length}{worth > 0 ? ` \u00b7 ${money(worth)}` : ''}
+                <span className={`text-[11px] font-bold text-faint whitespace-nowrap tabular-nums ${
+                  shut ? '[writing-mode:vertical-rl] rotate-180' : 'ml-auto'}`}>
+                  {count}
                 </span>
-              </div>
+                <svg className={`text-faint flex-none ${shut ? 'rotate-180' : ''}`}
+                     width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M15 6l-6 6 6 6" />
+                </svg>
+              </button>
+              {shut ? null : (<>
               <div className={`flex gap-2.5 ${paneH === null ? 'items-start' : 'items-stretch flex-1 min-h-0'}`}>
           {g.lanes.map(l => l.key).map(p => {
             // THE COLUMN, AND THEN WHAT THE SUB-TAB IS SHOWING OF IT.
@@ -837,6 +872,7 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
             )
           })}
               </div>
+              </>)}
             </div>
           )
           })}

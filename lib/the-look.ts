@@ -193,7 +193,7 @@ export const THE_LOOK: Piece[] = [
   { mock: BOARD_MOCK, piece: 'With the lender is not the same colour as To settlement',
     proof: { file: LANES_FILE, contains: 'lender:     ' } },
   { mock: BOARD_MOCK, piece: 'Settled keeps its own bar and its own column',
-    proof: { file: LANES_FILE, contains: "{ title: 'Settled'" } },
+    proof: { file: LANES_FILE, contains: "title: 'Settled'" } },
   { mock: BOARD_MOCK, piece: 'Newest card on top, every column, always',
     proof: { file: BOARD, contains: 'NEWEST ON TOP, EVERY COLUMN, ALWAYS' } },
   { mock: BOARD_MOCK, piece: 'The card lifts when you hover it',
