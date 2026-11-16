@@ -306,9 +306,24 @@ describe('a chip on a washed card does not sink into it', () => {
     expect(chipStyle('#107EA8', true).borderColor).toBe('#107EA838')
   })
 
-  it('and the board actually passes that flag', () => {
-    expect(readFileSync('components/DealBoard.tsx', 'utf8')).toContain('chipStyle(c.colour, washed)')
-    // washed is now "this card is wearing somebody's colour", which is the same
-    // question the chip was always asking: is there a tint behind me.
+  // THE BOARD DOES NOT PASS IT ANY MORE, AND THAT IS THE POINT.
+  //
+  // 18 Nov 2026. The flag was built for a card washed red or purple by its
+  // state, where a chip's own 8% tint really did muddy into the card. The board
+  // card now wears a credit officer's colour, so EVERY allocated card was a
+  // washed card and every chip on the board went white - Purchase, Refinance
+  // and Owner occupied all the same colourless pill.
+  //
+  // Fabio, seeing it live against the approved mock: "the owner occupied has a
+  // color, it's purple. Purchase, it's blue. Why did you change everything on
+  // the live version?"
+  //
+  // The two tints are different hues at 15% and 8%; they read fine over each
+  // other, which is what the mock shows on every card. The deals LIST still
+  // washes cards by state and still passes the flag - that is what it is for.
+  it('but the board does not, because its cards are not washed by state', () => {
+    const board = readFileSync('components/DealBoard.tsx', 'utf8')
+    expect(board).toContain('chipStyle(c.colour)')
+    expect(board).not.toContain('chipStyle(c.colour, washed)')
   })
 })

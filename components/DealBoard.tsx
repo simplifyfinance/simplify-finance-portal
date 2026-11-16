@@ -652,7 +652,6 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                   const agreed = readyToPush(d)
                   const mine = creditColour(d.credit_officers?.name)
                   const skin = cardSkin(agreed ? AGREED : mine)
-                  const washed = agreed || !!mine
                   const people = [
                     { name: brokerNameOf(d, nameFor), colour: brokerColour(bKey, colours?.broker) },
                     ...(d.credit_officers?.name ? [{ name: d.credit_officers.name, colour: CREDIT_GREY }] : []),
@@ -714,7 +713,13 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                         {amt !== null
                           ? <span className="text-[14px] font-[680] text-ink tabular-nums tracking-[-.01em]">{money(amt)}</span>
                           : <span className="text-[11.5px] text-faint">No amount recorded</span>}
-                        <span className="ml-auto text-[11px] text-muted tabular-nums">{when}</span>
+                        {/* A DATE, OR NOTHING. The plain day count was printed
+                            here AND in the chip at the foot of the card, so
+                            every card said "3 days" twice. A settlement in the
+                            diary is a different fact and still shows. */}
+                        {settleOn && (
+                          <span className="ml-auto text-[11px] text-muted tabular-nums">{when}</span>
+                        )}
                       </div>
 
                       {/* NOT ON THE CARD ANY MORE. 22 Oct 2026, Fabio: "deal
@@ -756,10 +761,24 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                           which is the one place a label is decided, so a new one
                           appears on the card and in the filter together. */}
                       <div className="flex gap-1 items-center min-w-0 min-h-[19px] overflow-hidden">
+                        {/* THE CHIP KEEPS ITS OWN COLOUR, ALWAYS.
+                            18 Nov 2026. When the card started wearing a credit
+                            officer's colour, every card became a "washed" card
+                            - and a washed card used to turn its chips white so
+                            they would not muddy into the tint behind them. The
+                            result was a board where Purchase, Refinance and
+                            Owner occupied were all the same white chip.
+                            Fabio: "the owner occupied has a color, it's purple.
+                            Purchase, it's blue. Why did you change everything
+                            on the live version?"
+                            The card tint and the chip tint are different hues
+                            and read fine over each other, which the approved
+                            mock shows on every card. So the chip wears its own
+                            colour and the wash argument is not used here. */}
                         {chipsFor(d, colours).map(c => (
                           <span key={c.id} title={c.label}
                                 className="max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border"
-                                style={chipStyle(c.colour, washed)}>{c.label}</span>
+                                style={chipStyle(c.colour)}>{c.label}</span>
                         ))}
                       </div>
 
