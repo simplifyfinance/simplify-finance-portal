@@ -133,7 +133,12 @@ describe('THE BOX ON SCREEN', () => {
   })
 
   it('and not sharing is the first thing on the list, in his words', () => {
-    expect(BOX).toContain('Simplify only — 100%')
+    // 17 Nov 2026: the percentages came off the LIST. Fabio: "I don't really
+    // need the splits showing, it's very busy." The words he uses for not
+    // sharing are still the first thing on it; the full breakdown is spelled
+    // out under the box and on the handover - see
+    // lib/the-splits-reach-the-handover.test.ts, which holds both.
+    expect(BOX).toContain('Simplify only')
     expect(BOX).not.toContain('Nobody — this one is all ours')
   })
 

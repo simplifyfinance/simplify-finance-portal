@@ -171,7 +171,19 @@ test.describe('box one — primary reasons for seeking credit', () => {
     else await expect(list).toHaveCount(0)
   })
 
-  test('the fact find turns red when the purpose is missing', async ({ page }) => {
+  // 17 NOV 2026: IT DOES NOT TURN RED ANY MORE, AND THAT IS THE POINT.
+  //
+  // This section used to carry eleven red things saying one thing: a red slab,
+  // three red boxes, three red lines under them, three red "Required" dots.
+  // Fabio: "we spoke about this section specifically and we mocked that it is
+  // a lot less intense than all the red."
+  //
+  // So it follows the rule the rest of the deal page follows - the triangle is
+  // red, the sentence that says what is wrong is red, and nothing else is.
+  //
+  // WHAT THIS TEST IS FOR HAS NOT CHANGED: a broker who has not recorded the
+  // purpose must be TOLD, on the screen, every time. Only the wording moved.
+  test('the fact find says so when the purpose is missing', async ({ page }) => {
     await page.goto(`/deals/${DEAL}`, { waitUntil: 'domcontentloaded' })
     // The page is HTML before it is a page. See data-ready in DealPageClient -
     // a click before this appears goes nowhere, which is a race, not a bug in
@@ -182,9 +194,19 @@ test.describe('box one — primary reasons for seeking credit', () => {
     await expect(purpose).toBeVisible({ timeout: 20_000 })
 
     const filled = (await purpose.inputValue()).trim().length > 0
-    const warning = page.getByText(/Compliance box 1 cannot be written without this/)
-    if (filled) await expect(warning).toHaveCount(0)
-    else await expect(warning).toBeVisible()
+    const underTheBox = page.getByText(/Compliance box 1 is written from this/)
+    // "None of these three is recorded", "One of these three is not
+    // recorded", "Two of these three are not recorded" - one phrase matches
+    // all three without pinning the wording.
+    const atTheTop = page.getByText(/of these three/)
+    if (filled) {
+      await expect(underTheBox).toHaveCount(0)
+    } else {
+      // Said twice, quietly: once at the top of the section with the red
+      // triangle, once under the box it belongs to.
+      await expect(underTheBox).toBeVisible()
+      await expect(atTheTop.first()).toBeVisible()
+    }
   })
 })
 

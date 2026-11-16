@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import {
   offered, splitInWords, chooseSplitPatch, splitOn, sharedWithLine,
+  splitShortName, splitGroupLabel,
   termsHaveMoved, type Split,
 } from '@/lib/who-shares-this-deal'
 import { inOrder, termsShort } from '@/lib/split-order'
@@ -39,9 +40,19 @@ const MORE = '__more__'
 // It used to read "Aspire Partners - Aspire Partners 20% upfront, 20% trail":
 // the name twice, then two words everybody in this business already knows.
 // Upfront then trail, and nothing else on the line.
+// 17 Nov 2026: THE NUMBERS CAME OFF THE LIST.
+//
+// Fabio: "I don't really need the splits showing, it's very busy... those
+// splits are important to go on the handover notes that goes to my processing
+// team, but it's pretty irrelevant to my team to see it."
+//
+// He is right. Fifteen rows each carrying three or four percentages, and the
+// person choosing can act on none of them. So the list is the NAME, grouped
+// by whether they referred it or wrote it, and the split for the one that is
+// actually chosen is spelled out underneath in words - see sharedWithLine.
+// The handover is untouched and still carries every line.
 function splitLine(s: Split): string {
-  const terms = termsShort(s.lines)
-  return terms ? `${s.name} \u2014 ${terms}` : s.name
+  return splitShortName(s.name)
 }
 
 export default function WhoSharesThisDeal({ deal, byName, onChanged }: {
@@ -157,18 +168,33 @@ export default function WhoSharesThisDeal({ deal, byName, onChanged }: {
         {unanswered && <option value="">Select</option>}
         {/* NOT SHARING WITH ANYBODY IS AN ANSWER, and it is the commonest one,
             so it is first and it is said in the words Fabio uses for it. */}
-        <option value={NOBODY}>Simplify only — 100%</option>
-        {ordered.shown.map(s => (
-          <option key={s.id} value={s.id}>{splitLine(s)}</option>
-        ))}
+        <option value={NOBODY}>Simplify only</option>
+        {/* GROUPED BY WHAT THEY ACTUALLY DID - 17 Nov 2026. The kind has been
+            on every arrangement since 27 Oct; it was just never shown, so the
+            name was carrying it in a prefix. See splitGroupLabel. */}
+        {(['referrer', 'broker_split'] as const).map(kind => {
+          const mine = ordered.shown.filter(s => s.kind === kind)
+          if (mine.length === 0) return null
+          return (
+            <optgroup key={kind} label={splitGroupLabel(kind)}>
+              {mine.map(s => (
+                <option key={s.id} value={s.id}>{splitLine(s)}</option>
+              ))}
+            </optgroup>
+          )
+        })}
         {!showAll && ordered.rest.length > 0 && (
           <option value={MORE}>
             {"\u2014 show the other " + ordered.rest.length + " \u2014"}
           </option>
         )}
-        {showAll && ordered.rest.map(s => (
-          <option key={s.id} value={s.id}>{splitLine(s)}</option>
-        ))}
+        {showAll && ordered.rest.length > 0 && (
+          <optgroup label="Everything else">
+            {ordered.rest.map(s => (
+              <option key={s.id} value={s.id}>{splitLine(s)}</option>
+            ))}
+          </optgroup>
+        )}
         {/* AN ARRANGEMENT TAKEN OFF THE LIST STILL SHOWS ON A DEAL THAT USED
             IT. Otherwise the dropdown would silently read as something else. */}
         {on?.id && !list.some(s => s.id === on.id) && (

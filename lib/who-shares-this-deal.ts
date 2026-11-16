@@ -228,6 +228,41 @@ export function termsInWords(upfront: number | null, trail: number | null): stri
   return bits.length ? bits.join(', ') : 'share not recorded'
 }
 
+// THE NAME, WITHOUT THE WORDS THAT WERE DOING A HEADING'S JOB.
+//
+// 17 Nov 2026. The list read like this:
+//
+//   Simplify - Justin Cornock referral
+//   Simplify Finance Brokers - Justin Cornock
+//
+// Two real, different arrangements with one man - he refers us deals, and he
+// also writes them under our licence - told apart by a prefix nobody reads.
+// Fabio explained it out loud and it is simply the KIND: referrer, or broker
+// split. The list already stores that, so the heading can say it and the name
+// can go back to being a name.
+//
+// NOTHING IS RENAMED. The row in the database keeps the name it has; this is
+// only what the person choosing reads. Rule 1 of this file still stands: what
+// a settled deal says was agreed does not change.
+export function splitShortName(name: any): string {
+  const full = txt(name)
+  const short = full
+    .replace(/^simplify\s+finance\s+brokers\s*[-\u2013\u2014]\s*/i, '')
+    .replace(/^simplify\s*[-\u2013\u2014]\s*/i, '')
+    .replace(/\s+referral$/i, '')
+    .trim()
+  // A name that is ONLY the prefix keeps the prefix. Better a long name than
+  // a blank row.
+  return short || full
+}
+
+/** "They referred it" or "They wrote it" - the heading above a group. */
+export function splitGroupLabel(kind: any): string {
+  return txt(kind) === 'broker_split'
+    ? 'They wrote it \u2014 broking under our licence'
+    : 'They referred it \u2014 we wrote the loan'
+}
+
 /** The one line a dropdown shows. */
 export function splitInWords(s: Split): string {
   return `${s.name} \u2014 ${linesInWords(s.lines)}`
@@ -335,7 +370,13 @@ export function sharedWithLine(deal: any): string {
   const s = splitOn(deal)
   if (!s) return 'Not recorded — nobody has said whether this deal is shared'
   if (s.none) return 'Not shared \u2014 this one is all ours'
-  return `${s.name} \u2014 ${splitKindLabel(s.kind).toLowerCase()} \u00b7 ${linesInWords(s.lines)}`
+  // 17 Nov 2026: THE SHORT NAME, AND WHAT THEY DID IN WORDS.
+  //
+  // This is the line under the dropdown, and now that the list carries no
+  // numbers it is the only place the chosen split is spelled out on screen.
+  // So it says the lot: who, what they did, and every line of the breakdown.
+  const did = txt(s.kind) === 'broker_split' ? 'they wrote it' : 'they referred it'
+  return `${splitShortName(s.name)} \u2014 ${did} \u00b7 ${linesInWords(s.lines)}`
 }
 
 /**

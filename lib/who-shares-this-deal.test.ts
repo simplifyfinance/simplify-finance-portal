@@ -250,7 +250,7 @@ describe('reading it back off the deal', () => {
 
   it('says who and on what terms', () => {
     expect(sharedWithLine(deal))
-      .toBe('Harrow Financial Planning — referrer · Dale Harrow 20%')
+      .toBe('Harrow Financial Planning — they referred it · Dale Harrow 20%')
     expect(splitOn(deal)?.by).toBe('Mark Gallo')
     expect(answered(deal)).toBe(true)
   })
@@ -258,7 +258,7 @@ describe('reading it back off the deal', () => {
   it('and every party on a three-way split, not just one of them', () => {
     const three = chooseSplitPatch(splitFromRow(THREE), 'Mark Gallo', new Date())
     expect(sharedWithLine(three)).toBe(
-      'Harrow referral — referrer · Simplify Finance 20% · Harrow Financial Planning 20% · Mark Gallo 60%')
+      'Harrow — they referred it · Simplify Finance 20% · Harrow Financial Planning 20% · Mark Gallo 60%')
   })
 
   it('a deal settled before lines existed still reads off its own copy', () => {
@@ -288,7 +288,7 @@ describe('reading it back off the deal', () => {
 
   it('a broker split reads as one', () => {
     const d = chooseSplitPatch(splitFromRow(ROWS[2]), 'Mark Gallo', new Date())
-    expect(sharedWithLine(d)).toBe('Mark writes for Justin — broker split · Mark Gallo → Justin Cornock 50%')
+    expect(sharedWithLine(d)).toBe('Mark writes for Justin — they wrote it · Mark Gallo → Justin Cornock 50%')
   })
 })
 

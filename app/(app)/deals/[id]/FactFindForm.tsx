@@ -1443,12 +1443,38 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       {stage === 'personal' && (
         <div className="bg-card border border-gray-100 rounded-xl p-4">
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Purpose and goals</div>
-          {[d.loanPurpose, d.goals2Years, d.goals10Years].filter(x => !String(x || '').trim()).length > 0 && (
-            <div className="mb-3 flex gap-2 items-start bg-red-50 border border-red-200 border-l-[3px] border-l-red-600 rounded-lg px-3 py-2">
-              <span className="text-red-600 text-sm leading-tight">⚠</span>
-              <p className="text-xs text-red-800"><span className="font-semibold">{[d.loanPurpose, d.goals2Years, d.goals10Years].filter(x => !String(x || '').trim()).length} of these three are not recorded.</span> They go straight onto the compliance file, and it cannot be written properly without them.</p>
-            </div>
-          )}
+          {/* RED ON THE MARK, NOT ON THE PAPER - 17 Nov 2026.
+              This was a red slab, then three red boxes under it, then three
+              red lines under those: eleven red things saying one thing. Fabio,
+              looking at it: "we spoke about this section specifically and we
+              mocked that it is a lot less intense than all the red."
+              So the rule the rest of the deal page already follows: the
+              triangle is red, the sentence that says what is wrong is red,
+              and everything else is an ordinary line on an ordinary card.
+              AND IT COUNTS PROPERLY. It read "3 of these three are not
+              recorded", which is the number twice and neither of them in
+              words. */}
+          {(() => {
+            const missing = [d.loanPurpose, d.goals2Years, d.goals10Years]
+              .filter(x => !String(x || '').trim()).length
+            if (missing === 0) return null
+            return (
+              <div className="quiet-warn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17h.01" />
+                </svg>
+                <span className="key">
+                  {missing === 3 ? 'None of these three is recorded.'
+                    : missing === 1 ? 'One of these three is not recorded.'
+                    : 'Two of these three are not recorded.'}
+                </span>
+                <span className="rest">
+                  They go straight onto the compliance file, and it cannot be written without them.
+                </span>
+              </div>
+            )
+          })()}
           <div className="flex flex-col gap-3">
             {/* WHERE THE DEPOSIT COMES FROM IS ASKED ON THE BC, NOT HERE.
                 27 Oct 2026. It was the first question on this tab, on every
@@ -1471,28 +1497,28 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                 answer it. See components/WhoSharesThisDeal.tsx. */}
             <WhoSharesThisDeal deal={deal} byName={me?.name || deal.assigned_broker || ''} />
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Purpose of loan / primary reason for finance{!d.loanPurpose?.trim() && <span className="text-red-600 font-semibold ml-1">● Required</span>}</label>
-              <textarea spellCheck="true" aria-label="Purpose of loan / primary reason for finance" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.loanPurpose?.trim() ? 'border-gray-200 focus:border-brand' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="What the client told you they want this loan for..." value={d.loanPurpose}
+              <label className="text-xs text-gray-500 block mb-1">Purpose of loan / primary reason for finance{!d.loanPurpose?.trim() && <span className="text-chase font-semibold ml-1">Required</span>}</label>
+              <textarea spellCheck="true" aria-label="Purpose of loan / primary reason for finance" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.loanPurpose?.trim() ? 'border-gray-200 focus:border-brand' : 'border-field-line bg-page focus:border-brand'}`} placeholder="What the client told you they want this loan for..." value={d.loanPurpose}
                 onFocus={() => focusField(ownRef.current, 'loanPurpose')}
                 onBlur={() => blurField(ownRef.current, 'loanPurpose')}
                 onChange={e => { markDirty(ownRef.current, 'loanPurpose'); setD(prev => ({ ...prev, loanPurpose: e.target.value })) }} />
-              {!d.loanPurpose?.trim() && <p className="text-[11px] text-red-600 mt-1">Compliance box 1 cannot be written without this</p>}
+              {!d.loanPurpose?.trim() && <p className="text-[11px] text-faint mt-1">Compliance box 1 is written from this</p>}
             </div>
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Goals — next 2 years{!d.goals2Years?.trim() && <span className="text-red-600 font-semibold ml-1">● Required</span>}</label>
-              <textarea spellCheck="true" aria-label="Goals — next 2 years" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.goals2Years?.trim() ? 'border-gray-200 focus:border-brand' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="Client's own stated short-term plans..." value={d.goals2Years}
+              <label className="text-xs text-gray-500 block mb-1">Goals — next 2 years{!d.goals2Years?.trim() && <span className="text-chase font-semibold ml-1">Required</span>}</label>
+              <textarea spellCheck="true" aria-label="Goals — next 2 years" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.goals2Years?.trim() ? 'border-gray-200 focus:border-brand' : 'border-field-line bg-page focus:border-brand'}`} placeholder="Client's own stated short-term plans..." value={d.goals2Years}
                 onFocus={() => focusField(ownRef.current, 'goals2Years')}
                 onBlur={() => blurField(ownRef.current, 'goals2Years')}
                 onChange={e => { markDirty(ownRef.current, 'goals2Years'); setD(prev => ({ ...prev, goals2Years: e.target.value })) }} />
-              {!d.goals2Years?.trim() && <p className="text-[11px] text-red-600 mt-1">Compliance box 2 cannot be written without this</p>}
+              {!d.goals2Years?.trim() && <p className="text-[11px] text-faint mt-1">Compliance box 2 is written from this</p>}
             </div>
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Goals — 2 to 10 years{!d.goals10Years?.trim() && <span className="text-red-600 font-semibold ml-1">● Required</span>}</label>
-              <textarea spellCheck="true" aria-label="Goals — 2 to 10 years" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.goals10Years?.trim() ? 'border-gray-200 focus:border-brand' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="Client's own stated long-term plans..." value={d.goals10Years}
+              <label className="text-xs text-gray-500 block mb-1">Goals — 2 to 10 years{!d.goals10Years?.trim() && <span className="text-chase font-semibold ml-1">Required</span>}</label>
+              <textarea spellCheck="true" aria-label="Goals — 2 to 10 years" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.goals10Years?.trim() ? 'border-gray-200 focus:border-brand' : 'border-field-line bg-page focus:border-brand'}`} placeholder="Client's own stated long-term plans..." value={d.goals10Years}
                 onFocus={() => focusField(ownRef.current, 'goals10Years')}
                 onBlur={() => blurField(ownRef.current, 'goals10Years')}
                 onChange={e => { markDirty(ownRef.current, 'goals10Years'); setD(prev => ({ ...prev, goals10Years: e.target.value })) }} />
-              {!d.goals10Years?.trim() && <p className="text-[11px] text-red-600 mt-1">Compliance box 3 cannot be written without this</p>}
+              {!d.goals10Years?.trim() && <p className="text-[11px] text-faint mt-1">Compliance box 3 is written from this</p>}
             </div>
           </div>
         </div>

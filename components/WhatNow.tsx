@@ -112,8 +112,12 @@ export default function WhatNow({
   const done = stageIsDone(deal, stage)
   const days = daysOnStage(deal, stage)
 
+  // ROOM UNDER IT. 17 Nov 2026 - the questions band sat straight against the
+  // buttons and read as part of the same cluster. Fabio: "see the gap between
+  // questions going out and the button Done? Just build a gap. It's very
+  // smushed together."
   return (
-    <div className="flex gap-2.5 items-center flex-wrap">
+    <div className="flex gap-2.5 items-center flex-wrap mb-4">
       {/* THE VIEW. Quiet, grey, on the left, and never shaped like an action. */}
       {/* THE VIEW IS A DROPDOWN, AND IT SITS ON THE RIGHT.
           docs/approved-looks/deal-page-stages.html: "VIEW  Form ▾", away from
