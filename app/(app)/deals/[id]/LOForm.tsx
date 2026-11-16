@@ -2695,9 +2695,14 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
               onChange={e => { markDirty(ownRef.current, 'brokerPersonalisation'); setD({ ...d, brokerPersonalisation: e.target.value }) }} placeholder="✏ Add your personalised opening message..." />
           </div>
 
-          {/* Documents required */}
+          {/* REQUIRED PRIOR TO SUBMISSION.
+              18 Nov 2026. "Documents required" read as the document list and is
+              not it - the real one is the DOCUMENTS panel in the rail, with its
+              chase clock and its upload link. This is a typed note that rides
+              on the lending options email and the PDF, and the name now says
+              when it matters rather than what it is. */}
           <div className="bg-card border border-gray-100 rounded-xl p-5">
-            <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Documents required</div>
+            <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Required prior to submission</div>
             <div className="space-y-2 mb-3">
               {d.documentsRequired.map((doc, i) => (
                 <div key={i} className="flex items-center gap-2">

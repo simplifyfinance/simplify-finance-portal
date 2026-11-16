@@ -288,7 +288,33 @@ describe('the sentence at the top is not the same twice', () => {
     const sent = { ...DEAL, ...askedPatch(DEAL, going.map(q => q.key), new Date('2026-10-14')) }
     const still = openQuestions(sent, TODAY)
     expect(blockHeading(sent, still, TODAY)).toBe(`Still waiting on ${still.length} things`)
-    expect(blockLead(sent, still, TODAY)).toBe('I asked about these on 14 Oct — I cannot submit without them.')
+    expect(blockLead(sent, still, TODAY))
+      .toBe('I asked about these on 14 Oct, and they are the last things I need before I can submit.')
+  })
+
+  // 18 Nov 2026. Catherine, on an email sent the same morning as the first ask:
+  // "just feels very aggressive... Plus its literally today and we are asking
+  // for them." The ask is marked when it goes out, so day zero read as a chase.
+  it('is never a chase on the day it was asked', () => {
+    const sent = { ...DEAL, ...askedPatch(DEAL, going.map(q => q.key), TODAY) }
+    const still = openQuestions(sent, TODAY)
+    expect(blockHeading(sent, still, TODAY)).toBe('A few things I still need from you')
+    expect(blockLead(sent, still, TODAY)).toContain('answer straight back')
+    expect(askedLine(sent, going[0].key, TODAY)).toBe('')
+  })
+
+  // A DAY OR TWO IS A NUDGE. The submit line is the last thing to reach for.
+  it('nudges in the first week and says what it is holding up after that', () => {
+    const twoDays = new Date(TODAY.getTime() - 2 * 86_400_000)
+    const soft = { ...DEAL, ...askedPatch(DEAL, going.map(q => q.key), twoDays) }
+    expect(blockLead(soft, openQuestions(soft, TODAY), TODAY)).toContain('slipped past')
+    expect(blockLead(soft, openQuestions(soft, TODAY), TODAY)).not.toContain('submit')
+  })
+
+  it('and the days line starts counting at one', () => {
+    const yesterday = new Date(TODAY.getTime() - 86_400_000)
+    const one = { ...DEAL, ...askedPatch(DEAL, [going[0].key], yesterday) }
+    expect(askedLine(one, going[0].key, TODAY)).toContain('1 day')
   })
 
   it('one outstanding thing is said in the singular', () => {

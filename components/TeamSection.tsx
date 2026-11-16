@@ -188,23 +188,31 @@ export default function TeamSection() {
   const past = users.filter(u => !u.active)
   const shown = showPast ? [...here, ...past] : here
 
-  async function toggleActive(id: string, active: boolean) {
-    const problem = await checkedWrite(
-      supabase.from('user_profiles').update({ active: !active }).eq('id', id), 'That change')
-    if (problem) { alert(problem); return }
-    setUsers(users.map(u => u.id === id ? { ...u, active: !active } : u))
-  }
-
-  async function handleDelete(user: UserProfile) {
-    if (!confirm(`Permanently delete ${user.full_name}'s account? This cannot be undone.`)) return
-    const res = await fetch('/api/delete-user', {
+  // ARCHIVING IS THE ONLY WAY SOMEBODY LEAVES.
+  //
+  // 18 Nov 2026. Fabio: "I asked you to archive when I delete, as we cant
+  // delete so we need to archive." Deleting threw a database error, because a
+  // person who has worked a deal is on its trail for as long as the deal
+  // exists - and the alternative to that error would be a hole where their
+  // work used to be.
+  //
+  // IT ALSO STOPS THE LOGIN, which switching somebody off never did: until
+  // today a leaver was hidden from the screens and could still sign in.
+  // See app/api/archive-user/route.ts.
+  async function setArchived(user: UserProfile, archive: boolean) {
+    if (archive && !confirm(
+      `Archive ${user.full_name}?\n\n`
+      + 'They are signed out of every browser and cannot sign in again.\n'
+      + 'Their name stays on every deal, plan and note they worked - nothing is deleted.\n'
+      + 'You can bring them back from "past team members" at any time.')) return
+    const res = await fetch('/api/archive-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: user.id })
+      body: JSON.stringify({ userId: user.id, bringBack: !archive }),
     })
-    const data = await res.json()
-    if (!data.ok) { alert('Error deleting: ' + data.error); return }
-    setUsers(users.filter(u => u.id !== user.id))
+    const data = await res.json().catch(() => ({ ok: false, error: 'No answer from the server.' }))
+    if (!data.ok) { alert(data.error || 'That did not work.'); return }
+    setUsers(users.map(u => u.id === user.id ? { ...u, active: !archive } : u))
   }
 
   // A LOST LAPTOP CARRIES A TRUSTED BROWSER. 21 Oct 2026, the same ship as the
@@ -388,21 +396,24 @@ export default function TeamSection() {
                   className="text-xs px-3 py-1 rounded-lg border border-info-edge text-brand-ink hover:bg-info-bg transition disabled:opacity-50">
                   {resendingId === user.id ? 'Sending...' : resendMsg[user.id] || 'Resend invite'}
                 </button>
-                <button onClick={() => toggleActive(user.id, user.active)}
-                  className={`text-xs px-3 py-1 rounded-lg border transition ${user.active ? 'border-red-200 text-red-400 hover:bg-red-50' : 'border-green-200 text-green-500 hover:bg-green-50'}`}>
-                  {user.active ? 'Deactivate' : 'Activate'}
+                <button onClick={() => setArchived(user, user.active)}
+                  title={user.active
+                    ? 'Signs them out everywhere and stops them signing in. Nothing is deleted.'
+                    : 'Lets them sign in again.'}
+                  className={`text-xs px-3 py-1 rounded-lg border transition ${user.active
+                    ? 'border-card-line text-muted hover:bg-page'
+                    : 'border-done-edge text-done hover:bg-done-bg'}`}>
+                  {user.active ? 'Archive' : 'Bring back'}
                 </button>
                 <button onClick={() => signOutEverywhere(user)}
                   title="Throw away every browser this person has trusted. They will need a code next time."
                   className="text-xs px-3 py-1 rounded-lg border border-card-line text-muted hover:bg-page transition">
                   Sign out everywhere
                 </button>
-                {!user.active && (
-                  <button onClick={() => handleDelete(user)}
-                    className="text-xs px-3 py-1 rounded-lg border border-red-300 text-red-600 hover:bg-red-100 transition font-medium">
-                    Delete
-                  </button>
-                )}
+                {/* NO DELETE BUTTON. 18 Nov 2026 - it threw a database error on
+                    anybody who had ever touched a deal, which is everybody, and
+                    the only way it could have succeeded was by taking somebody's
+                    name off their own work. Archive is the answer, above. */}
                 <button onClick={() => {
                     const opening = accessId !== user.id
                     setAccessId(opening ? user.id : null)

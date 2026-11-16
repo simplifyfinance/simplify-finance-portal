@@ -559,12 +559,33 @@ export function shortDate(iso: any): string {
   return d.toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short' })
 }
 
-/** "Asked 14 Oct · 14 days", or empty where this is the first time. */
+/**
+ * NOTHING IS OVERDUE ON THE DAY IT WAS ASKED.
+ *
+ * 18 Nov 2026. Catherine, on an email that went out this morning: "Any chance
+ * we can remove the highlighted bits... just feels very aggressive. Especially
+ * when we went from BC to LO so she has never been asked this before. Plus its
+ * literally today and we are asking for them."
+ *
+ * Every question carried "Asked 16 Nov · 0 days" on the first email a client
+ * ever saw, because the ask is marked the moment it goes out and the line was
+ * drawn whenever a mark existed. A stamp saying nothing has been waiting is a
+ * stamp that only sounds like an accusation.
+ */
 export function askedLine(deal: any, key: string, today = new Date()): string {
   const at = markFor(deal, key).askedAt
   if (!txt(at)) return ''
   const days = daysSince(at, today)
-  return `Asked ${shortDate(at)}${days === null ? '' : ` · ${days} ${days === 1 ? 'day' : 'days'}`}`
+  if (days === null || days < 1) return ''
+  return `Asked ${shortDate(at)} · ${days} ${days === 1 ? 'day' : 'days'}`
+}
+
+/** Asked, and asked long enough ago to be worth mentioning. */
+function waitingOn(deal: any, key: string, today: Date): boolean {
+  const at = markFor(deal, key).askedAt
+  if (!txt(at)) return false
+  const days = daysSince(at, today)
+  return days !== null && days >= 1
 }
 
 /**
@@ -575,7 +596,8 @@ export function askedLine(deal: any, key: string, today = new Date()): string {
  */
 export function blockHeading(deal: any, going: Question[], today = new Date()): string {
   if (!going.length) return ''
-  const again = going.filter(q => txt(markFor(deal, q.key).askedAt)).length
+  // ASKED TODAY IS A FIRST ASK. See askedLine() above.
+  const again = going.filter(q => waitingOn(deal, q.key, today)).length
   if (!again) return 'A few things I still need from you'
   if (again === going.length) {
     return again === 1 ? 'Still waiting on one thing' : `Still waiting on ${again} things`
@@ -583,14 +605,30 @@ export function blockHeading(deal: any, going: Question[], today = new Date()): 
   return 'A few things I still need from you'
 }
 
+/**
+ * THE LEAD LINE, AND IT GROWS WITH THE WAIT, NOT WITH THE TEMPER.
+ *
+ * It used to say "I cannot submit without them" on every repeat ask, including
+ * one sent the same morning as the first. That sentence is true and it is the
+ * last thing to reach for, not the first - 18 Nov 2026, Catherine: "just feels
+ * very aggressive."
+ *
+ * A day or two is a nudge. A week is worth saying what it is holding up.
+ */
 export function blockLead(deal: any, going: Question[], today = new Date()): string {
-  const again = going.filter(q => txt(markFor(deal, q.key).askedAt))
+  const again = going.filter(q => waitingOn(deal, q.key, today))
   if (!again.length) return 'These take a minute and you can answer straight back to this email.'
   const oldest = again
     .map(q => txt(markFor(deal, q.key).askedAt))
     .sort()[0]
-  return `I asked about ${again.length === 1 ? 'this' : 'these'} on ${shortDate(oldest)}`
-    + ' — I cannot submit without them.'
+  const days = daysSince(oldest, today) ?? 0
+  const these = again.length === 1 ? 'this' : 'these'
+  if (days < 7) {
+    return `I asked about ${these} on ${shortDate(oldest)} — just a nudge in case it slipped past.`
+  }
+  return `I asked about ${these} on ${shortDate(oldest)}`
+    + `, and ${again.length === 1 ? 'it is the last thing' : 'they are the last things'}`
+    + ' I need before I can submit.'
 }
 
 // ---------------------------------------------------------------------------
