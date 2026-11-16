@@ -117,7 +117,12 @@ export default function SetHerOrder({ officerId, name, plan, deals, me, onDone,
         </p>
       )}
 
-      <div className={framed ? '' : 'max-h-[232px] overflow-y-auto'}>
+      {/* HER ORDER HAS ITS OWN SCROLL, AND SO DO HER OTHER OPEN FILES.
+          18 Nov 2026, Fabio: "you're actually scrolling the whole sides for
+          Melissa and Katie on both sections... That should be independent from
+          each other." Two boxes, two scrollbars, neither moving the other -
+          and the chapter is the same height either way. */}
+      <div className={framed ? '' : 'max-h-[268px] overflow-y-auto'}>
       {chosen.map((d, i) => (
         <div key={d.id} className="flex items-center gap-2.5 border-b border-line-soft py-1.5
                                    text-[13px] last:border-b-0">
@@ -158,7 +163,7 @@ export default function SetHerOrder({ officerId, name, plan, deals, me, onDone,
       {rest.length > 0 && (
         <div className={framed
           ? 'mt-2.5 max-h-[150px] overflow-y-auto rounded-[10px] border border-line bg-page px-2.5 py-1.5'
-          : 'mt-2.5 max-h-[268px] overflow-y-auto rounded-[10px] border border-line bg-page px-2.5 py-1.5'}>
+          : 'mt-2.5 max-h-[296px] overflow-y-auto rounded-[10px] border border-line bg-page px-2.5 py-1.5'}>
           <div className="pb-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-faint">
             Her other open files
           </div>

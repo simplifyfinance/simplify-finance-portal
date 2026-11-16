@@ -7,7 +7,7 @@ import { monthOf, monthName, money } from '@/lib/the-month-so-far'
 import {
   sliceFor, businessMonths, againstTarget, bucketOf, type MonthSlice,
 } from '@/lib/the-settlements-month'
-import { stepOf, isOverdue, daysOnStep, STEP_LABEL, workdaysBetween } from '@/lib/the-seven-steps'
+import { stepOf, isOverdue, daysOnStep, workdaysBetween, pastChaseWords } from '@/lib/the-seven-steps'
 import { settlementSettings, SETTLEMENT_DEFAULTS } from '@/lib/settlement-settings'
 import { amountOf } from '@/lib/deal-phase'
 import { howManyPlanned, plannedWords } from '@/lib/the-settlement-day'
@@ -197,26 +197,35 @@ export default function SettlementsBand({ deals, brokerRows }: {
       <div className="flex gap-4 items-start flex-wrap lg:flex-nowrap pb-24">
         <div className="flex-1 min-w-[380px]">
           <div className="bg-card border-2 border-brand-ink rounded-xl px-4 py-3 mb-3">
-            <div className={CAP}>Settlements stuck
+            {/* NOT "STUCK". 18 Nov 2026, Fabio: "what does settlement stuck
+              * means? I hate that word, and I want to know what defines a deal
+              * to be there." It is a clock passing a number he set, so the box
+              * is named after the clock and every row shows the number. */}
+            <div className={CAP}>Past their chase time
               <span className="ml-auto font-normal tracking-normal normal-case text-[11.5px] text-faint">
-                {stuck.length === 0 ? 'nothing' : `${stuck.length} past its chase time`}
+                {stuck.length === 0 ? 'nothing' : `${stuck.length} deal${stuck.length === 1 ? '' : 's'}`}
               </span>
             </div>
             {stuck.length === 0 ? (
               <p className="text-[12.5px] text-faint m-0">
                 Nothing has been sitting longer than it should.
               </p>
-            ) : stuck.map(({ d, days }) => (
-              <Link key={d.id} href={`/deals/${d.id}`}
-                className="flex items-center gap-3 py-1.5 border-t border-line-soft first:border-0 text-[12.5px] hover:bg-page">
-                <span className="font-bold flex-1 min-w-0 truncate">{d.deal_name || 'Unnamed deal'}</span>
-                <span className="text-muted text-[11.5px]">{d.assigned_broker || ''}</span>
-                <span className="rounded-full border border-info-edge bg-info-bg text-brand-ink px-2 py-[1px] text-[10px] font-bold whitespace-nowrap">
-                  {STEP_LABEL[stepOf(d)!]}
-                </span>
-                <span className="font-extrabold whitespace-nowrap">{days} days</span>
-              </Link>
-            ))}
+            ) : (
+              /* A FIXED BOX. The chapter is the same height whether this is one
+                 deal or thirty - see the house rule: scroll inside, never taller. */
+              <div className="max-h-[188px] overflow-y-auto">
+                {stuck.map(({ d, days }) => (
+                  <Link key={d.id} href={`/deals/${d.id}`}
+                    className="flex items-center gap-3 py-1.5 border-t border-line-soft first:border-0 text-[12.5px] hover:bg-page">
+                    <span className="font-bold flex-1 min-w-0 truncate">{d.deal_name || 'Unnamed deal'}</span>
+                    <span className="text-muted text-[11.5px]">{d.assigned_broker || ''}</span>
+                    <span className="text-[11px] text-faint whitespace-nowrap">
+                      {pastChaseWords(stepOf(d)!, days, chase.chase[stepOf(d)!])}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="bg-card border border-card-line rounded-xl px-4 py-3">
@@ -229,14 +238,18 @@ export default function SettlementsBand({ deals, brokerRows }: {
               <p className="text-[12.5px] text-faint m-0">
                 Everything left this month has a confirmed date.
               </p>
-            ) : notBooked.map(({ d, amount }) => (
-              <Link key={d.id} href={`/deals/${d.id}`}
-                className="flex items-center gap-3 py-1.5 border-t border-line-soft first:border-0 text-[12.5px] hover:bg-page">
-                <span className="font-bold flex-1 min-w-0 truncate">{d.deal_name || 'Unnamed deal'}</span>
-                <span className="text-muted text-[11.5px] truncate">{d.lender || ''}</span>
-                <span className="font-extrabold whitespace-nowrap">{money(amount)}</span>
-              </Link>
-            ))}
+            ) : (
+              <div className="max-h-[188px] overflow-y-auto">
+                {notBooked.map(({ d, amount }) => (
+                  <Link key={d.id} href={`/deals/${d.id}`}
+                    className="flex items-center gap-3 py-1.5 border-t border-line-soft first:border-0 text-[12.5px] hover:bg-page">
+                    <span className="font-bold flex-1 min-w-0 truncate">{d.deal_name || 'Unnamed deal'}</span>
+                    <span className="text-muted text-[11.5px] truncate">{d.lender || ''}</span>
+                    <span className="font-extrabold whitespace-nowrap">{money(amount)}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
             {slice.forecast > 0 && (
               <p className="text-[11px] text-faint mt-2.5 mb-0 leading-snug">
                 {money(slice.forecast)} more sits behind this in {slice.forecastCount} pre-formal
@@ -266,6 +279,7 @@ export default function SettlementsBand({ deals, brokerRows }: {
                     {n.said} of {n.team} have said
                   </span>
                 </div>
+                <div className="max-h-[150px] overflow-y-auto">
                 {rows.map(r => (
                   <div key={r.id}
                     className={`rounded-lg px-3 py-2 mb-1.5 last:mb-0 border-l-4 ${
@@ -283,6 +297,7 @@ export default function SettlementsBand({ deals, brokerRows }: {
                     </div>
                   </div>
                 ))}
+                </div>
               </div>
             )
           })()}

@@ -74,6 +74,26 @@ export const STEP_MEANS: Record<Step, string> = {
  * because the date is accepted and we are waiting for a day to arrive, the
  * second because it is finished.
  */
+/**
+ * WHY THIS DEAL IS ON THE LIST, IN ONE LINE.
+ *
+ * 18 Nov 2026. The box was called "Settlements stuck" and Fabio: "what does
+ * settlement stuck means? I hate that word, and I want to know what defines a
+ * deal to be there."
+ *
+ * Nothing about it is a judgement. A clock passed a number somebody set in
+ * Settings, so the row says which step, how long it has sat, and the number it
+ * went past - and nobody has to ask again.
+ */
+export function pastChaseWords(step: Step, days: number, limit: number | null): string {
+  const d = Math.max(0, Math.round(days))
+  const label = STEP_LABEL[step]
+  const n = `${d} business day${d === 1 ? '' : 's'}`
+  return limit === null || limit === undefined
+    ? `${label} · ${n}`
+    : `${label} · ${n}, chase at ${limit}`
+}
+
 export const DEFAULT_CHASE: Record<Step, number | null> = {
   formal: 2,
   contracts_issued: 2,

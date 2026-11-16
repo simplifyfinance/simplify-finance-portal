@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest'
 import {
   STEPS, STEP_LABEL, STEP_MEANS, DEFAULT_CHASE, BOARD_COLUMN,
   isStep, stepOf, stepIndex, reached, workdaysBetween, daysOnStep, isOverdue,
-  movePatch, cannotMoveBecause,
+  movePatch, cannotMoveBecause, pastChaseWords,
 } from './the-seven-steps'
 
 const on = (step: any, at: string, over: any = {}) =>
@@ -196,5 +196,29 @@ describe('the one thing that refuses', () => {
       if (s === 'settlement_booked') continue
       expect(cannotMoveBecause({}, s), `${s} is blocking somebody`).toBe('')
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// WHY A DEAL IS PAST ITS CHASE TIME, IN WORDS.
+//
+// 18 Nov 2026. "I hate that word, and I want to know what defines a deal to be
+// there." The row has to answer that on its own.
+describe('past its chase time, said out loud', () => {
+  it('names the step, the wait and the number it passed', () => {
+    expect(pastChaseWords('contracts_issued', 9, 2))
+      .toBe('Contracts issued · 9 business days, chase at 2')
+  })
+
+  it('says one day without an s', () => {
+    expect(pastChaseWords('outstandings', 1, 2)).toBe('Outstandings · 1 business day, chase at 2')
+  })
+
+  it('leaves the number off a step that is never chased', () => {
+    expect(pastChaseWords('settlement_booked', 4, null)).toBe('Settlement booked · 4 business days')
+  })
+
+  it('never shows a negative wait', () => {
+    expect(pastChaseWords('formal', -3, 2)).toBe('Formal · 0 business days, chase at 2')
   })
 })

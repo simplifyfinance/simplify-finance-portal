@@ -43,7 +43,7 @@ const WEEK_MARK = 'text-[11px] font-bold rounded-lg border px-2 py-[2px] whitesp
 export default function RunThrough({
   deals, brokerNames, brokerRows, secondTeam = 'Simplify Finance Brokers',
   target: savedTarget, canSetTarget = false, firstTeam = 'Simplify Finance',
-  team = [], settling = [], overloaded = null, stuckPushes = [], weekDone = {},
+  team = [], overloaded = null, stuckPushes = [], weekDone = {},
   meName = '',
   todayWords = '', now,
 }: {
@@ -67,8 +67,6 @@ export default function RunThrough({
                  plan?: any
                  /** Her open files, which is what an order is chosen from. */
                  openDeals?: Array<{ id: string; deal_name?: string; where?: string }> }>
-  /** What is settling this week, for the box under it. */
-  settling?: Array<{ id: string; name: string; day: string; amount: number }>
   /** Named only when one assessor is carrying far more than the rest. */
   overloaded?: { name: string; open: number; average: number; unplanned: boolean } | null
   /** Deals pushed to SalesTrekker over an hour ago that never arrived. */
@@ -552,14 +550,13 @@ export default function RunThrough({
       )}
       </div>
 
-      {/* THE TEAM, BESIDE THE MEETING. The box Fabio kept from the old page:
-        * who has told management their day, and what is settling. */}
+      {/* THE TEAM, BESIDE THE MEETING. One box: who has told management their
+        * day. What is settling belongs to the Settlements chapter. */}
       <div className="w-full lg:w-[316px] lg:flex-none">
-        {/* ALWAYS ON THE PAGE. 13 Nov 2026, Fabio: "settling this week box??
-          * WHERE IS THIS box - if no deal, no deals, but box is there." An
-          * empty box tells you nothing is settling, which is worth knowing. A
-          * missing box tells you nothing at all, and makes the page move
-          * around week to week. */}
+        {/* ALWAYS ON THE PAGE, EVEN WITH NOBODY IN CREDIT. 13 Nov 2026, on the
+          * box that used to sit under this one: "if no deal, no deals, but box
+          * is there." A missing box tells you nothing at all and makes the page
+          * move around week to week. */}
         {(
           <div className="bg-card border border-card-line rounded-xl px-4 py-3.5 mb-3">
             <div className={`${CAP} mb-3 flex items-center gap-2`}>
@@ -624,22 +621,12 @@ export default function RunThrough({
           </div>
         )}
 
-        {(
-          <div className="bg-card border border-card-line rounded-xl px-4 py-3.5">
-            <div className={`${CAP} mb-2`}>Settling this week</div>
-            {settling.length === 0 ? (
-              <div className="text-[12px] text-faint">Nothing is booked to settle this week.</div>
-            ) : settling.map(x => (
-              <div key={x.id}
-                className="flex items-center gap-2.5 py-2 border-b border-line-soft last:border-b-0">
-                <Link href={`/deals/${x.id}`}
-                  className="flex-1 text-[13px] font-semibold hover:underline truncate">{x.name}</Link>
-                <span className="text-[11px] text-faint">{x.day}</span>
-                <span className="text-[13px] font-bold tabular-nums">{money(x.amount)}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* SETTLING THIS WEEK IS NOT A LODGING QUESTION.
+          * 18 Nov 2026. Fabio: "why is settling this week showing there when we
+          * also have a settlements tab?" It was the last survivor of the old
+          * admin page, and the Settlements chapter below - and the settlements
+          * screen itself - both answer it properly. Two answers to one question
+          * is how two screens start to disagree. */}
       </div>
       </div>
     </div>

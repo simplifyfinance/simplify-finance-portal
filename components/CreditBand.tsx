@@ -1,4 +1,6 @@
 'use client'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import SetHerOrder from '@/components/SetHerOrder'
 import { seenState } from '@/lib/the-order-from-above'
@@ -38,6 +40,28 @@ export default function CreditBand({ team, overloaded, me }: {
 }) {
   const s = creditMorning(team)
   const now = new Date()
+  const router = useRouter()
+
+  // TWO PEOPLE, ONE QUEUE.
+  //
+  // 18 Nov 2026. Fabio, comparing his screen with Catherine's: "the point of
+  // the TODAY page is for us to work collaboratively." The figures matched -
+  // but only because both tabs had just been opened. Reorder Katie's list from
+  // one screen and the other keeps yesterday's order with nothing to say so.
+  //
+  // SO THE CHAPTER RE-READS ITSELF. Ninety seconds, and only while the tab is
+  // actually being looked at - a background tab costs the database a thousand
+  // rows for nobody. router.refresh() re-runs the server component and leaves
+  // scroll position and anything half-typed alone.
+  useEffect(() => {
+    const tick = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        router.refresh()
+      }
+    }
+    const id = setInterval(tick, 90_000)
+    return () => clearInterval(id)
+  }, [router])
 
   // NO ASSESSORS, NO BAR. An empty black bar is furniture.
   if (team.length === 0) return null

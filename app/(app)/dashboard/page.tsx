@@ -331,28 +331,6 @@ export default async function Dashboard(
       at: String(latestPush(d.push_log)?.at || ''),
     }))
 
-  // THIS WEEK'S SETTLEMENTS, by the date the settlements team confirmed, and
-  // only the ones that have not already settled.
-  const weekStart = new Date(today + 'T00:00:00')
-  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7))
-  const weekEnd = new Date(weekStart)
-  weekEnd.setDate(weekEnd.getDate() + 7)
-  const settlingThisWeek = (deals || [])
-    .map((d: any) => ({ d, when: d.confirmed_settlement_date || d.expected_settlement_date }))
-    .filter(({ d, when }) => {
-      if (!when || d.settled_at || d.status === 'lost') return false
-      const t = new Date(String(when) + 'T00:00:00').getTime()
-      return t >= weekStart.getTime() && t < weekEnd.getTime()
-    })
-    .sort((a, b) => String(a.when).localeCompare(String(b.when)))
-    .slice(0, 6)
-    .map(({ d, when }) => ({
-      id: d.id as string,
-      name: `${d.clients?.last_name || d.deal_name || ''}${d.clients?.first_name ? ', ' + d.clients.first_name[0] : ''}`,
-      day: new Date(String(when) + 'T00:00:00').toLocaleDateString('en-AU', { timeZone: OFFICE, weekday: 'short' }),
-      amount: Number(d.loan_amount) || 0,
-    }))
-
   return (
     <>
     <div className="px-6 pt-6">
@@ -431,7 +409,6 @@ export default async function Dashboard(
           meName={profile?.full_name || ''}
           todayWords={todayWords}
           team={creditToday}
-          settling={settlingThisWeek}
           overloaded={overloaded}
           stuckPushes={stuckPushes}
           weekDone={weekDone}
