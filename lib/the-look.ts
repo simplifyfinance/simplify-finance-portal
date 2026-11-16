@@ -33,6 +33,9 @@ export type Piece = {
 export const MOCKS = 'docs/approved-looks'
 
 const V4 = 'one-inside-the-deal-v4.html'
+const BOARD_MOCK = 'the-board-with-bars.html'
+const BOARD = 'components/DealBoard.tsx'
+const LANES_FILE = 'lib/the-board-columns.ts'
 const PAGE = 'app/(app)/deals/[id]/DealPageClient.tsx'
 const RAIL = 'components/DealRail.tsx'
 const CARDS = 'components/DealTabCards.tsx'
@@ -165,6 +168,36 @@ export const THE_LOOK: Piece[] = [
   // afternoon, where the fix was already live and the tab was not.
   { mock: 'one-new-version.html', piece: 'A newer version is deployed: the line in the sidebar',
     proof: { file: 'components/NewVersion.tsx', contains: 'NEW VERSION READY' } },
+
+  // ---- the board, approved 18 Nov 2026 -------------------------------------
+  //
+  // The look and feel is built in two steps on purpose. The columns and the
+  // bars are the shape of the board and need nothing new to exist. The CARD
+  // COLOURS need a colour against each credit officer, which is a screen in
+  // Settings and a column that is not there yet - so those pieces are null
+  // here until the day they are built, which is what this list is for.
+  { mock: BOARD_MOCK, piece: 'Fourteen columns: the written half split by who we are waiting on',
+    proof: { file: LANES_FILE, contains: "key: 'bc_client'" } },
+  { mock: BOARD_MOCK, piece: 'Nothing past lodgement collapsed - six columns, sub-tabs and all',
+    proof: { file: LANES_FILE, contains: "key: 'settlement_booked'" } },
+  { mock: BOARD_MOCK, piece: 'A dark bar over each stage, with the stage name centred',
+    proof: { file: BOARD, contains: 'THE DARK BAR' } },
+  { mock: BOARD_MOCK, piece: 'With the lender is not the same colour as To settlement',
+    proof: { file: LANES_FILE, contains: 'lender:     ' } },
+  { mock: BOARD_MOCK, piece: 'Settled keeps its own bar and its own column',
+    proof: { file: LANES_FILE, contains: "{ title: 'Settled'" } },
+  { mock: BOARD_MOCK, piece: 'Newest card on top, every column, always',
+    proof: { file: BOARD, contains: 'NEWEST ON TOP, EVERY COLUMN, ALWAYS' } },
+  { mock: BOARD_MOCK, piece: 'The card lifts when you hover it',
+    proof: { file: BOARD, contains: 'hover:-translate-y-[2px]' } },
+  { mock: BOARD_MOCK, piece: 'Each column scrolls its own cards under a head that stays put',
+    proof: { file: BOARD, contains: 'EVERYTHING ABOVE THIS LINE STAYS PUT' } },
+  { mock: BOARD_MOCK, piece: 'The card wears the colour of whoever in credit owns it', proof: null },
+  { mock: BOARD_MOCK, piece: 'A card is blank until it is allocated to credit', proof: null },
+  { mock: BOARD_MOCK, piece: 'Green takes over the card once the client agrees to proceed', proof: null },
+  { mock: BOARD_MOCK, piece: 'Every card the same height, whatever is on it', proof: null },
+  { mock: BOARD_MOCK, piece: 'Chasing is a small red chip, never the whole card', proof: null },
+  { mock: BOARD_MOCK, piece: 'Each credit officer has a colour, set in Settings', proof: null },
 ]
 
 export const built = (p: Piece) => p.proof !== null

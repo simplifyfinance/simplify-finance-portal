@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { phaseOf, phaseSince, amountOf, PHASE_LABEL, PHASE_ORDER, moveBack, placedByHand, PHASE_UNDO_LABEL, PHASE_UNDO_WARNING, type Phase } from '@/lib/deal-phase'
+import { phaseOf, amountOf, PHASE_LABEL, PHASE_ORDER, moveBack, PHASE_UNDO_LABEL, PHASE_UNDO_WARNING, type Phase } from '@/lib/deal-phase'
 import { stageAge, ageGroupOf } from '@/lib/deal-age'
 import { chipsFor, brokerColour, chipStyle, dealTitle } from '@/lib/deal-labels'
 import { CREDIT_GREY, type ThresholdMap } from '@/lib/board-settings'
@@ -14,7 +14,10 @@ import { whoHasIt, holderLabel } from '@/lib/who-has-it'
 import type { Alert } from '@/lib/deal-notes'
 import DealPeek from '@/components/DealPeek'
 import { brokerKey as keyOf } from '@/lib/broker-key'
-import { bcLanes, sentOn } from '@/lib/bc-lanes'
+import { sentOn } from '@/lib/bc-lanes'
+// THE BOARD IS A VIEW, NOT A PLACE A DEAL IS KEPT. A column is the stage
+// plus who we are waiting on, and both of those already exist.
+import { GROUPS, TONE_INK, laneOf, newestFirst, type Group } from '@/lib/the-board-columns'
 import { paneHeight, dragScrollBy } from '@/lib/board-pane'
 import { columnCountLabel } from '@/lib/board-filters'
 import {
@@ -33,19 +36,37 @@ import { OFFICE } from '@/lib/same-date-everywhere'
 // splits, or the commission history is destroyed) the drag opens that panel
 // rather than writing a half-record.
 
-// Twelve. Offer accepted, Contracts returned and Settlement booked were added on
-// 2 Sep 2026 - the first was a whole process inside Preapproved that the board
-// could not see, and the other two were an enum buried in the Settlement panel.
+// FOURTEEN COLUMNS, IN SIX GROUPS, AND NOT ONE OF TODAY'S IS GONE.
 //
-// Twelve columns do not fit on a laptop and are not meant to: the board scrolls,
-// every column keeps its full width, and each person folds away the ones they do
-// not use. Fabio, 2 Sep 2026: "12 no issues same sixe just make sure we cna go
-// back and forwards oin the screen".
-const COLUMNS: Phase[] = [
-  'fact_find', 'bc', 'lo', 'compliance', 'compliance_sent',
-  'lodged', 'preapproved', 'offer_accepted', 'formal',
-  'contracts_returned', 'settlement_booked', 'settled',
-]
+// 18 Nov 2026. Everything up to lodgement splits by who we are waiting on -
+// Fabio: "there will be a BC with credit, which is where we're actioning. And
+// then next to it... BC with client, where the client is deciding." Compliance
+// sent stops being a column of its own and becomes the client half of
+// Compliance, which is what it always was.
+//
+// NOTHING PAST LODGEMENT CHANGES. Fabio, when an early mock collapsed it:
+// "you dont collapse anything after lodged remeber we just built a whole
+// settlment process". Those six columns are exactly as they were, sub-tabs and
+// all. What is new above them is the black bar, which groups them into the
+// three things they are: a bank deciding, a team working to a date, and done.
+//
+// The list and the order live in lib/the-board-columns.ts, which is pure and
+// tested. This file only draws it.
+const LANES = GROUPS.flatMap(g => g.lanes)
+
+// WHAT A DROP ON A COLUMN MEANS. A lane is a stage plus a holder, and only the
+// stage is ever written - which is why dropping a card on "with client" and on
+// "with credit" mean the same thing, and why a card cannot be dragged sideways
+// between them. Who is holding a deal up is worked out, never set by hand.
+const LANE_PHASE: Record<string, Phase> = {
+  lead: 'fact_find',
+  bc_us: 'bc', bc_client: 'bc',
+  lo_us: 'lo', lo_client: 'lo',
+  comp_us: 'compliance', comp_client: 'compliance_sent',
+  lodged: 'lodged', preapproved: 'preapproved', offer_accepted: 'offer_accepted',
+  formal: 'formal', contracts_returned: 'contracts_returned',
+  settlement_booked: 'settlement_booked', settled: 'settled',
+}
 
 const OPEN_W = 248        // an open column, wide enough for a card
 const SHUT_W = 38         // a folded one: the count, the name, and nothing else
@@ -133,7 +154,9 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
   // The settlement chase times, for the dot on a sub-tab.
   const settlementChase = useSettlementSettings()
   const [dragging, setDragging] = useState<string>('')
-  const [over, setOver] = useState<Phase | ''>('')
+  // Which column the card is over. A lane key, not a stage - two columns can
+  // share a stage and they must light up one at a time.
+  const [over, setOver] = useState<string>('')
 
   // HOW TALL THE BOARD IS, MEASURED RATHER THAN GUESSED.
   //
@@ -165,31 +188,29 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
   const [msg, setMsg] = useState('')
   // Which card is being looked at, and which column it sits in — so the arrow
   // keys can walk along that column without closing.
-  const [peeking, setPeeking] = useState<{ id: string; phase: Phase } | null>(null)
+  const [peeking, setPeeking] = useState<{ id: string; phase: string } | null>(null)
   // A backwards drop, waiting to be confirmed.
   const [undoing, setUndoing] = useState<{ deal: any; target: Phase; clearing: Phase[]; fields: string[] } | null>(null)
   const [undoBusy, setUndoBusy] = useState(false)
 
   const byColumn = useMemo(() => {
     const m: Record<string, any[]> = {}
-    for (const p of COLUMNS) m[p] = []
+    for (const l of LANES) m[l.key] = []
     if (showLost) m['lost'] = []
     for (const d of deals) {
-      const p = phaseOf(d)
       // Dead deals are off the board unless somebody has asked to see them.
-      if (p === 'lost' && !showLost) continue
-      if (m[p]) m[p].push(d)
+      if (phaseOf(d) === 'lost') { if (showLost) m['lost'].push(d); continue }
+      const k = laneOf(d)
+      if (k && m[k]) m[k].push(d)
     }
-    // Urgent first, then oldest - the top of a column is the thing to do first,
-    // and somebody asking for a deal by Friday outranks a deal that has simply
-    // been sitting. The flag ends at lodgement, so this settles itself.
-    for (const p of Object.keys(m)) {
-      m[p].sort((a, b) => {
-        const ua = isUrgentNow(a) ? 0 : 1, ub = isUrgentNow(b) ? 0 : 1
-        if (ua !== ub) return ua - ub
-        return String(phaseSince(a) || '').localeCompare(String(phaseSince(b) || ''))
-      })
-    }
+    // NEWEST ON TOP, EVERY COLUMN, ALWAYS.
+    //
+    // 18 Nov 2026, Fabio: "deal cards are always saved in chronological order".
+    // Asked directly whether an urgent deal should still jump the queue he
+    // chose one rule with no exceptions. An urgent deal still wears its chip;
+    // it just does not move. A card whose position nobody can explain is a
+    // board whose order nobody trusts.
+    for (const p of Object.keys(m)) m[p] = newestFirst(m[p])
     return m
   }, [deals, showLost])
 
@@ -203,9 +224,9 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
     if (!allDeals || allDeals.length === deals.length) return null
     const m: Record<string, number> = {}
     for (const d of allDeals) {
-      const p = phaseOf(d)
-      if (p === 'lost' && !showLost) continue
-      m[p] = (m[p] || 0) + 1
+      if (phaseOf(d) === 'lost') { if (showLost) m['lost'] = (m['lost'] || 0) + 1; continue }
+      const k = laneOf(d)
+      if (k) m[k] = (m[k] || 0) + 1
     }
     return m
   }, [allDeals, deals, showLost])
@@ -213,7 +234,7 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
   // "3/6" while a filter is on, "3" when nothing is. The wording itself lives
   // in lib/board-filters.ts, so the column, the folded strip and the bar cannot
   // disagree about how a filtered count reads.
-  const countLabel = (p: Phase | 'lost', n: number) =>
+  const countLabel = (p: string, n: number) =>
     columnCountLabel(n, totalByColumn ? (totalByColumn[p] || 0) : null)
 
   function onDrop(target: Phase) {
@@ -233,7 +254,7 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
       return
     }
 
-    const fi = COLUMNS.indexOf(from), ti = COLUMNS.indexOf(target)
+    const fi = PHASE_ORDER.indexOf(from), ti = PHASE_ORDER.indexOf(target)
 
     // BACKWARDS.
     //
@@ -269,16 +290,42 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
       setMsg('Compliance sent is set by sending the compliance pack, not by dragging. Open the deal and push to SalesTrekker.')
       return
     }
-    // Every remaining step writes a snapshot of the loan as it stood - lender,
-    // total, and every split. Dragging cannot invent those, so it opens the panel
-    // that asks for them. This is the button, reached a different way.
-    setMsg('')
-    router.push(`/deals/${deal.id}?stage=Compliance#settlement`)
+    // DRAGGING FORWARD HAS NEVER MOVED A DEAL, AND NOW IT SAYS SO.
+    //
+    // Every step forward writes a snapshot of the loan as it stood - lender,
+    // total, every split - and a drag has none of that to save. So this used
+    // to carry you off to the settlement panel instead. Two things were wrong
+    // with that. It went to the SAME panel wherever the card was dropped, so
+    // dragging a new lead into BC opened a lodgement form. And it moved you
+    // off the board with no warning, onto a deal page - which is how a fault
+    // on another screen came to look like dragging had broken something.
+    //
+    // Fabio, 18 Nov 2026, with a screenshot of a tab that would not draw:
+    // "can we ensure it just doest move and no errors?"
+    //
+    // So it does nothing at all now. The card stays where it is and the board
+    // says in words what actually moves a deal forward.
+    setMsg(`${PHASE_LABEL[target]} is recorded on the deal itself, not by dragging. `
+      + 'A step forward saves the lender, the total and every split as they stood, '
+      + 'and a drag has none of that to save. Open the deal and use the button.')
   }
 
-  const columns: Phase[] = showLost ? [...COLUMNS, 'lost' as Phase] : COLUMNS
+  // THE BARS, AND THE COLUMNS UNDER EACH ONE. Lost is its own group when
+  // somebody has asked to see it, and nothing can be dragged into or out of it.
+  const bars: Group[] = showLost
+    ? [...GROUPS, { title: 'Lost', tone: 'settled', lanes: [{ key: 'lost', label: 'Lost' }] }]
+    : GROUPS
+  const columns: string[] = bars.flatMap(g => g.lanes.map(l => l.key))
   const shutCount = columns.filter(p => folds.includes(p)).length
   const openCount = columns.length - shutCount
+  /** The stage a drop on this column means. */
+  const phaseFor = (key: string): Phase => LANE_PHASE[key] || (key as Phase)
+  /** Which bar this column sits under, for the square on its head. */
+  const toneOf = (key: string): Group['tone'] =>
+    bars.find(g => g.lanes.some(l => l.key === key))?.tone || 'settled'
+  /** What this column is called. The lane knows; 'lost' is not a lane. */
+  const nameOf = (key: string): string =>
+    LANES.find(l => l.key === key)?.label || PHASE_LABEL[key as Phase] || key
 
   return (
     <div>
@@ -376,9 +423,34 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
         }}
         style={paneH === null ? undefined : { height: paneH }}
         className={`overflow-x-auto pb-2 ${paneH === null ? '' : 'overflow-y-hidden'}`}>
-        <div className={`flex gap-2.5 ${paneH === null ? 'items-start' : 'items-stretch h-full'}`}
-          style={{ minWidth: openCount * OPEN_W + shutCount * SHUT_W + (columns.length - 1) * GAP }}>
-          {columns.map(p => {
+        <div className={`flex gap-[18px] ${paneH === null ? 'items-start' : 'items-stretch h-full'}`}
+          style={{ minWidth: openCount * OPEN_W + shutCount * SHUT_W + (columns.length - 1) * GAP + bars.length * 8 }}>
+          {bars.map(g => {
+          // THE DARK BAR. Fabio chose it over a coloured tab and a spine:
+          // "Number one, dark bar." It is the same black band the Today page
+          // wears, so the two screens read as one portal.
+          //
+          // It carries the stage's own colour as a square and nothing else
+          // coloured - a bar in the stage's colour would have put six strong
+          // colours across the top of the board and left the cards with
+          // nothing to say with.
+          const mine = g.lanes.flatMap(l => byColumn[l.key] || [])
+          const worth = mine.reduce((t, d) => t + (amountOf(d) || 0), 0)
+          return (
+            <div key={g.title}
+                 className={`flex-none flex flex-col ${paneH === null ? '' : 'h-full min-h-0'}`}>
+              <div className="mb-2.5 flex items-center gap-2.5 rounded-[11px] bg-ink px-3.5 py-2.5">
+                <span className="h-2 w-2 rounded-[2px] flex-none"
+                      style={{ background: TONE_INK[g.tone] }} />
+                <span className="text-[10.5px] font-extrabold tracking-[.13em] uppercase text-page whitespace-nowrap">
+                  {g.title}
+                </span>
+                <span className="ml-auto text-[11px] font-bold text-faint whitespace-nowrap tabular-nums">
+                  {mine.length}{worth > 0 ? ` \u00b7 ${money(worth)}` : ''}
+                </span>
+              </div>
+              <div className={`flex gap-2.5 ${paneH === null ? 'items-start' : 'items-stretch flex-1 min-h-0'}`}>
+          {g.lanes.map(l => l.key).map(p => {
             // THE COLUMN, AND THEN WHAT THE SUB-TAB IS SHOWING OF IT.
             //
             // 17 Nov 2026. Three columns gained sub-tabs because the seven
@@ -403,10 +475,10 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
             // on this today", never "this does not exist".
             if (shut) {
               return (
-                <div key={p} title={`${PHASE_LABEL[p]} - ${cards.length} deal${cards.length === 1 ? '' : 's'}${total > 0 ? ' \u00b7 ' + money(total) : ''}. Click to open.`}
+                <div key={p} title={`${nameOf(p)} - ${cards.length} deal${cards.length === 1 ? '' : 's'}${total > 0 ? ' \u00b7 ' + money(total) : ''}. Click to open.`}
                   onDragOver={e => { e.preventDefault(); setOver(p) }}
                   onDragLeave={() => setOver(o => o === p ? '' : o)}
-                  onDrop={() => onDrop(p)}
+                  onDrop={() => onDrop(phaseFor(p))}
                   onClick={() => toggle(p)}
                   style={{ width: SHUT_W }}
                   className={`flex-none rounded-xl border border-dashed flex flex-col items-center gap-2 py-2.5 cursor-pointer transition ${
@@ -418,7 +490,7 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                   </span>
                   <span className="text-[9.5px] font-bold tracking-[.06em] uppercase text-faint whitespace-nowrap"
                         style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
-                    {PHASE_LABEL[p]}
+                    {nameOf(p)}
                   </span>
                   <svg className="mt-auto text-faint" width="11" height="11" viewBox="0 0 24 24" fill="none"
                        stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -432,14 +504,16 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
               <div key={p}
                 onDragOver={e => { e.preventDefault(); setOver(p) }}
                 onDragLeave={() => setOver(o => o === p ? '' : o)}
-                onDrop={() => onDrop(p)}
+                onDrop={() => onDrop(phaseFor(p))}
                 className={`flex-1 min-w-[248px] rounded-xl border p-2.5 transition ${
                   paneH === null ? '' : 'flex flex-col min-h-0'} ${
                   over === p ? 'border-brand-ink bg-info-bg'
                   : 'border-line-soft bg-gray-50'}`}>
                 <div className="flex items-baseline gap-1.5 mb-2 px-0.5">
+                  <span className="h-[7px] w-[7px] rounded-[2px] flex-none self-center"
+                        style={{ background: TONE_INK[toneOf(p)] }} />
                   <span className="text-[10.5px] font-bold tracking-[.06em] uppercase text-muted">
-                    {PHASE_LABEL[p]}
+                    {nameOf(p)}
                   </span>
                   {/* HOW MANY, NOT THE WHOLE COLUMN.
                       One overdue deal used to turn this entire column red -
@@ -451,7 +525,7 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                       Nothing about WHICH deals are overdue changes - same
                       thresholds, same settings. */}
                   {hot > 0 && (
-                    <span title={`${hot} deal${hot === 1 ? '' : 's'} in ${PHASE_LABEL[p]} past your chase setting`}
+                    <span title={`${hot} deal${hot === 1 ? '' : 's'} in ${nameOf(p)} past your chase setting`}
                       className="text-[9.5px] font-bold tracking-[.04em] uppercase rounded-full px-[7px] py-[1px] text-chase bg-chase-bg border border-chase-edge whitespace-nowrap">
                       {hot} to chase
                     </span>
@@ -464,7 +538,7 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                       totalByColumn ? 'text-faint' : 'text-body'}`}>
                     {countLabel(p, colCards.length)}
                   </span>
-                  <button type="button" title={`Fold ${PHASE_LABEL[p]} away`}
+                  <button type="button" title={`Fold ${nameOf(p)} away`}
                     onClick={e => { e.stopPropagation(); toggle(p) }}
                     className="text-faint hover:text-body leading-none -mb-[1px]">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -538,9 +612,16 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                     is no answer. */}
                 <div className={paneH === null ? '' : 'flex-1 min-h-0 overflow-y-auto pr-0.5 -mr-0.5'}>
 
-                {/* THE BC COLUMN IS TWO LANES. See lib/bc-lanes.ts - what is
-                    still being written, and what is sitting with a client. Every
-                    other column is one list, exactly as before. */}
+                {/* THE BC COLUMN USED TO BE TWO LANES INSIDE ONE COLUMN -
+                    what was still being written above, what had gone out to
+                    the client in a blue box below. It is two columns now,
+                    which is what those lanes were always describing, so the
+                    box inside the column has gone with them.
+
+                    The reasoning has not gone anywhere. Fabio, 15 Sep 2026:
+                    "dont want the deal colour to chnage as this will be
+                    usefull later I want the surroounding to change". The
+                    surrounding is the column. */}
                 {(() => {
                   const renderCard = (d: any) => {
                   const sentLabel = p === 'bc' ? sentOn(d) : ''
@@ -584,18 +665,18 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                       onDragStart={() => setDragging(d.id)}
                       onDragEnd={() => { setDragging(''); setOver('') }}
                       onClick={() => router.push(`/deals/${d.id}`)}
-                      className={`group relative overflow-hidden border rounded-[10px] px-2.5 pt-2.5 pb-2.5 mb-2 last:mb-0 cursor-pointer transition ${wash} ${
+                      className={`group relative overflow-hidden border rounded-[10px] px-2.5 pt-2.5 pb-2.5 mb-2 last:mb-0 cursor-pointer
+                        transition hover:-translate-y-[2px] hover:shadow-[0_18px_28px_-18px_rgba(20,20,15,.45)] ${wash} ${
                         dragging === d.id ? 'opacity-40 border-brand-ink'
                         : urgent ? 'ring-2 ring-chase-bg' : ''}`}>
 
-                      {placedByHand(d) && (
-                        <div className="mb-1.5 mr-[50px] min-w-0">
-                          <span title="Somebody moved this card here. It returns to where the deal actually is as soon as it moves on."
-                            className="block max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border w-fit text-muted bg-gray-50 border-line">
-                            Placed by hand
-                          </span>
-                        </div>
-                      )}
+                      {/* NO "PLACED BY HAND" TAG. 18 Nov 2026, Fabio: "We do
+                          not want that little tab anymore that says placed by
+                          hand" - it was on the card for every reader to carry
+                          and it only ever mattered to the person who moved it.
+                          The placement itself is untouched: the card still
+                          sits where somebody put it and still returns to where
+                          the deal actually is the moment it moves on. */}
                       {urgent && (
                         <div className="mb-1.5 mr-[50px] min-w-0">
                           <span title={urgentChipLabel(d)}
@@ -708,42 +789,7 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                   )
                   }
 
-                  // EVERY OTHER COLUMN IS ONE LIST, EXACTLY AS BEFORE.
-                  if (p !== 'bc') return cards.map(renderCard)
-
-                  // THE BC COLUMN IS TWO AREAS. See lib/bc-lanes.ts - what is
-                  // still being written, and what is sitting with a client.
-                  //
-                  // THE AREA IS COLOURED, NOT THE CARD. Fabio, 15 Sep 2026:
-                  // "dont want the deal colour to chnage as this will be usefull
-                  // later I want the surroounding to change". A card's own
-                  // colours already mean something - white is normal, the red
-                  // ring is urgent - and spending them on "this one has been
-                  // sent" would leave nothing to say the rest with.
-                  return bcLanes(cards).map(lane => lane.key === 'sent' ? (
-                    <div key={lane.key} className="bg-info-bg border border-info-edge rounded-[10px] p-2 mb-2 mt-2.5">
-                      <div className="flex items-center gap-1.5 mx-0.5 mb-2">
-                        <span className="text-[9px] font-extrabold tracking-[.07em] uppercase text-info whitespace-nowrap">
-                          {lane.label}
-                        </span>
-                        <span className="ml-auto bg-card border border-info-edge rounded-full px-1.5 text-[9px] font-bold text-info leading-[15px]">
-                          {lane.items.length}
-                        </span>
-                      </div>
-                      {lane.items.map(renderCard)}
-                    </div>
-                  ) : (
-                    <div key={lane.key}>
-                      <div className="flex items-center gap-1.5 mx-1 mb-1.5">
-                        <span className="h-px flex-1 bg-line" />
-                        <span className="text-[9px] font-extrabold tracking-[.07em] uppercase text-faint whitespace-nowrap">
-                          {lane.label} &middot; {lane.items.length}
-                        </span>
-                        <span className="h-px flex-1 bg-line" />
-                      </div>
-                      {lane.items.map(renderCard)}
-                    </div>
-                  ))
+                  return cards.map(renderCard)
                 })()}
 
                 {cards.length === 0 && (
@@ -752,6 +798,10 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                 </div>
               </div>
             )
+          })}
+              </div>
+            </div>
+          )
           })}
         </div>
       </div>

@@ -30,8 +30,14 @@ export type Lane = {
 export type Group = {
   /** The stage, in the words the business uses. */
   title: string
-  /** One colour per stage, whatever the sub-column - Fabio, 18 Nov. */
-  tone: 'lead' | 'bc' | 'lo' | 'compliance' | 'lodged'
+  /** One colour per stage, whatever the sub-column - Fabio, 18 Nov.
+   *
+   *  'lender' is NOT green. Green is the money landing - it belongs to the
+   *  settlement run and to a client who has said yes, and nowhere else. Two
+   *  greens side by side said a bank deciding and Julian's team working to a
+   *  date were the same kind of thing. Fabio, 18 Nov: "with lender and
+   *  settlement dont use the same colour both are green thats an issue". */
+  tone: 'lead' | 'bc' | 'lo' | 'compliance' | 'lender' | 'settlement' | 'settled'
   lanes: Lane[]
 }
 
@@ -60,18 +66,30 @@ export const GROUPS: Group[] = [
   // 18 Nov 2026. The first version of this file folded everything past
   // lodgement into one lane, which would have taken six working columns off the
   // board - and the three of them that carry the seven settlement steps with
-  // them. Fabio asked for the split on the WRITTEN half: "BC with credit... BC
-  // with client... the same is with lending options... compliance with credit,
-  // or compliance with client. And then the lodged and everything."
+  // them. Fabio, twice, and the second time with feeling: "you dont collapse
+  // anything after lodged remeber we just built a whole settlment process the
+  // changes are until lodged evrything is the same after that".
   //
-  // Once a deal is with a bank there is one wait and splitting it says nothing.
-  // So these stay exactly as they are, one column each, sub-tabs and all.
-  { title: 'Lodged', tone: 'lodged', lanes: [{ key: 'lodged', label: 'Lodged' }] },
-  { title: 'Preapproved', tone: 'lodged', lanes: [{ key: 'preapproved', label: 'Preapproved' }] },
-  { title: 'Offer accepted', tone: 'lodged', lanes: [{ key: 'offer_accepted', label: 'Offer accepted' }] },
-  { title: 'Formal', tone: 'lodged', lanes: [{ key: 'formal', label: 'Formal' }] },
-  { title: 'Contracts returned', tone: 'lodged', lanes: [{ key: 'contracts_returned', label: 'Contracts returned' }] },
-  { title: 'Settlement booked', tone: 'lodged', lanes: [{ key: 'settlement_booked', label: 'Settlement booked' }] },
+  // So every column past lodgement is exactly as it is today, sub-tabs and all.
+  // What is new is only the bar above them, which gathers them into the three
+  // things they actually are: a bank deciding, a team working to a date, and
+  // done.
+  { title: 'With the lender', tone: 'lender', lanes: [
+    { key: 'lodged', label: 'Lodged' },
+    { key: 'preapproved', label: 'Preapproved' },
+    { key: 'offer_accepted', label: 'Offer accepted' },
+  ] },
+  { title: 'To settlement', tone: 'settlement', lanes: [
+    { key: 'formal', label: 'Formal approval' },
+    { key: 'contracts_returned', label: 'Contracts returned' },
+    { key: 'settlement_booked', label: 'Settlement booked' },
+  ] },
+  // ITS OWN BAR. Fabio chose this over folding it in with the settlement run:
+  // the deal is done, and closing one out - the review, the compliance file,
+  // the commission - is a different job from getting one to the table.
+  { title: 'Settled', tone: 'settled', lanes: [
+    { key: 'settled', label: 'Settled' },
+  ] },
 ]
 
 export const LANE_KEYS: string[] = GROUPS.flatMap(g => g.lanes.map(l => l.key))
@@ -79,9 +97,10 @@ export const LANE_KEYS: string[] = GROUPS.flatMap(g => g.lanes.map(l => l.key))
 /**
  * WHICH COLUMN A DEAL IS IN, OR NOWHERE.
  *
- * Null is a real answer: settled, lost, and everything past lodgement belongs
- * to the settlements screen, which is its own board with its own seven steps.
- * A deal in two places is a deal somebody works twice.
+ * Null is a real answer, and only for a dead deal. Everything else has a
+ * column, including Settled - which keeps its "To close out" sub-tab, because
+ * a settled deal still has a review, a compliance file and a commission
+ * behind it.
  */
 export function laneOf(deal: any): string | null {
   const p: Phase = phaseOf(deal)
@@ -94,7 +113,10 @@ export function laneOf(deal: any): string | null {
   if (p === 'lodged' || p === 'preapproved' || p === 'offer_accepted'
     || p === 'formal' || p === 'contracts_returned' || p === 'settlement_booked') return p
 
-  if (p === 'settled' || p === 'lost') return null
+  // Settled keeps its column, and its "To close out" sub-tab with it. Only a
+  // dead deal is on no board at all.
+  if (p === 'settled') return 'settled'
+  if (p === 'lost') return null
 
   const w = whoHasIt(deal)
   const theirs = w?.holder === 'client'
@@ -142,4 +164,23 @@ export function sortIntoLanes(deals: any[]): Record<string, any[]> {
   }
   for (const k of LANE_KEYS) out[k] = newestFirst(out[k])
   return out
+}
+
+// ONE COLOUR PER STAGE, AND THE BAR IS ALWAYS BLACK.
+//
+// 18 Nov 2026. The colour is a small square on the bar and a small square on
+// each column head under it, so a stage reads as one thing however many
+// columns it has. Fabio picked the dark bar over a coloured tab and a spine:
+// "Number one, dark bar." It matches the black band on Today.
+//
+// 'lender' is steel on purpose - see the note on `tone` above. Green belongs
+// to settlement and to a client who has said yes.
+export const TONE_INK: Record<Group['tone'], string> = {
+  lead:       '#8E96A3',
+  bc:         '#17A398',
+  lo:         '#2E7BC4',
+  compliance: '#7257C8',
+  lender:     '#5B6B84',
+  settlement: '#2FA36B',
+  settled:    '#938D83',
 }

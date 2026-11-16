@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en" data-theme="light" data-group="c" data-lender="steel">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deals board - approved 18 Nov 2026</title>
+<style>
+  :root[data-theme="light"]{
+    --page:#F7F5F0;--ink:#14140F;--muted:#5C584F;--faint:#938D83;--card:#FFFFFF;
+    --line:#EBE6DB;--line2:#DFD9CC;--soft:#F4F1EA;--accent:#0E7FBF;
+    --good:#1C9A63;--goodEdge:#9FD9BC;--late:#C64B50;
+    --glow1:#EAF3F8;--glow2:#FBF0F4;--cardBg:#fff;--chaseBg:#fff;--chaseLine:#F0CCCD;--panel:#FBFAF7;
+    --bar:#15171B;--barInk:#FFFFFF;--barDim:#9A948C;
+  }
+  :root[data-theme="dark"]{
+    --page:#0C0C0F;--ink:#F3F1ED;--muted:#A8A39C;--faint:#6F6A64;--card:#141418;
+    --line:#26262D;--line2:#303039;--soft:#1C1C21;--accent:#38BDF8;
+    --good:#34D399;--goodEdge:#2A6B4E;--late:#F2777D;
+    --glow1:#13303F;--glow2:#1A1326;--cardBg:#141418;--chaseBg:#141418;--chaseLine:rgba(242,119,125,.4);
+    --panel:#121216;--bar:#1A1C21;--barInk:#F3F1ED;--barDim:#7E7872;
+  }
+  /* WHO IN CREDIT OWNS IT */
+  :root{--katie:#E23D93;--mel:#6D5DF6;--dinisha:#B5762F;--none:#9BA3AD}
+  :root[data-theme="dark"]{--katie:#F75FAE;--mel:#8B7BFF;--dinisha:#D08E3C;--none:#6E7682}
+  /* ONE COLOUR PER STAGE */
+  :root{--s-lead:#8E96A3;--s-bc:#17A398;--s-lo:#2E7BC4;--s-comp:#7257C8;--s-settle:#2FA36B}
+  :root[data-theme="dark"]{--s-lead:#79818E;--s-bc:#2DD4BF;--s-lo:#60A5FA;--s-comp:#A78BFA;--s-settle:#4ADE80}
+  /* WITH THE LENDER IS NOT GREEN. Green is the money landing - it belongs to
+     settlement and to a client who has said yes, and nowhere else. */
+  :root[data-lender="steel"]{--s-lender:#5B6B84}
+  :root[data-lender="steel"][data-theme="dark"]{--s-lender:#8C9BB5}
+  :root[data-lender="indigo"]{--s-lender:#4A54B5}
+  :root[data-lender="indigo"][data-theme="dark"]{--s-lender:#7C87E8}
+  :root[data-lender="cyan"]{--s-lender:#0E8FA8}
+  :root[data-lender="cyan"][data-theme="dark"]{--s-lender:#38C9E0}
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);display:flex;min-height:100vh;
+       font:14px/1.45 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+       -webkit-font-smoothing:antialiased}
+  .mono{font-variant-numeric:tabular-nums}
+  .side{width:188px;flex:none;background:#121214;color:#CFCAC2;display:flex;flex-direction:column;
+        position:sticky;top:0;height:100vh}
+  .brand{padding:18px 16px 12px}
+  .brand .logo{font-size:23px;font-weight:700;letter-spacing:-.04em;color:#fff;line-height:1}
+  .brand .by{font-size:10px;color:#6E6A64;margin-top:2px}
+  .navsec{font-size:9px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#56524C;padding:12px 16px 5px}
+  .nav a{display:block;padding:6px 16px;font-size:12.5px;color:#B7B2AA;text-decoration:none;border-left:2px solid transparent}
+  .nav a.on{color:#fff;background:#1B1B22;border-left-color:#38BDF8;font-weight:600}
+  .side .foot{margin-top:auto;padding:12px;border-top:1px solid #1E1E22}
+  .theme{display:flex;background:#1B1B21;border-radius:9px;padding:3px;gap:2px}
+  .theme button{flex:1;background:transparent;border:0;color:#8D887F;font-size:11px;font-weight:600;padding:6px 0;border-radius:7px;cursor:pointer}
+  .theme button.on{background:#2A2A33;color:#fff}
+
+  .main{flex:1;min-width:0;padding:20px 0 36px 20px;overflow:hidden;
+        background-image:radial-gradient(820px 380px at 6% -10%,var(--glow1),transparent 65%),
+                         radial-gradient(700px 340px at 94% -12%,var(--glow2),transparent 65%);
+        background-attachment:fixed}
+  .head{display:flex;align-items:flex-end;gap:12px;margin-bottom:12px;padding-right:20px}
+  h1{font-size:22px;font-weight:700;letter-spacing:-.035em;margin:0}
+  .head p{margin:2px 0 0;font-size:12px;color:var(--faint)}
+  .tools{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .seg{display:flex;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:3px}
+  .seg b{font-size:12px;font-weight:600;color:var(--faint);padding:5px 13px;border-radius:7px;cursor:default}
+  .seg b.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(20,20,15,.07)}
+  .find{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);
+        border-radius:10px;padding:8px 12px;width:230px;color:var(--faint);font-size:12.5px}
+  .btn{display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--line);
+       border-radius:10px;color:var(--muted);font-size:12.5px;font-weight:600;padding:8px 13px;cursor:pointer}
+  .btn.go{background:linear-gradient(180deg,#1990D1,#0E7FBF);border-color:#0C6FA7;color:#fff;
+          box-shadow:0 6px 16px -9px rgba(14,127,191,.8)}
+
+  /* the picker is a mock-only thing */
+  .picker{display:flex;align-items:center;gap:8px;margin:0 20px 14px 0;background:var(--card);
+          border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+  .picker i{font-style:normal;font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+  .picker button{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px 11px;
+                 font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
+  .picker button.on{background:var(--ink);border-color:var(--ink);color:var(--page)}
+
+  .board{display:flex;align-items:flex-start;overflow-x:auto;padding:0 20px 16px 0;gap:18px}
+  .group{flex:none}
+  .cols{display:flex;gap:10px}
+  .col{width:248px;flex:none;display:flex;flex-direction:column}
+  .chead{display:flex;align-items:center;gap:7px;padding:2px 3px 8px 4px}
+  .dot{width:7px;height:7px;border-radius:2px;background:var(--s);flex:none}
+  .cname{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+  .pillc{display:inline-flex;align-items:center;height:16px;line-height:1;font-size:10px;font-weight:700;
+         color:var(--faint);background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:0 7px}
+  .sum{margin-left:auto;font-size:11px;font-weight:700;color:var(--faint)}
+  .subs{display:flex;gap:4px;overflow-x:auto;padding:0 2px 7px 4px;scrollbar-width:none}
+  .subs::-webkit-scrollbar{display:none}
+  .subs b{font-size:9.5px;font-weight:700;letter-spacing:.03em;white-space:nowrap;color:var(--faint);
+          background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:3px 7px;cursor:pointer}
+  .subs b.on{background:var(--card);color:var(--ink);border-color:var(--line2)}
+  .stack{height:520px;overflow-y:auto;padding:1px 3px 6px 1px}
+  .stack::-webkit-scrollbar{width:9px}
+  .stack::-webkit-scrollbar-thumb{background:var(--line2);border-radius:9px}
+  .empty{height:138px;border:1px dashed var(--line2);border-radius:13px;display:flex;align-items:center;
+         justify-content:center;font-size:11.5px;color:var(--faint)}
+
+  /* ============ EVERY CARD THE SAME SIZE. ALWAYS. ============ */
+  .card{position:relative;height:138px;display:flex;flex-direction:column;overflow:hidden;
+        border-radius:13px;padding:11px 12px 9px;margin-bottom:9px;
+        background:color-mix(in srgb,var(--who) 15%,var(--cardBg));
+        border:1px solid color-mix(in srgb,var(--who) 40%,var(--line));
+        box-shadow:0 1px 2px rgba(20,20,15,.05),0 12px 22px -14px color-mix(in srgb,var(--who) 46%,rgba(20,20,15,.42));
+        transition:transform .12s ease}
+  .card:hover{transform:translateY(-2px);
+        box-shadow:0 2px 5px rgba(20,20,15,.07),0 20px 32px -16px color-mix(in srgb,var(--who) 54%,rgba(20,20,15,.5))}
+  .card.plain{background:var(--cardBg);border-color:var(--line);
+              box-shadow:0 1px 2px rgba(20,20,15,.05),0 10px 20px -14px rgba(20,20,15,.32)}
+  .card.plain .ini{background:var(--soft);color:var(--faint);border:1px solid var(--line)}
+  .card.ready{background:color-mix(in srgb,var(--good) 15%,var(--cardBg));border-color:var(--goodEdge);
+              box-shadow:0 1px 2px rgba(20,20,15,.05),0 12px 22px -14px rgba(28,154,99,.5)}
+  .ctop{display:flex;align-items:flex-start;gap:8px}
+  .nm{flex:1;min-width:0;font-size:12.5px;font-weight:650;letter-spacing:-.012em;line-height:1.3;height:32px;
+      display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .look{flex:none;color:var(--faint)}
+  .meta{font-size:10.5px;color:var(--faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row2{display:flex;align-items:flex-end;gap:8px;margin-top:7px}
+  .amt{font-size:16px;font-weight:700;letter-spacing:-.035em;line-height:1}
+  .amt.none{font-size:11.5px;font-weight:500;color:var(--faint);letter-spacing:0}
+  .ini{width:20px;height:20px;border-radius:6px;background:var(--who);color:#fff;margin-left:auto;
+       font-size:8.5px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+  /* THE TAG. 18 Nov 2026 - the strip was 16px and the pill wanted 17, so every
+     tag on the board was shaved along its bottom edge and read as sitting high.
+     Fixed height, flex centring, no line-height doing the work. */
+  .tags{display:flex;align-items:center;gap:4px;margin-top:7px;height:18px}
+  .tag{display:inline-flex;align-items:center;height:18px;line-height:1;
+       font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);
+       border:1px solid color-mix(in srgb,var(--who) 28%,var(--line2));
+       background:color-mix(in srgb,var(--cardBg) 76%,transparent);border-radius:5px;padding:0 6px;white-space:nowrap}
+  .tag.ok{color:var(--good);border-color:var(--goodEdge)}
+  .foot{display:flex;align-items:center;gap:7px;margin-top:auto;padding-top:7px;
+        font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden}
+  .chase{display:inline-flex;align-items:center;height:18px;line-height:1;margin-left:auto;
+         font-size:9.5px;font-weight:700;color:var(--late);background:var(--chaseBg);
+         border:1px solid var(--chaseLine);border-radius:5px;padding:0 6px;flex:none}
+  .age{margin-left:auto;font-size:10px;color:var(--faint);flex:none}
+
+  /* ============ THE DARK BAR ============
+     Three columns of equal weight either side, so the name sits on the true
+     centre of the bar however long the count on the right is. */
+  .ghead{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+         background:var(--bar);border-radius:11px;padding:9px 13px;margin-bottom:10px}
+  .ghead .nm2{display:flex;align-items:center;justify-content:center;gap:9px}
+  .ghead .sq{width:8px;height:8px;border-radius:2px;background:var(--s);flex:none}
+  .ghead b{font-size:10.5px;font-weight:800;letter-spacing:.13em;
+           text-transform:uppercase;color:var(--barInk);white-space:nowrap}
+  .ghead span.tot{justify-self:end;font-size:11px;font-weight:700;color:var(--barDim);white-space:nowrap}
+</style>
+</head>
+<body>
+
+<aside class="side">
+  <div class="brand"><div class="logo">one</div><div class="by">by Simplify</div></div>
+  <div class="navsec">Work</div>
+  <nav class="nav"><a href="#">Today</a><a href="#" class="on">Deals</a><a href="#">Settlements</a><a href="#">Clients</a></nav>
+  <div class="navsec">Business</div>
+  <nav class="nav"><a href="#">Pipeline</a></nav>
+  <div class="navsec">Admin</div>
+  <nav class="nav"><a href="#">Team</a><a href="#">Settings</a></nav>
+  <div class="foot"><div class="theme">
+    <button class="on" onclick="t('light',this)">Light</button>
+    <button onclick="t('dark',this)">Dark</button>
+    <button onclick="t('auto',this)">Auto</button></div></div>
+</aside>
+
+<main class="main">
+  <div class="head">
+    <div><h1>Deals</h1><p>137 live &middot; $70.3m in the pipeline &middot; Monday 16 November</p></div>
+    <div class="tools">
+      <span class="seg"><b>List</b><b class="on">Board</b></span>
+      <span class="find">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        Search a client, a lender&hellip;</span>
+      <button class="btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 5h18M6 12h12M10 19h4"/></svg>
+        Filters</button>
+      <button class="btn go">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M12 5v14M5 12h14"/></svg>
+        New deal</button>
+    </div>
+  </div>
+
+
+  <div class="board" id="board"></div>
+</main>
+
+<script>
+// ---- the deals (invented names, as always) ----
+const K='var(--katie)', M='var(--mel)', D='var(--dinisha)', N='var(--none)'
+const c = (nm, meta, amt, who, ini, tag, foot, late, ready) =>
+  ({nm, meta, amt, who, ini, tag, foot, late, ready})
+
+const CARDS = {
+  lead: [
+    c('Mo Vaitusi &amp; Eva Vaitusi 2026','Owner occupied &middot; Purchase',0,N,'&mdash;','No fact find','Nobody in credit','45d &middot; chase'),
+    c('Luca Giordano 2026','Investment &middot; Purchase',0,N,'&mdash;','Part done','Nobody in credit','26d &middot; chase'),
+    c('Daniel Kesegic &amp; Marina Kesegic 2026','Owner occupied &middot; Refinance',0,N,'&mdash;','No fact find','Nobody in credit','28d &middot; chase'),
+    c('Tahlia Brennan 2026','Owner occupied &middot; Purchase',0,N,'&mdash;','No fact find','Nobody in credit'),
+  ],
+  bc_us: [
+    c('Belinda Benson 2026','Home loan &middot; Purchase',0,K,'KA','Being written','Katie Amos',0,0),
+    c('Priscilla Danvers 2026','Bankwest &middot; Purchase','$684,000',M,'MS','Being written','Mellissa Sedin'),
+    c('Oriel Baptiste 2026','Home loan &middot; Refinance','$389,000',D,'DD','Being written','Dinisha Devadason'),
+  ],
+  bc_client: [
+    c('Laura Haylen &amp; Maeve Kennedy 2026','ING &middot; Refinance','$417,000',K,'KA','Deciding','Sent 26 Oct','21d &middot; chase'),
+    c('Michelle King &amp; Sean Paul King 2026','Home loan &middot; Refinance',0,M,'MS','Documents','Asked 30 Oct','17d &middot; chase'),
+    c('Noor Abadi &amp; Samir Abadi 2026','Home loan &middot; Purchase','$522,000',D,'DD','Deciding','Sent 2 Nov','14d &middot; chase'),
+  ],
+  lo_us: [
+    c('Simone Howland 2026','Refinance + equity release','$612,000',M,'MS','Being written','Mellissa Sedin'),
+    c('Rafael Ocampo 2026','Investment &middot; Purchase','$845,000',K,'KA','Being written','Katie Amos'),
+  ],
+  lo_client: [
+    c('Ivan Punzalan &amp; Catherine Punzalan 2026','WLTH &middot; Purchase','$720,000',M,'MS','Agreed &mdash; to compliance','Said yes 15 Nov',0,1),
+    c('Eddie Shwan &amp; Kiana Shwan 2026','Pepper Money &middot; Refinance','$758,000',K,'KA','Choosing','Sent 28 Oct','19d &middot; chase'),
+  ],
+  comp_us: [
+    c('Carolyn Louise McDonogh 2026','ubank &middot; Purchase','$468,000',D,'DD','Being written','Dinisha Devadason'),
+    c('Hamish Tyrrell 2026','Macquarie &middot; Refinance','$1.1m',M,'MS','Being written','Mellissa Sedin'),
+  ],
+  comp_client: [
+    c('Bradley Cain Refi Cash Out 2026','MA Money &middot; Equity release','$430,000',M,'MS','Signature','Sent 9 Nov','7d &middot; chase'),
+    c('Yvette Marchetti 2026','ubank &middot; Purchase','$598,000',K,'KA','Signature','Sent 13 Nov'),
+  ],
+  lodged: [
+    c('Graham Belfield &amp; Lydia Belfield 2026','St George &middot; Investment','$1.9m',K,'KA','With the lender','Lodged 1 Nov','17d &middot; chase'),
+    c('Niall Finucane &amp; Bronwyn Finucane 2026','ANZ &middot; Equity release','$2.3m',M,'MS','With the lender','Lodged 3 Nov','13d &middot; chase'),
+    c('Priya Raghunath 2026','CBA &middot; Purchase','$640,000',D,'DD','Outstandings','Lodged 10 Nov'),
+  ],
+  preapproved: [
+    c('Jonty Calderwood 2026','NAB &middot; Purchase','$880,000',K,'KA','House hunting','Preapproved 21 Oct'),
+    c('Sasha Pimentel 2026','ubank &middot; Purchase','$510,000',M,'MS','House hunting','Preapproved 4 Nov'),
+  ],
+  offer_accepted: [
+    c('Dev Ramanathan &amp; Asha Ramanathan 2026','Westpac &middot; Purchase','$1.4m',M,'MS','Offer accepted','Accepted 11 Nov'),
+  ],
+  formal: [
+    c('Colette Fairweather 2026','ING &middot; Refinance','$735,000',K,'KA','Formal','Approved 12 Nov',0,0,'formal'),
+    c('Theo Lindqvist 2026','Bankwest &middot; Purchase','$690,000',D,'DD','Contracts issued','Issued 13 Nov',0,0,'contracts_issued'),
+  ],
+  contracts_returned: [
+    c('Marissa Okonkwo 2026','Macquarie &middot; Purchase','$1.05m',M,'MS','Contracts reviewing','Back 14 Nov',0,0,'contracts_reviewing'),
+    c('Brett Hanrahan 2026','CBA &middot; Refinance','$412,000',K,'KA','Outstandings','Asked 10 Nov','5d &middot; chase',0,'outstandings'),
+    c('Lena Sorensen 2026','ANZ &middot; Purchase','$775,000',D,'DD','Pending booking','Ready 12 Nov',0,0,'pending_booking'),
+  ],
+  settlement_booked: [
+    c('Charles Beyer 2026','St George &middot; Purchase','$960,000',K,'KA','Books 24 Nov','Booked 11 Nov'),
+    c('Michael Tran 2026','ubank &middot; Refinance','$505,000',M,'MS','Books 26 Nov','Booked 13 Nov'),
+  ],
+}
+
+// sub-tabs, exactly as the portal has them today
+const SUBS = {
+  formal: ['All','Formal','Contracts issued'],
+  contracts_returned: ['All','Contracts reviewing','Outstandings','Pending booking'],
+}
+
+const COLS = {
+  lead:{label:'Awaiting fact find',sum:'&mdash;'},
+  bc_us:{label:'With credit',sum:'$3.1m'},
+  bc_client:{label:'With client',sum:'$4.1m'},
+  lo_us:{label:'With credit',sum:'$2.2m'},
+  lo_client:{label:'With client',sum:'$3.8m'},
+  comp_us:{label:'With credit',sum:'$1.4m'},
+  comp_client:{label:'Sent &middot; signing',sum:'$3.6m'},
+  lodged:{label:'Lodged',sum:'$10.0m'},
+  preapproved:{label:'Preapproved',sum:'$4.2m'},
+  offer_accepted:{label:'Offer accepted',sum:'$1.4m'},
+  formal:{label:'Formal approval',sum:'$6.1m'},
+  contracts_returned:{label:'Contracts returned',sum:'$4.4m'},
+  settlement_booked:{label:'Settlement booked',sum:'$3.0m'},
+}
+const COUNT = {lead:10,bc_us:28,bc_client:33,lo_us:5,lo_client:8,comp_us:3,comp_client:7,
+  lodged:14,preapproved:6,offer_accepted:2,formal:9,contracts_returned:7,settlement_booked:4}
+
+// the written half never changes between the options
+const WRITTEN = [
+  {title:'New lead', s:'lead', tot:'10', cols:['lead']},
+  {title:'Borrowing capacity', s:'bc', tot:'61 &middot; $7.2m', cols:['bc_us','bc_client']},
+  {title:'Lending options', s:'lo', tot:'13 &middot; $6.0m', cols:['lo_us','lo_client']},
+  {title:'Compliance', s:'comp', tot:'10 &middot; $5.0m', cols:['comp_us','comp_client']},
+]
+
+const LODGED_HALF = {
+  a: [
+    {title:'Lodged', s:'lender', tot:'14 &middot; $10.0m', cols:['lodged']},
+    {title:'Preapproved', s:'lender', tot:'6 &middot; $4.2m', cols:['preapproved']},
+    {title:'Offer accepted', s:'lender', tot:'2 &middot; $1.4m', cols:['offer_accepted']},
+    {title:'Formal approval', s:'settle', tot:'9 &middot; $6.1m', cols:['formal']},
+    {title:'Contracts returned', s:'settle', tot:'7 &middot; $4.4m', cols:['contracts_returned']},
+    {title:'Settlement booked', s:'settle', tot:'4 &middot; $3.0m', cols:['settlement_booked']},
+  ],
+  b: [
+    {title:'With the lender', s:'lender', tot:'42 &middot; $29.1m',
+     cols:['lodged','preapproved','offer_accepted','formal','contracts_returned','settlement_booked']},
+  ],
+  c: [
+    {title:'With the lender', s:'lender', tot:'22 &middot; $15.6m', cols:['lodged','preapproved','offer_accepted']},
+    {title:'To settlement', s:'settle', tot:'20 &middot; $13.5m', cols:['formal','contracts_returned','settlement_booked']},
+  ],
+}
+
+function cardHTML(d){
+  const cls = d.ready ? 'card ready' : (d.who === N ? 'card plain' : 'card')
+  const who = d.ready ? 'var(--good)' : d.who
+  const ini = d.ready ? `<span class="ini" style="background:${d.who}">${d.ini}</span>`
+                      : `<span class="ini">${d.ini}</span>`
+  const amt = d.amt ? `<div class="amt mono">${d.amt}</div>` : `<div class="amt none">No amount yet</div>`
+  const end = d.late ? `<span class="chase">${d.late}</span>` : `<span class="age"></span>`
+  return `<div class="${cls}" style="--who:${who}">
+    <div class="ctop"><div class="nm">${d.nm}</div>
+      <svg class="look" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></div>
+    <div class="meta">${d.meta}</div>
+    <div class="row2">${amt}${ini}</div>
+    <div class="tags"><span class="tag${d.ready?' ok':''}">${d.tag}</span></div>
+    <div class="foot">${d.foot}${end}</div></div>`
+}
+
+function colHTML(key){
+  const col = COLS[key], cards = CARDS[key] || []
+  const subs = SUBS[key] ? `<div class="subs">${SUBS[key].map((s,i)=>
+    `<b class="${i===0?'on':''}">${s}</b>`).join('')}</div>` : ''
+  const body = cards.length ? cards.map(cardHTML).join('') : `<div class="empty">Nothing here today</div>`
+  return `<div class="col">
+    <div class="chead"><span class="dot"></span><span class="cname">${col.label}</span>
+      <span class="pillc">${COUNT[key]}</span><span class="sum">${col.sum}</span></div>
+    ${subs}
+    <div class="stack">${body}</div></div>`
+}
+
+function groupHTML(g){
+  return `<div class="group" style="--s:var(--s-${g.s})">
+    <div class="ghead"><span></span><span class="nm2"><span class="sq"></span><b>${g.title}</b></span><span class="tot">${g.tot}</span></div>
+    <div class="cols">${g.cols.map(colHTML).join('')}</div></div>`
+}
+
+function draw(){
+  const which = document.documentElement.dataset.group
+  const groups = [...WRITTEN, ...LODGED_HALF[which]]
+  document.getElementById('board').innerHTML = groups.map(groupHTML).join('')
+}
+function g(which, el){
+  document.documentElement.dataset.group = which
+  el.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('on'))
+  el.classList.add('on'); draw()
+}
+function L(which, el){
+  document.documentElement.dataset.lender = which
+  el.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('on'))
+  el.classList.add('on')
+}
+function t(mode, el){
+  const dark = mode === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : mode === 'dark'
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+  document.querySelectorAll('.theme button').forEach(b => b.classList.remove('on'))
+  el.classList.add('on')
+}
+draw()
+</script>
+</body>
+</html>

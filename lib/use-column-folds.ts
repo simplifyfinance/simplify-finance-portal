@@ -1,7 +1,8 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createSupabaseBrowser } from './supabase-browser'
-import { PHASE_ORDER, type Phase } from './deal-phase'
+import { PHASE_ORDER } from './deal-phase'
+import { LANE_KEYS } from './the-board-columns'
 
 // Which board columns this person has folded away, remembered against their login.
 //
@@ -20,8 +21,17 @@ import { PHASE_ORDER, type Phase } from './deal-phase'
 // rule the rest of the board settings follow. Nothing here should break a screen
 // because a migration has not been run.
 
+// A COLUMN IS A LANE NOW, NOT A STAGE.
+//
+// 18 Nov 2026. BC became two columns and Compliance sent became the client
+// half of Compliance, so the keys changed. The old stage keys are still
+// accepted, because somebody who folded "bc" away last week should not log in
+// to a board that quietly unfolded itself - and an old key that no longer
+// matches a column simply folds nothing, which is what it already did.
+const REAL_COLUMNS: string[] = [...LANE_KEYS, 'lost', ...PHASE_ORDER]
+
 export function useColumnFolds() {
-  const [folds, setFolds] = useState<Phase[]>([])
+  const [folds, setFolds] = useState<string[]>([])
   const [ready, setReady] = useState(false)
   const userId = useRef<string | null>(null)
 
@@ -39,14 +49,14 @@ export function useColumnFolds() {
           // renamed or removed later leaves a key behind that means nothing, and
           // a stale key must not quietly fold something else.
           const raw = row?.board_folds
-          setFolds(Array.isArray(raw) ? raw.filter((x: any): x is Phase => PHASE_ORDER.includes(x)) : [])
+          setFolds(Array.isArray(raw) ? raw.filter((x: any): x is string => REAL_COLUMNS.includes(x)) : [])
           setReady(true)
         })
     })
     return () => { alive = false }
   }, [])
 
-  const toggle = useCallback((key: Phase) => {
+  const toggle = useCallback((key: string) => {
     setFolds(prev => {
       const next = prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
       const id = userId.current

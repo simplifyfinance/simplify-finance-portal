@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { GROUPS, LANE_KEYS, laneOf, readyToPush, newestFirst, sortIntoLanes } from './the-board-columns'
+import { GROUPS, LANE_KEYS, TONE_INK, laneOf, readyToPush, newestFirst, sortIntoLanes } from './the-board-columns'
 
 // A deal far enough along to have a real phase. Each test adds what it needs.
 const base = {
@@ -14,8 +14,8 @@ const compDone = { ...loDone, lo_sent_at: '2026-11-04T01:00:00Z', lo_client_proc
 
 describe('the board is one lane per stage and holder', () => {
   it('has a lane for every one of them, and no duplicates', () => {
-    expect(LANE_KEYS).toHaveLength(13)
-    expect(new Set(LANE_KEYS).size).toBe(13)
+    expect(LANE_KEYS).toHaveLength(14)
+    expect(new Set(LANE_KEYS).size).toBe(14)
   })
 
   // 18 Nov 2026. The first cut folded the whole tracked half into one lane,
@@ -75,9 +75,15 @@ describe('which lane a deal is in', () => {
     expect(laneOf({ ...lodged, formal_approval_at: '2026-11-12T00:00:00Z' })).toBe('formal')
   })
 
-  // A DEAL IN TWO PLACES IS A DEAL SOMEBODY WORKS TWICE.
-  it('settled and lost are on no board at all', () => {
-    expect(laneOf({ ...compDone, settled_at: '2026-11-20T00:00:00Z' })).toBe(null)
+  // SETTLED KEEPS ITS COLUMN. 18 Nov 2026 - the first cut of this file sent
+  // settled deals to no board at all, which would have taken a working column
+  // off the half Fabio said does not change, and the "To close out" sub-tab
+  // with it. Only a dead deal is on no board.
+  it('a settled deal keeps its own column', () => {
+    expect(laneOf({ ...compDone, settled_at: '2026-11-20T00:00:00Z' })).toBe('settled')
+  })
+
+  it('and a dead deal is on no board at all', () => {
     expect(laneOf({ ...compDone, status: 'lost' })).toBe(null)
   })
 })
@@ -140,8 +146,22 @@ describe('sorting the whole book into lanes', () => {
     expect(total).toBe(3)
   })
 
-  it('and quietly leaves out what belongs to the settlements board', () => {
-    const lanes = sortIntoLanes([{ ...compDone, settled_at: '2026-11-20T00:00:00Z' }])
-    expect(LANE_KEYS.reduce((n, k) => n + lanes[k].length, 0)).toBe(0)
+  it('keeps a settled deal, and quietly leaves out a dead one', () => {
+    const done = sortIntoLanes([{ ...compDone, settled_at: '2026-11-20T00:00:00Z' }])
+    expect(done['settled']).toHaveLength(1)
+    const dead = sortIntoLanes([{ ...compDone, status: 'lost' }])
+    expect(LANE_KEYS.reduce((n, k) => n + dead[k].length, 0)).toBe(0)
+  })
+})
+
+describe('the bars', () => {
+  it('gives every stage a colour, and never the same one twice', () => {
+    const inks = GROUPS.map(g => TONE_INK[g.tone])
+    expect(inks.every(Boolean)).toBe(true)
+    // WITH THE LENDER IS NOT THE SAME GREEN AS TO SETTLEMENT. Fabio, 18 Nov:
+    // "with lender and settlement dont use the same colour both are green
+    // thats an issue".
+    expect(TONE_INK.lender).not.toBe(TONE_INK.settlement)
+    expect(new Set(Object.values(TONE_INK)).size).toBe(Object.keys(TONE_INK).length)
   })
 })
