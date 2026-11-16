@@ -7,17 +7,14 @@ import { chipsFor, brokerColour, chipStyle, dealTitle } from '@/lib/deal-labels'
 import { CREDIT_GREY, type ThresholdMap } from '@/lib/board-settings'
 import { useColumnFolds } from '@/lib/use-column-folds'
 import { isUrgentNow, urgentChipLabel } from '@/lib/push-answers'
-// THE CARD WEARS THE COLOUR OF THE TILE THAT COUNTS IT. Both read these two
-// functions, so a red tile of six can only ever sit above six red cards.
-import { needsChasing, waitingOnSomeone } from '@/lib/board-tiles'
-import { whoHasIt, holderLabel } from '@/lib/who-has-it'
 import type { Alert } from '@/lib/deal-notes'
 import DealPeek from '@/components/DealPeek'
 import { brokerKey as keyOf } from '@/lib/broker-key'
 import { sentOn } from '@/lib/bc-lanes'
 // THE BOARD IS A VIEW, NOT A PLACE A DEAL IS KEPT. A column is the stage
 // plus who we are waiting on, and both of those already exist.
-import { GROUPS, TONE_INK, laneOf, newestFirst, type Group } from '@/lib/the-board-columns'
+import { GROUPS, TONE_INK, laneOf, newestFirst, readyToPush, type Group } from '@/lib/the-board-columns'
+import { creditColour, cardSkin, AGREED } from '@/lib/who-in-credit-owns-it'
 import { paneHeight, dragScrollBy } from '@/lib/board-pane'
 import { columnCountLabel } from '@/lib/board-filters'
 import {
@@ -85,10 +82,10 @@ const brokerNameOf = (d: any, nameFor: (k: string) => string) => {
   return k ? (nameFor(k) || k) : ''
 }
 
-const AGE_STYLE: Record<string, string> = {
-  nudge: 'text-chase bg-chase-bg border-chase-edge',
-  long:  'text-waiting bg-waiting-bg border-waiting-edge',
-}
+// THE AGE CHIP HAS TWO STATES NOW, NOT THREE. Past the chase time it is red;
+// before that it is the quiet count of days. The middle state - purple, for a
+// deal that had been sitting a while but was not late yet - went with the rest
+// of the colour on the card. Fabio, 18 Nov 2026: "Everything else is blank."
 
 export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, thresholds, alerts, onDelete, onMoveBack, showLost }: {
   deals: any[]
@@ -640,22 +637,22 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                     ? new Date(settleOn).toLocaleDateString('en-AU', { timeZone: OFFICE, day: 'numeric', month: 'short' })
                     : age.label
                   const urgent = isUrgentNow(d)
-                  // A CARD WEARING A STATE WEARS IT ALL THE WAY ROUND, LIGHTLY.
+                  // THE CARD WEARS WHOEVER IN CREDIT OWNS IT.
                   //
-                  // Not a stripe down one side, which reads as damage rather
-                  // than a state. One and a half steps off white: far enough to
-                  // see across the office, close enough that the client's name
-                  // still reads at 17 to 1 on the tint.
+                  // See lib/who-in-credit-owns-it.ts. Until today this was
+                  // painted by the deal's STATE - red past its chase time,
+                  // purple while it waited on somebody - and both are gone.
+                  // A colour answers one question, and the question is now
+                  // whose desk this is on. Chasing is the chip at the bottom.
                   //
-                  // Red beats purple on purpose. A deal sitting with a lender
-                  // that has ALSO gone past its threshold is a deal to chase -
-                  // "not ours right now" stops being an excuse at that point.
-                  const chasing = needsChasing(d, thresholds)
-                  const waiting = !chasing && waitingOnSomeone(d)
-                  const washed = chasing || waiting
-                  const wash = chasing ? 'bg-card-chase border-card-chase-edge'
-                    : waiting ? 'bg-card-waiting border-card-waiting-edge'
-                    : 'bg-card border-card-line hover:border-gray-300'
+                  // GREEN TAKES OVER. Fabio, 18 Nov 2026: "So the green will
+                  // take over whichever color it is." A client who has agreed
+                  // to proceed is the one thing more urgent than who owns it,
+                  // and the face still says who in credit has it.
+                  const agreed = readyToPush(d)
+                  const mine = creditColour(d.credit_officers?.name)
+                  const skin = cardSkin(agreed ? AGREED : mine)
+                  const washed = agreed || !!mine
                   const people = [
                     { name: brokerNameOf(d, nameFor), colour: brokerColour(bKey, colours?.broker) },
                     ...(d.credit_officers?.name ? [{ name: d.credit_officers.name, colour: CREDIT_GREY }] : []),
@@ -665,8 +662,10 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                       onDragStart={() => setDragging(d.id)}
                       onDragEnd={() => { setDragging(''); setOver('') }}
                       onClick={() => router.push(`/deals/${d.id}`)}
-                      className={`group relative overflow-hidden border rounded-[10px] px-2.5 pt-2.5 pb-2.5 mb-2 last:mb-0 cursor-pointer
-                        transition hover:-translate-y-[2px] hover:shadow-[0_18px_28px_-18px_rgba(20,20,15,.45)] ${wash} ${
+                      style={skin}
+                      className={`group relative overflow-hidden border rounded-[10px] px-2.5 pt-2 pb-2 mb-2 last:mb-0 cursor-pointer
+                        flex flex-col h-[118px]
+                        transition hover:-translate-y-[2px] hover:shadow-[0_18px_28px_-18px_rgba(20,20,15,.45)] ${
                         dragging === d.id ? 'opacity-40 border-brand-ink'
                         : urgent ? 'ring-2 ring-chase-bg' : ''}`}>
 
@@ -677,15 +676,6 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                           The placement itself is untouched: the card still
                           sits where somebody put it and still returns to where
                           the deal actually is the moment it moves on. */}
-                      {urgent && (
-                        <div className="mb-1.5 mr-[50px] min-w-0">
-                          <span title={urgentChipLabel(d)}
-                            className="block max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border w-fit text-chase bg-chase-bg border-chase-edge">
-                            {urgentChipLabel(d)}
-                          </span>
-                        </div>
-                      )}
-
                       {onDelete && (
                         <button title="Delete this deal"
                           onClick={e => onDelete(e, d)}
@@ -700,9 +690,12 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                       <button title="Quick look"
                         onClick={e => { e.stopPropagation(); setPeeking({ id: d.id, phase: p }) }}
                         className="absolute top-[7px] right-2 w-[22px] h-[22px] rounded-md border border-card-line bg-card text-muted flex items-center justify-center hover:border-brand-ink hover:text-brand-ink hover:bg-info-bg">
+                        {/* ONE MAGNIFYING GLASS, the one on the approved board.
+                            Fabio, 18 Nov 2026: "I don't like the little two
+                            binoculars. I like the one that you mocked for me,
+                            which was one single magnifying glass." */}
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="7" cy="15" r="4" /><circle cx="17" cy="15" r="4" />
-                          <path d="M11 15h2M6 11V5h3v6M15 11V5h3v6" />
+                          <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" />
                         </svg>
                       </button>
 
@@ -711,13 +704,13 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                       <p className="text-[12.5px] font-[640] text-ink m-0 mr-[50px] truncate" title={d.deal_name}>
                         {dealTitle(d.deal_name)}
                       </p>
-                      <p className="text-[9.5px] font-bold tracking-[.07em] uppercase text-faint m-0 mb-[7px] truncate"
+                      <p className="text-[9.5px] font-bold tracking-[.07em] uppercase text-faint m-0 mb-[5px] truncate"
                          title={`Home loan${lender ? ` · ${lender}` : ''}${sentLabel ? ` · ${sentLabel}` : ''}`}>
                         Home loan{lender ? ` · ${lender}` : ''}{sentLabel ? ` · ${sentLabel}` : ''}
                       </p>
 
                       {/* The money is the biggest thing on a card about a loan book. */}
-                      <div className="flex items-center gap-1.5 mb-1.5">
+                      <div className="flex items-center gap-1.5 mb-1">
                         {amt !== null
                           ? <span className="text-[14px] font-[680] text-ink tabular-nums tracking-[-.01em]">{money(amt)}</span>
                           : <span className="text-[11.5px] text-faint">No amount recorded</span>}
@@ -741,37 +734,60 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                           the deal itself. What has gone is the sentence on the
                           face of the card. */}
 
-                      <div className="flex gap-1 flex-wrap items-center min-w-0">
-                        {/* WHO IS ACTUALLY HOLDING THIS UP.
-                            27 Oct 2026. Catherine, Operations Manager, item 1
-                            of nine: "Show where a deal is actually sitting.
-                            For example, a deal can be with doc collection
-                            while the pipeline says it's with Credit. I saw one
-                            deal with a 'with the client' outline, so it would
-                            be good to know what triggers that and build on it."
-                            She had seen it on the deal page, the deals list
-                            and Today - everywhere except the board, which is
-                            the screen she works from. It was built on 22 Oct
-                            and never drawn here. See lib/who-has-it.ts, which
-                            also now says WHY where the wait has a name. */}
-                        {(() => {
-                          const w = whoHasIt(d)
-                          if (!w) return null
-                          return (
-                            <span title={holderLabel(w)}
-                                  className={`max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] ${w.style}`}>
-                              {holderLabel(w)}
-                            </span>
-                          )
-                        })()}
+                      {/* WHAT THE DEAL IS, AND NOTHING ABOUT WHO IS HOLDING IT.
+                          18 Nov 2026. Fabio, once the columns said it: "With us
+                          and with the client, doesn't that defeat the purpose
+                          now that we have the breakdown of all the portal
+                          between us and them? Like, it doesn't make sense." It
+                          does not. The column is the holder; the card says what
+                          the deal IS, which no column can.
+
+                          "Documents" went with it, and for a worse reason. It
+                          was never tracked, only inferred - documents asked for
+                          and a button never pressed - and on the day we counted,
+                          only 17 of 56 deals had ever had that button pressed.
+                          A label that says more about a button than a deal does
+                          not belong on a card.
+
+                          TWO LABELS TODAY, MORE LATER. Fabio: "eventually I want
+                          to add the referral partners, the loan splits... I want
+                          that to be a label so it's easier for us to put it onto
+                          a filter". They join chipsFor() in lib/deal-labels.ts,
+                          which is the one place a label is decided, so a new one
+                          appears on the card and in the filter together. */}
+                      <div className="flex gap-1 items-center min-w-0 min-h-[19px] overflow-hidden">
                         {chipsFor(d, colours).map(c => (
                           <span key={c.id} title={c.label}
                                 className="max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border"
                                 style={chipStyle(c.colour, washed)}>{c.label}</span>
                         ))}
+                      </div>
+
+                      {/* THE DAY COUNT, ON ITS OWN LINE, AT THE FOOT OF THE CARD.
+                          Red only once it is past the chase time you set for
+                          that column - Fabio, 18 Nov: "the little tab that says
+                          45 days to chase that is red. Everything else is blank".
+                          Nothing else on this card ever goes red. */}
+                      {/* A ROW SHORTER THAN THE CHIP IN IT SHAVES THE CHIP.
+                          18 Nov 2026, Fabio on the mock: "see the little 21-day
+                          chase. Why is that messed up? ... All the warning ones
+                          are not centered and properly done inside the label."
+                          The row was 19px and the chip wants 19 of its own, so
+                          with the card clipping its overflow the bottom border
+                          was cut off every one. min-height, never height. */}
+                      <div className="mt-auto pt-1.5 flex gap-1 items-center min-w-0 min-h-[19px]">
+                        {/* The urgent chip sits in this row now, beside the day
+                            count, instead of above the deal name - where it used
+                            to push every other card out of shape. */}
+                        {urgent && (
+                          <span title={urgentChipLabel(d)}
+                            className="max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border text-chase bg-chase-bg border-chase-edge">
+                            {urgentChipLabel(d)}
+                          </span>
+                        )}
                         {age.days !== null && (
                           <span className={`max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border ${
-                            AGE_STYLE[grp] || 'text-faint bg-gray-50 border-line-soft'}`}>
+                            needsNudge ? 'text-chase bg-chase-bg border-chase-edge' : 'text-faint bg-card border-card-line'}`}>
                             {needsNudge ? `${age.label} \u00b7 to chase` : age.label}
                           </span>
                         )}

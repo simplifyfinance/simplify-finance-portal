@@ -219,31 +219,51 @@ describe('the line under the total says what is not in it', () => {
 // read components/DealBoard.tsx, because a rule the card re-implements its own
 // way is exactly how a tile of six ends up over five red cards.
 
-describe('the card wears the colour of the tile that counts it', () => {
+// THE BOARD CARD NO LONGER WEARS A STATE AT ALL.
+//
+// 18 Nov 2026. The rules above still decide the colour of a card on the deals
+// LIST, which is what they were built for. The BOARD stopped asking them today:
+// its cards wear whoever in credit owns the deal, and chasing is a small red
+// chip at the foot of the card. See lib/who-in-credit-owns-it.ts.
+//
+// Fabio, 18 Nov 2026: "Just make every deal card white, and every deal card
+// that is sitting with Melissa and every deal card that's sitting with Katie,
+// there are colors."
+//
+// These tests now guard the NEW rule and forbid the old one coming back, which
+// is the only honest thing to do with a test whose rule has been replaced.
+describe('the board card wears its credit officer, not its state', () => {
   const board = readFileSync('components/DealBoard.tsx', 'utf8')
 
-  it('asks these functions rather than working it out again', () => {
-    expect(board).toContain("from '@/lib/board-tiles'")
-    expect(board).toContain('needsChasing(d, thresholds)')
-    expect(board).toContain('waitingOnSomeone(d)')
+  it('asks one function for the colour rather than working it out again', () => {
+    expect(board).toContain("from '@/lib/who-in-credit-owns-it'")
+    expect(board).toContain('const mine = creditColour(d.credit_officers?.name)')
+    expect(board).toContain('const skin = cardSkin(')
   })
 
-  // A deal sitting with a lender that has ALSO gone past its threshold is a deal
-  // to chase. If purple won, the only cards that could ever be red would be the
-  // ones on our own desk - and the whole right-hand side of the board would go
-  // quiet exactly when it should not.
-  it('lets red beat purple, so a late deal cannot hide behind "not ours"', () => {
-    expect(board).toContain('const waiting = !chasing && waitingOnSomeone(d)')
+  it('and green takes over whoever owns it once the client agrees', () => {
+    expect(board).toContain('const agreed = readyToPush(d)')
+    expect(board).toContain('cardSkin(agreed ? AGREED : mine)')
   })
 
-  it('tints the whole card, never a stripe down one side', () => {
-    expect(board).toContain('bg-card-chase border-card-chase-edge')
-    expect(board).toContain('bg-card-waiting border-card-waiting-edge')
+  it('never paints the board card red or purple for its state again', () => {
+    expect(board).not.toContain('bg-card-chase border-card-chase-edge')
+    expect(board).not.toContain('bg-card-waiting border-card-waiting-edge')
     // A stripe is what damage looks like. If one of these ever appears on a
     // card, somebody has gone back to the thing Fabio rejected on sight.
     expect(board).not.toMatch(/border-l-[24] /)
   })
 
+  // The only red left on a card. Fabio, 18 Nov: "the little tab that says 45
+  // days to chase that is red. Everything else is blank until we allocate it
+  // to credit."
+  it('leaves exactly one red thing on the card: the chase chip', () => {
+    expect(board).toContain("needsNudge ? 'text-chase bg-chase-bg border-chase-edge'")
+  })
+
+  // The three credit colours are written down in lib/who-in-credit-owns-it.ts,
+  // which is where a colour with a person's name on it belongs. Nowhere else
+  // on the board spells one out.
   it('and spells no colour out by hand any more', () => {
     expect(board.replace(/\/\/.*$/gm, '')).not.toMatch(/#[0-9a-fA-F]{6}/)
   })
@@ -288,5 +308,7 @@ describe('a chip on a washed card does not sink into it', () => {
 
   it('and the board actually passes that flag', () => {
     expect(readFileSync('components/DealBoard.tsx', 'utf8')).toContain('chipStyle(c.colour, washed)')
+    // washed is now "this card is wearing somebody's colour", which is the same
+    // question the chip was always asking: is there a tint behind me.
   })
 })

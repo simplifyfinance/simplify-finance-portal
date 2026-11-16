@@ -110,19 +110,29 @@ describe('THE ONE CATHERINE CAUGHT: waiting on documents', () => {
   })
 })
 
-describe('and it is finally on the board', () => {
+// IT CAME OFF THE BOARD AGAIN, AND FOR A GOOD REASON.
+//
+// 18 Nov 2026. The board's columns now say who is holding a deal up - "BC with
+// credit" beside "BC with client" - so a chip underneath repeating it was the
+// card printing its own address. Fabio: "With us and with the client, doesn't
+// that defeat the purpose now that we have the breakdown of all the portal
+// between us and them? Like, it doesn't make sense."
+//
+// whoHasIt() is not retired - it is what SORTS the cards into those columns now
+// (see lib/the-board-columns.ts), which is a bigger job than drawing a chip. It
+// is still drawn on the deal page, the deals list and Today, which have no
+// columns to say it for them, and those are checked below.
+describe('and the board says it with its columns instead of a chip', () => {
   const board = readFileSync('components/DealBoard.tsx', 'utf8')
+  const lanes = readFileSync('lib/the-board-columns.ts', 'utf8')
 
-  it('the card draws it', () => {
-    expect(board).toContain("import { whoHasIt, holderLabel } from '@/lib/who-has-it'")
-    expect(board).toContain('const w = whoHasIt(d)')
-    expect(board).toContain('{holderLabel(w)}')
+  it('the columns are built on it', () => {
+    expect(lanes).toContain("import { whoHasIt } from './who-has-it'")
+    expect(lanes).toContain('const w = whoHasIt(deal)')
   })
 
-  it('using the same colours as every other screen, not new ones', () => {
-    // Blue is work in hand and purple is the client everywhere in the portal.
-    // Nobody learns a new colour for the board.
-    expect(board).toContain('${w.style}')
+  it('and the card does not say it a second time', () => {
+    expect(board).not.toContain('{holderLabel(w)}')
   })
 })
 

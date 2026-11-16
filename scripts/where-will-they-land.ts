@@ -98,6 +98,30 @@ async function main() {
   // no screen. They appear in Lodged - that is cards appearing, not moving.
   const cond = live.filter(d => phaseOf(d) === 'outstanding').length
   console.log(`Sitting on lender conditions, invisible on the board today: ${cond}`)
+
+  // DOES THE BUTTON ACTUALLY GET PRESSED?
+  //
+  // 18 Nov 2026. Fabio: "even with client documents today, how are we even
+  // tracking this? Do we actually know that we're waiting on documents?"
+  //
+  // The rule is one button. A card says documents when documents were asked
+  // for and "Docs received" has never been pressed. So the only question that
+  // matters is whether anybody presses it - and if almost nobody does, the
+  // label is not a fact about the deal, it is a fact about the button.
+  const asked = live.filter(d => (d.document_progress?.requests || []).length > 0)
+  const back = asked.filter(d => d.docs_received_at).length
+  const old30 = asked.filter(d => {
+    if (d.docs_received_at) return false
+    const rs = d.document_progress?.requests || []
+    const last = rs.map((r: any) => String(r?.at || '')).sort().pop()
+    if (!last) return false
+    return (Date.now() - new Date(last).getTime()) / 86400000 > 30
+  }).length
+
+  console.log(`\nDocuments, on ${asked.length} deals where they were ever asked for:`)
+  console.log(`   ${back} have had "Docs received" pressed`)
+  console.log(`   ${asked.length - back} have not, so the card says documents`)
+  console.log(`   ${old30} of those were last asked more than 30 days ago`)
 }
 
 main().catch(e => { console.error(e.message); process.exit(1) })
