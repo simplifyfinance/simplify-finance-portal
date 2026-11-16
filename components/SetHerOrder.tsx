@@ -49,6 +49,8 @@ export default function SetHerOrder({ officerId, name, plan, deals, me, onDone,
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState('')
   const [moving, setMoving] = useState<string | null>(null)
+  // WHICH ROW HAS ITS MOVE MENU OPEN. 18 Nov 2026 - see the row below.
+  const [movingOpen, setMovingOpen] = useState<string | null>(null)
 
   // HANDING A FILE TO THE OTHER ASSESSOR.
   //
@@ -133,16 +135,38 @@ export default function SetHerOrder({ officerId, name, plan, deals, me, onDone,
             <button type="button" className={ARROW}
                     onClick={() => setIds(x => moveBy(x, d.id, 1))}>▼</button>
           </span>
-          <span className={`flex-1 font-semibold ${framed ? 'truncate' : ''}`}>{d.deal_name}</span>
+          {/* ONE LINE A ROW, SO FIVE FIT WITHOUT SCROLLING.
+              18 Nov 2026. Adding Dinisha gave every row a SECOND move button,
+              the pair ate about 240px of a 640px column, and the client name
+              wrapped onto four lines - Fabio: "we should be able to see five
+              without having to scroll. Five is a normal day."
+              So the moves fold into one menu. A fourth assessor costs the row
+              nothing, and the name keeps the width. */}
+          <span className="flex-1 truncate font-semibold" title={d.deal_name}>{d.deal_name}</span>
           <span className="text-[11px] text-faint">{d.where}</span>
-          {others.map(o => (
-            <button key={o.id} type="button" disabled={moving === d.id}
-                    onClick={() => moveTo(d.id, o.id)}
-                    className="rounded-[7px] border border-line bg-page px-[7px] py-px
-                               text-[11px] text-faint disabled:opacity-40">
-              {moving === d.id ? 'moving...' : moveWords(o.name)}
-            </button>
-          ))}
+          {others.length > 0 && (
+            <span className="relative flex-none">
+              <button type="button" disabled={moving === d.id}
+                      onClick={() => setMovingOpen(x => (x === d.id ? null : d.id))}
+                      className="rounded-[7px] border border-line bg-page px-[7px] py-px
+                                 text-[11px] text-faint disabled:opacity-40">
+                {moving === d.id ? 'moving\u2026' : 'Move \u25BE'}
+              </button>
+              {movingOpen === d.id && (
+                <span className="absolute right-0 top-[22px] z-20 w-[160px] overflow-hidden rounded-[9px]
+                                 border border-line bg-card shadow-[0_8px_22px_rgba(0,0,0,.12)]">
+                  {others.map(o => (
+                    <button key={o.id} type="button"
+                            onClick={() => { setMovingOpen(null); moveTo(d.id, o.id) }}
+                            className="block w-full px-2.5 py-1.5 text-left text-[12px] text-body
+                                       hover:bg-page">
+                      {moveWords(o.name)}
+                    </button>
+                  ))}
+                </span>
+              )}
+            </span>
+          )}
           <button type="button"
                   onClick={() => setIds(x => takeOff(x, d.id))}
                   className="rounded-[7px] border border-line bg-page px-[7px] py-px

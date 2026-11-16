@@ -314,24 +314,17 @@ export default async function Dashboard(
     }
   })
 
-  // ONE ASSESSOR CARRYING FAR MORE THAN THE REST, or nobody.
+  // NO "ONE ASSESSOR CARRYING FAR MORE THAN THE REST" ANY MORE.
   //
-  // Half again the team average is the same threshold the round robin uses
-  // when it decides somebody is too loaded to take another file - see
-  // lib/allocate-officer.ts. One rule, so the screen and the allocation cannot
-  // disagree about who is buried.
-  const loads = creditToday.map(t => t.open)
-  const average = loads.length
-    ? Math.round((loads.reduce((a, b) => a + b, 0) / loads.length) * 10) / 10 : 0
-  const worst = creditToday.slice().sort((a, b) => b.open - a.open)[0]
-  const overloaded = worst && average > 0 && worst.open > average * 1.5
-    ? {
-      name: worst.name,
-      open: worst.open,
-      average,
-      unplanned: !worst.informedAt,
-    }
-    : null
+  // 18 Nov 2026. Fabio: "remove this for now, it wont work until we work on
+  // next project with getting the system to really understand where files are
+  // sitting, as a lot of the time its not their fault."
+  //
+  // The arithmetic was right and the conclusion was not: open files counts a
+  // file waiting on a lender the same as one waiting on her. Credit team
+  // workload still shows the numbers on a screen somebody reads in context -
+  // and lib/allocate-officer.ts still uses the same threshold to decide who is
+  // too loaded to take another file, which is a decision, not a verdict.
 
   // A PUSH THAT NEVER ARRIVED.
   //
@@ -444,7 +437,6 @@ export default async function Dashboard(
           meName={profile?.full_name || ''}
           todayWords={todayWords}
           team={creditToday}
-          overloaded={overloaded}
           stuckPushes={stuckPushes}
           weekDone={weekDone}
         />
@@ -458,7 +450,6 @@ export default async function Dashboard(
           * Catherine's Today is signed by whoever actually wrote it. */}
         <CreditBand
           team={creditToday}
-          overloaded={overloaded}
           me={{ id: user.id, name: profile?.full_name || '' }}
         />
         {/* THE SECOND CHAPTER. 17 Nov 2026, Fabio: "the black bar for

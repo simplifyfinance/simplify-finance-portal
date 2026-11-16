@@ -43,7 +43,7 @@ const WEEK_MARK = 'text-[11px] font-bold rounded-lg border px-2 py-[2px] whitesp
 export default function RunThrough({
   deals, brokerNames, brokerRows, secondTeam = 'Simplify Finance Brokers',
   target: savedTarget, canSetTarget = false, firstTeam = 'Simplify Finance',
-  team = [], overloaded = null, stuckPushes = [], weekDone = {},
+  team = [], stuckPushes = [], weekDone = {},
   meName = '',
   todayWords = '', now,
 }: {
@@ -68,7 +68,6 @@ export default function RunThrough({
                  /** Her open files, which is what an order is chosen from. */
                  openDeals?: Array<{ id: string; deal_name?: string; where?: string }> }>
   /** Named only when one assessor is carrying far more than the rest. */
-  overloaded?: { name: string; open: number; average: number; unplanned: boolean } | null
   /** Deals pushed to SalesTrekker over an hour ago that never arrived. */
   stuckPushes?: Array<{ id: string; name: string; line: string; at: string }>
   meName?: string
@@ -483,13 +482,18 @@ export default function RunThrough({
           </div>
         ) : section(mine, true)}
       </div>
-      {/* ONE RED LINE, AND ONLY WHEN SOMEBODY IS GENUINELY OVER.
+      {/* A DEAL NOBODY HAS. That is all this box is now.
         *
-        * Fabio, 12 Nov 2026: "the one thing out of shape, he sits there in red
-        * if he needs to be there." The detail lives on Credit team workload;
-        * this is the exception, and on a week where nobody is carrying far
-        * more than the rest it is not on the page at all. */}
-      {(stuckPushes.length > 0 || overloaded) && (
+        * 18 Nov 2026. It used to carry a second line naming whoever had the
+        * most files open. Fabio: "remove this for now, it wont work until we
+        * work on next project with getting the system to really understand
+        * where files are sitting, as a lot of the time its not their fault."
+        *
+        * He is right, and the line was a verdict dressed as a measurement: a
+        * count of open files cannot tell a file waiting on a lender from a
+        * file waiting on her. Credit team workload still has the numbers, on a
+        * screen somebody goes to and reads in context. */}
+      {stuckPushes.length > 0 && (
         <div className="bg-chase-bg border border-chase-edge rounded-xl px-4 py-3.5 mb-3">
           <div className={`${CAP} mb-2 text-chase`}>One thing is out of shape</div>
 
@@ -513,24 +517,6 @@ export default function RunThrough({
             </div>
           ))}
 
-          {/* A HEAVY WEEK, UNDER A DEAL NOBODY HAS. Both can be true on the
-              same morning and the box holds both. */}
-          {overloaded && (
-            <div className="bg-card border-l-4 border-chase rounded-lg px-3 py-2.5 flex
-              items-center gap-3 flex-wrap">
-              <span className="text-[13px] font-bold w-[74px] flex-none">{overloaded.name}</span>
-              <span className="text-[11.5px] text-muted leading-snug">
-                <b className="text-ink">{overloaded.open} files open</b>, against a team average
-                of {overloaded.average}.
-                {overloaded.unplanned ? <><br />None of them are on a plan today.</> : null}
-              </span>
-              <Link href="/credit-team-workload"
-                className="ml-auto text-[11px] font-semibold text-brand-ink border border-info-edge
-                  bg-info-bg rounded-lg px-2.5 py-[3px] whitespace-nowrap">
-                Move some off {overloaded.name.split(' ')[0]}
-              </Link>
-            </div>
-          )}
         </div>
       )}
 

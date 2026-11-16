@@ -33,9 +33,8 @@ import { OFFICE } from '@/lib/same-date-everywhere'
 const KEY = 'text-[10px] font-extrabold tracking-[0.13em] uppercase text-[#9A948C]'
 const DIM = 'text-[11px] text-[#9A948C]'
 
-export default function CreditBand({ team, overloaded, me }: {
+export default function CreditBand({ team, me }: {
   team: Array<CreditPerson & { plan?: any; openDeals?: any[]; onLeave?: boolean }>
-  overloaded: { name: string; open: number; average: number; unplanned: boolean } | null
   me: { id?: any; name?: any }
 }) {
   const s = creditMorning(team)
@@ -100,18 +99,18 @@ export default function CreditBand({ team, overloaded, me }: {
             <div className={`${DIM} mt-1`}>of {s.openTotal} open files</div>
           </div>
 
-          {overloaded && (
-            <div className="ml-auto text-right">
-              <div className={KEY}>Carrying the most</div>
-              <div className="text-[26px] font-extrabold leading-none text-page mt-1">
-                {overloaded.open}
-              </div>
-              <div className={`${DIM} mt-1`}>
-                {overloaded.name.split(' ')[0]}, against {overloaded.average} &middot;{' '}
-                <Link href="/credit-team-workload" className="text-[#6FD3FF]">the whole team</Link>
-              </div>
+          {/* NO "CARRYING THE MOST". 18 Nov 2026 - taken off with the box on
+            * the run-through above, and for the same reason: a count of open
+            * files is not a measure of somebody's week while the portal still
+            * cannot tell a file waiting on a lender from one waiting on her.
+            * The numbers are on Credit team workload, in context. */}
+          <div className="ml-auto text-right">
+            <div className={DIM}>
+              <Link href="/credit-team-workload" className="text-[#6FD3FF]">
+                The whole team &rarr;
+              </Link>
             </div>
-          )}
+          </div>
         </div>
       </div>
 

@@ -40,18 +40,20 @@ describe('the admin Today works out which deals are stuck', () => {
 describe('where it shows', () => {
   it('in the red box that already exists, not a new one', () => {
     expect(RUN).toContain('One thing is out of shape')
-    // One box, opened when either thing is true.
-    expect(RUN).toContain('(stuckPushes.length > 0 || overloaded)')
+    expect(RUN).toContain('stuckPushes.length > 0 &&')
   })
 
-  // A DEAL NOBODY HAS IS WORSE THAN A HEAVY WEEK, so it reads first.
-  it('above the overloaded line, and both can be there at once', () => {
-    const box = RUN.slice(RUN.indexOf('One thing is out of shape'))
-    const stuck = box.indexOf('stuckPushes.map(')
-    const heavy = box.indexOf('{overloaded && (')
-    expect(stuck).toBeGreaterThan(-1)
-    expect(heavy).toBeGreaterThan(-1)
-    expect(stuck).toBeLessThan(heavy)
+  // 18 Nov 2026. THE BOX IS NOW THIS AND NOTHING ELSE.
+  //
+  // It used to carry a second line naming whoever had the most files open.
+  // Fabio: "remove this for now, it wont work until we work on next project
+  // with getting the system to really understand where files are sitting, as a
+  // lot of the time its not their fault." A count of open files cannot tell a
+  // file waiting on a lender from one waiting on her, so the line was a verdict
+  // wearing a measurement's clothes. The numbers stay on Credit team workload.
+  it('and names nobody for having a heavy week', () => {
+    expect(RUN, 'the overloaded line must not come back').not.toContain('files open</b>, against a team average')
+    expect(RUN).not.toContain('Move some off')
   })
 
   it('says when it was pressed, in Sydney time like everything else', () => {
