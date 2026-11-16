@@ -76,12 +76,23 @@ describe('the two screens draw the same row', () => {
 })
 
 describe('a tab can never be mistaken for an action', () => {
-  it('the view switch is quiet and grey, not black', () => {
-    const i = row.indexOf('THE VIEW.')
-    const switchBlock = row.slice(i, row.indexOf('What now', i))
-    expect(switchBlock).toContain('bg-line-soft')
-    expect(switchBlock, 'the view switch is solid black again, like the buttons')
-      .not.toContain('bg-ink')
+  // 17 Nov 2026: THE VIEW BECAME A DROPDOWN, on the right of the row.
+  //
+  // Fabio, with the mock beside the real page: "the view form between form and
+  // email is a drop-down box, remember?" It was two pills that looked like two
+  // more actions sitting in front of the buttons that move the deal - which is
+  // the exact confusion this whole file was written to stop on 23 Oct 2026.
+  //
+  // What the test holds has not changed: the thing that changes what you are
+  // READING must not look like the things that MOVE THE DEAL.
+  it('the view switch is quiet, and never looks like an action', () => {
+    const i = row.indexOf('THE VIEW IS A DROPDOWN')
+    expect(i, 'the view switch is gone from the row').toBeGreaterThan(-1)
+    const switchBlock = row.slice(i, row.indexOf('WHO IS DOING IT', i))
+    expect(switchBlock, 'the view switch is a <select>, not a pair of buttons')
+      .toContain('<select')
+    expect(switchBlock, 'the view switch is filled like an action').not.toContain('data-main')
+    expect(switchBlock, 'the view switch went solid black again').not.toContain('bg-ink')
   })
 
   // 16 Nov 2026: THE FILLED ONE, NOT THE BLACK ONE.
@@ -97,8 +108,8 @@ describe('a tab can never be mistaken for an action', () => {
     const actionBlock = row.slice(row.indexOf('{actions.map'))
     expect(actionBlock, 'nothing on the row is the one thing to press')
       .toContain('data-main')
-    const i = row.indexOf('THE VIEW.')
-    expect(row.slice(i, row.indexOf('What now', i)), 'the view switch is filled like an action')
+    const i = row.indexOf('THE VIEW IS A DROPDOWN')
+    expect(row.slice(i, row.indexOf('WHO IS DOING IT', i)), 'the view switch is filled like an action')
       .not.toContain('data-main')
   })
 })
@@ -172,9 +183,9 @@ describe('the buttons', () => {
     // lib/colours.test.ts exists to stop.
     expect(row).toContain('var(--color-done)')
     expect(row).toContain('toneColour(')
-    for (const token of ['bg-info-bg', 'bg-line-soft']) {
-      expect(row).toContain(token)
-    }
+    // The owner chip is the only washed panel left on the row - the view
+    // switch stopped being a pair of pills on 17 Nov 2026.
+    expect(row).toContain('bg-info-bg')
     expect(row, 'a colour is spelled out by hand instead of named')
       .not.toMatch(/#[0-9A-Fa-f]{6}/)
     expect(row).not.toMatch(/amber|yellow|orange/)

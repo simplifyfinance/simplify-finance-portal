@@ -85,7 +85,7 @@ const KEPT: Feature[] = [
   { does: 'Write to the file, where nothing can be overwritten',
     file: 'components/DealFile.tsx', proof: 'File update' },
   { does: 'Request documents from the client',
-    file: 'components/DocumentsBox.tsx', proof: 'Request from client' },
+    file: 'components/DocumentsBox.tsx', proof: 'onClick={requestThem}' },
   { does: 'Build the Fact Find PDF', file: 'components/DealDocuments.tsx', proof: "label: 'Fact Find PDF'" },
   { does: 'Build the Handover PDF', file: 'components/DealDocuments.tsx', proof: "label: 'Handover PDF'" },
   { does: 'Build the Broker Notes PDF', file: 'components/DealDocuments.tsx', proof: "label: 'Broker Notes PDF'" },

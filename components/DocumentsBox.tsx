@@ -1,5 +1,5 @@
 'use client'
-import { Bubble } from '@/components/TheBubble'
+import { Bubble, Act } from '@/components/TheBubble'
 import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { whyNotRequestable, whyOnTheList, timeWords, agoWords } from '@/lib/documents-say-why'
@@ -252,11 +252,22 @@ export default function DocumentsBox({ deal, me, onUpdated, footer }: {
       icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                  strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>}
-      actions={
+      actions={<>
         <button onClick={() => setOpen(o => !o)}
           aria-label={open ? 'Hide documents' : 'Show documents'}
-          className="text-[11px] font-[650] text-info">{open ? 'Hide' : 'Show'}</button>
-      }>
+          className="text-[11px] font-[650] text-muted hover:text-ink">{open ? 'Hide' : 'Show'}</button>
+        {/* THE ONE THING YOU CAME TO THIS BOX TO DO, in the box's own colour
+            and in its head - deal-page-stages.html. Fabio, 17 Nov 2026: "the
+            blue button that says request from the client... it should be a
+            green button that says Request." It was a pale blue bar across the
+            middle of the box, the only blue thing in a green box. */}
+        <Act tone="docs" small main onClick={requestThem} disabled={sending || pending.length === 0}
+          icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                     strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 3L3 10l7 3 3 7z" /></svg>}>
+          {sending ? 'Sending…' : 'Request'}
+        </Act>
+      </>}>
       {/* THREE COUNTS, NOT ONE SENTENCE - one-inside-the-deal-v4.html.
           The numbers are the same three this box already worked out; they were
           printed as a line of prose across the top of a full-width box, which
@@ -292,13 +303,8 @@ export default function DocumentsBox({ deal, me, onUpdated, footer }: {
             </dd>
           </div>
         </dl>
-        {/* THE SAME PRESS AS THE ONE INSIDE THE LIST, where the mock puts it -
-            a bar under the counts rather than a sentence beside them. */}
-        <button onClick={requestThem} disabled={sending || pending.length === 0}
-          className="w-full mt-2.5 rounded-lg px-3 py-2 text-[12.5px] font-semibold
-            bg-info-bg text-info border border-info-edge hover:opacity-90 disabled:opacity-40">
-          {sending ? 'Sending…' : 'Request from client'}
-        </button>
+        {/* THE PRESS MOVED INTO THE HEAD - 17 Nov 2026. Same press, same
+            rules, same sentence underneath saying why it is off. */}
         {/* AND IT SAYS WHY IT IS OFF.
           * 11 Nov 2026. Fabio, on Ian Davies: "why I can't click docs to
           * request???" The button was right - everything had been asked for on

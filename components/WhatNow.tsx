@@ -115,26 +115,43 @@ export default function WhatNow({
   return (
     <div className="flex gap-2.5 items-center flex-wrap">
       {/* THE VIEW. Quiet, grey, on the left, and never shaped like an action. */}
+      {/* THE VIEW IS A DROPDOWN, AND IT SITS ON THE RIGHT.
+          docs/approved-looks/deal-page-stages.html: "VIEW  Form ▾", away from
+          the buttons, because it changes what you are READING and the others
+          move the deal. Fabio, 17 Nov 2026: "the view form between form and
+          email is a drop-down box, remember?"
+          It was two pills that looked like two more actions. */}
       {showView && (
-      <div className="inline-flex gap-[3px] bg-line-soft rounded-[10px] p-[3px]">
-        {([['form', 'Form'], ['email', 'Email']] as const).map(([k, label]) => (
-          <button key={k} onClick={() => onView(k)}
-            className={`text-[12.5px] rounded-lg px-3.5 py-[7px] ${
-              view === k ? 'bg-card text-ink font-semibold shadow-sm' : 'text-muted hover:text-ink'}`}>
-            {label}
-            {k === 'email' && emailStale && (
-              <span title="The saved email is out of date" className="ml-1.5 text-chase">●</span>
-            )}
-          </button>
-        ))}
-      </div>
+      <label className="order-last ml-auto inline-flex items-center gap-2 border border-card-line
+                        rounded-[9px] px-3 py-[6px] bg-card cursor-pointer">
+        <span className="text-[9px] font-extrabold tracking-[.1em] uppercase text-faint">View</span>
+        <select value={view} onChange={e => onView(e.target.value as 'form' | 'email')}
+          aria-label="What to look at"
+          className="text-[12.5px] text-ink bg-transparent outline-none cursor-pointer">
+          <option value="form">Form</option>
+          <option value="email">Email{emailStale ? ' — out of date' : ''}</option>
+        </select>
+        {emailStale && <span title="The saved email is out of date" className="text-chase">&bull;</span>}
+      </label>
       )}
 
-      <span className="text-[10.5px] font-bold tracking-[0.08em] uppercase text-faint mx-0.5">What now</span>
+      {/* "WHAT NOW" IS GONE. The buttons say what they do; a label in front of
+          them was a word nobody read. 17 Nov 2026. */}
 
       {/* WHO IS DOING IT. A fact with a dropdown, not a question anybody has to
           answer - it already says the right name when the screen opens. */}
-      {owner && (
+      {/* WHO IS DOING IT - ONLY WHILE NOBODY IS.
+          17 Nov 2026. Fabio, with the mock beside the real page: "Doing this,
+          Mellissa Sedin, credit, 0.8 days - that button doesn't need to be
+          there. See where it says WHERE IT IS? It's already with Mellissa."
+          He is right: once a stage has an owner, the head of the Where it is
+          box says so, and this said it a second time in a blue box the size
+          of a button.
+          IT IS STILL THE ONLY WAY TO TAKE A STAGE ON. So it stays while the
+          stage has nobody - "I'll do it" and "Put it in the credit queue" -
+          and disappears the moment somebody has it. Reassigning after that is
+          the Credit row in the deal box, which is where the mock puts it. */}
+      {owner && !settled && (
         <div className="relative">
           <button onClick={() => onOwnerChange && canAllocate && !done && setOpen(o => !o)}
             disabled={!onOwnerChange || !canAllocate || done}

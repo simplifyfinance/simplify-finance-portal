@@ -301,7 +301,7 @@ export default function DealDocuments({ deal, me, version, onUpdated, row }: {
             <span className="text-[12.5px] text-body">{KINDS[kind].label}</span>
             <button onClick={() => press(kind)} disabled={!!busy}
               title={copyOf(kind) ? 'Downloads the copy on file' : 'Never built — this makes it'}
-              className="ml-auto text-[11.5px] font-[650] text-info disabled:opacity-40">
+              className="ml-auto text-[11.5px] font-[650] text-docs disabled:opacity-40">
               {busy === kind ? 'Preparing…' : copyOf(kind) ? 'Open' : 'Build'}
             </button>
           </div>
@@ -312,7 +312,7 @@ export default function DealDocuments({ deal, me, version, onUpdated, row }: {
             <span className="text-[12.5px] text-body">Actual purchase handover PDF</span>
             <button onClick={buildPurchaseHandover} disabled={!!busy}
               title="The purchase as it actually is — a separate document, the handover is untouched"
-              className="ml-auto text-[11.5px] font-[650] text-info disabled:opacity-40">
+              className="ml-auto text-[11.5px] font-[650] text-docs disabled:opacity-40">
               {busy === 'purchase' ? 'Preparing…' : 'Build'}
             </button>
           </div>
@@ -320,9 +320,14 @@ export default function DealDocuments({ deal, me, version, onUpdated, row }: {
 
         {/* REBUILDING IS ITS OWN PRESS, always available - not only when the
             documents have fallen behind. */}
+        {/* THE SAME GREEN AS THE BOX IT SITS IN - 17 Nov 2026. Fabio: "we
+            can't go green at the top and then build and rebuild all three
+            blue." Build a PDF lives inside What we need from the client now,
+            so it wears that box's colour and not its own. */}
         <button onClick={rebuildAll} disabled={!!busy}
           className={`w-full mt-2.5 rounded-lg px-3 py-2 text-[12.5px] font-semibold disabled:opacity-40 ${
-            behind ? 'bg-ink text-page' : 'bg-info-bg text-info border border-info-edge hover:opacity-90'}`}>
+            behind ? 'bg-ink text-page'
+                   : 'bg-docs/10 text-docs border border-docs/30 hover:opacity-90'}`}>
           {busy === 'all' ? 'Rebuilding…' : 'Rebuild all three'}
         </button>
       </div>
@@ -352,7 +357,7 @@ export default function DealDocuments({ deal, me, version, onUpdated, row }: {
           {filed.map(f => (
             <span key={f.id} className="inline-flex items-center gap-1 min-w-0">
               <button onClick={() => openFiled(f.file_path)}
-                className="text-[11.5px] text-brand-ink hover:underline truncate"
+                className="text-[11.5px] text-docs hover:underline truncate"
                 title={f.file_name}>
                 {f.file_name}
               </button>
@@ -381,7 +386,7 @@ export default function DealDocuments({ deal, me, version, onUpdated, row }: {
                       border-t border-line mt-3 pt-3">
         Build a PDF
         <span className="ml-auto">
-          <Act tone="plain" small onClick={() => setShowing(v => !v)}
+          <Act tone="docs" small onClick={() => setShowing(v => !v)}
             icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                        strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 4v11M8 11l4 4 4-4M5 20h14" /></svg>}>
