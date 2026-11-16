@@ -1,4 +1,5 @@
 'use client'
+import { Act } from '@/components/TheBubble'
 import { useState } from 'react'
 import { outstandingFromDeal } from '@/lib/documents-outstanding'
 import { requestDocuments } from '@/lib/request-documents'
@@ -48,35 +49,50 @@ export default function DealPrompts({ deal, onUpdated }: {
     setSending(false)
   }
 
-  return (
-    <div className="bg-waiting-bg border border-waiting-edge rounded-xl px-4 py-3 mb-3">
-      <div className="flex items-center gap-x-2.5 gap-y-2 flex-wrap text-[12.5px] text-waiting">
-        {count > 0 && (
-          <b className="font-semibold">
-            {count === 1 ? 'One thing nobody has started.' : 'Two things nobody has started.'}
-          </b>
-        )}
-
-        {askDocs && (
-          <>
-            <span>
-              Nobody has asked the client for {outstanding.length} document{outstanding.length === 1 ? '' : 's'}.
-            </span>
-            <button onClick={request} disabled={sending}
-              className="text-[11.5px] font-semibold text-waiting bg-card border border-waiting-edge
-                rounded-[7px] px-3 py-1.5 hover:opacity-90 disabled:opacity-50">
-              {sending ? 'Sending…' : 'Request them'}
-            </button>
-          </>
-        )}
-
-        {askDocs && askBc && <span aria-hidden className="w-px h-4 bg-waiting-edge" />}
-
-        {askBc && <WhoIsDoingTheBc bare deal={deal} onUpdated={onUpdated} />}
-      </div>
-
-      {sent && <p className="m-0 mt-2 text-[12px] text-done">{sent}</p>}
-      {err && <p className="m-0 mt-2 text-[12px] text-chase">{err}</p>}
+  // RED ON THE MARK, NOT ON THE PAPER.
+  //
+  // 16 Nov 2026. This was one purple band across the top of every deal, and
+  // beside it sat the rework warning in a red box, and under that two more.
+  // Fabio: "why does it have to be a big red thing that says rework? ... maybe
+  // just the triangle is red and everything else is just a normal colour...
+  // It's just too loud."
+  //
+  // So each thing nobody has started is an ordinary line on an ordinary card.
+  // The triangle is red. The sentence that says what is wrong is red. The
+  // sentence that gives the detail is grey, and the button is the same button
+  // every other box uses. Nothing is hidden and nothing shouts.
+  const Warn = ({ children }: { children: React.ReactNode }) => (
+    <div className="quiet-warn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+           strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17h.01" />
+      </svg>
+      {children}
     </div>
+  )
+
+  return (
+    <>
+      {askDocs && (
+        <Warn>
+          <span className="key">
+            Nobody has asked the client for {outstanding.length} document{outstanding.length === 1 ? '' : 's'}.
+          </span>
+          <Act tone="docs" small onClick={request} disabled={sending}>
+            {sending ? 'Sending…' : 'Request them'}
+          </Act>
+        </Warn>
+      )}
+
+      {askBc && (
+        <Warn>
+          <span className="key">Nobody is down as doing the BC.</span>
+          <span className="rest"><WhoIsDoingTheBc bare deal={deal} onUpdated={onUpdated} /></span>
+        </Warn>
+      )}
+
+      {sent && <p className="m-0 mb-3 text-[12px] text-done">{sent}</p>}
+      {err && <p className="m-0 mb-3 text-[12px] text-chase">{err}</p>}
+    </>
   )
 }

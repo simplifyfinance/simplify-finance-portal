@@ -105,29 +105,12 @@ export default function DealTabCards({ deal, stage, onPick }: {
         )
       })}
 
-      {/* NEXT ACTION. The sentence is the one the deals board already shows for
-          this deal, and the date is the one it already ages it by - so a card,
-          the board and this box can never say three different things. It draws
-          itself away when there is nothing to say. */}
-      {(() => {
-        const waiting = getWaitingOnLabel(deal, officer)
-        if (!waiting) return null
-        const since = stageSince(deal)
-        const age = stageAge(deal)
-        return (
-          <div className="text-left bg-card border border-card-line rounded-[11px] px-3 py-[11px]">
-            <span className="block text-[9.5px] font-bold tracking-[.09em] uppercase text-faint mb-1.5">
-              Next action
-            </span>
-            <span className="block text-[12.5px] font-[650] text-ink leading-[1.3]">{waiting.text}</span>
-            {since && age.days !== null && (
-              <span className="block text-[11px] text-faint mt-[3px]">
-                Waiting {age.label === 'today' ? 'since today' : age.label}
-              </span>
-            )}
-          </div>
-        )
-      })()}
+      {/* THE NEXT ACTION BOX IS GONE - 16 Nov 2026.
+          It read "Waiting on: Mellissa Sedin to complete BC" while the head of
+          the deal said the same thing two inches above it, and the board said
+          it a third time with a whole column. One fact, drawn three times.
+          It is on the GONE list in
+          lib/nothing-on-the-deal-page-is-lost.test.ts with the reason. */}
     </div>
   )
 }

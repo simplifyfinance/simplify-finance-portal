@@ -33,9 +33,10 @@ export default function DealMore({ children }: { children: React.ReactNode }) {
 
   return (
     <div ref={box} className="relative">
+      {/* Same shape as everything else on that row - see the .bt rules in
+          app/globals.css. 16 Nov 2026. */}
       <button onClick={() => setOpen(o => !o)} aria-expanded={open} aria-haspopup="menu"
-        className="text-xs text-muted bg-page border border-line rounded-[10px] px-3.5 py-2
-          hover:bg-line-soft hover:text-ink transition inline-flex items-center gap-1.5">
+        className="bt" style={{ ['--c' as any]: 'var(--color-muted)' }}>
         More
         <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor"
              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

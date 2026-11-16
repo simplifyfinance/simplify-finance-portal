@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useGrow } from './useGrow'
 import InternalNotes from '@/components/InternalNotes'
+import { Bubble, Act, type Tone } from '@/components/TheBubble'
 
 // THE RAIL.
 //
@@ -18,22 +19,20 @@ import InternalNotes from '@/components/InternalNotes'
 // NOTHING NEW IS DRAWN HERE. Every box is the component that already drew it.
 // This decides where they sit and nothing else.
 
-export function RailCard({ title, action, children, tone }: {
+// A BOX IN THE RAIL, drawn the way every other box on the page is drawn -
+// see components/TheBubble.tsx. 16 Nov 2026, deal-page-stages.html.
+export function RailCard({ title, action, children, tone, icon }: {
   title: string
   action?: React.ReactNode
   children: React.ReactNode
-  tone?: 'chase'
+  tone?: Tone
+  icon?: React.ReactNode
 }) {
   return (
-    <div className={`rounded-xl border mb-3 ${
-      tone === 'chase' ? 'bg-chase-bg border-chase-edge' : 'bg-card border-card-line'}`}>
-      <div className="flex items-center gap-2 px-3.5 pt-3">
-        <span className={`text-[9.5px] font-bold tracking-[.09em] uppercase ${
-          tone === 'chase' ? 'text-chase' : 'text-faint'}`}>{title}</span>
-        {action && <span className="ml-auto text-[11px] font-[650] text-info">{action}</span>}
-      </div>
-      <div className="px-3.5 pt-2.5 pb-3">{children}</div>
-    </div>
+    <Bubble tone={tone || 'plain'} title={title} icon={icon}
+      actions={action ? <span className="text-[11px] font-[650]">{action}</span> : null}>
+      {children}
+    </Bubble>
   )
 }
 
@@ -57,7 +56,7 @@ export function RailNotes({ dealId, initial, meId }: {
   dealId: string; initial?: string; meId?: string | null
 }) {
   const [editing, setEditing] = useState(false)
-  const { h, over, wrap, onGrab, toggle, toggleWord, measure } =
+  const { h, over, wrap, onGrab, measure } =
     useGrow(`one.notes.h.${dealId}`, SHUT, TALL)
 
   // A fade over the last line of a short note would be saying there is more
@@ -77,11 +76,17 @@ export function RailNotes({ dealId, initial, meId }: {
   const text = (initial || '').trim()
 
   return (
-    <RailCard title="Sales notes" action={
-      <span className="flex items-center gap-3">
-        <button onClick={() => setEditing(true)} aria-label="Edit sales notes">Edit</button>
-        <button onClick={toggle}>{toggleWord}</button>
-      </span>
+    /* THE WORD "TALLER" IS GONE - 16 Nov 2026. See components/DealFile.tsx.
+       The handle on the bottom edge does the same job without a word. */
+    <RailCard title="Sales notes" tone="notes"
+      icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                 strokeLinecap="round" strokeLinejoin="round">
+        <path d="M5 4h14v12l-4 4H5z" /><path d="M15 20v-4h4" /><path d="M8 9h8M8 13h5" /></svg>}
+      action={
+      <Act tone="notes" small main onClick={() => setEditing(true)} aria-label="Edit sales notes"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                   strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z" /></svg>}>Edit</Act>
     }>
       {/* WHO READS IT, UNDER THE HEADING. 22 Oct 2026. The audit found the
           box everyone writes in was the one that leaves the building, and its
@@ -90,7 +95,17 @@ export function RailNotes({ dealId, initial, meId }: {
       <p className="text-[10.5px] text-faint leading-[1.5] m-0 mb-2">
         Goes to SalesTrekker, the Fact Find PDF and the assessment. Write it as if credit will read it.
       </p>
-      <div ref={wrap} className="relative overflow-hidden" style={{ maxHeight: h }}>
+      {/* THE WORDS BEHIND A QUOTE RULE - deal-page-stages.html. The rule is
+          there because this is somebody's words, not the portal's, and that is
+          worth seeing before you read them.
+          THE "WRITTEN 13 NOV BY FABIO" LINE IS NOT HERE, and not by choice.
+          The mock draws one. Nothing records who last wrote the sales note or
+          when: deals.internal_notes is one column of text, and last_saved_by
+          is the whole DEAL, not this field. Drawing the line would mean
+          printing a name the portal does not actually know. It needs two
+          columns and its own small ship - 16 Nov 2026. */}
+      <div ref={wrap} className={`relative overflow-hidden ${
+          text ? 'border-l-[3px] border-waiting-edge pl-3 ml-[1px]' : ''}`} style={{ maxHeight: h }}>
         {text
           ? text.split(/\n{2,}/).map((para, i) => (
               <p key={i} className="text-[12.5px] leading-[1.6] text-body m-0 mb-2.5 last:mb-0">{para}</p>

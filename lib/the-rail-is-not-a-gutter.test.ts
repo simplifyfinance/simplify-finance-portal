@@ -31,7 +31,13 @@ describe('THE RAIL GROWS WITH THE WINDOW', () => {
   })
 
   it('AND 330 IS NOW THE FLOOR, NOT THE WIDTH', () => {
-    expect(PAGE).toContain('minmax(0,clamp(330px,26vw,440px))')
+    // 16 Nov 2026, deal-page-stages.html. The whole page is the two columns
+    // now, not just the strip under the tab cards, so the rail is a share of
+    // the window rather than a clamp of its own. 330 is still the floor and it
+    // still grows - which is the thing this test was written to hold.
+    expect(PAGE).toContain('minmax(330px,1fr)')
+    expect(PAGE, 'the rail must not be pinned to a fixed width again')
+      .not.toContain('minmax(0,330px)')
   })
 
   it('and a small screen still gets the rail underneath', () => {

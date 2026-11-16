@@ -7,7 +7,6 @@
     "Error cloning deal:",
     "Error saving name:",
     "Save",
-    "Scenario",
     "Write from the deal"
   ],
   "app/(app)/deals/[id]/DealProgress.tsx": [
@@ -163,7 +162,6 @@
     "Ask for it now",
     "Asked for",
     "Cancel",
-    "Documents",
     "Emails the list to whoever does the requesting — set in Settings.",
     "Everything ticked has been asked for.",
     "Everything ticked is either asked for or already covered by the statements.",
@@ -175,7 +173,8 @@
     "The list came off the fact find. This sends the same email as the button inside the list.",
     "The request could not be sent.",
     "Those were already asked for.",
-    "Tick what you need first."
+    "Tick what you need first.",
+    "What we need from the client"
   ],
   "components/WhoIsDoingTheBc.tsx": [
     "Client agreed - move to LO",

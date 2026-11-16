@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { Bubble, Act, Pill } from '@/components/TheBubble'
 import { useGrow } from './useGrow'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite } from '@/lib/checked-write'
@@ -37,8 +38,11 @@ function SentWording({ id, text }: { id: string; text: string }) {
 }
 
 const PANEL = 'border border-[#E5DED2] rounded-xl bg-card overflow-hidden mb-3'
-const HEAD = 'px-3 py-2 bg-[#FCFAF6] border-b border-line text-[9.5px] font-bold tracking-[.08em] uppercase text-muted flex items-center gap-2'
-const BODY = 'px-3 py-3'
+// THE TITLE MOVED INTO THE BOX HEAD - see components/TheBubble.tsx. What is
+// left of this strip is the count and whatever the box lets you do, so it is
+// no longer a bar across the top of a panel.
+const HEAD = 'text-[9.5px] font-bold tracking-[.08em] uppercase text-muted flex items-center gap-2 mb-2'
+const BODY = ''
 const INPUT = 'w-full border border-line rounded-lg px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-brand'
 
 // ---------------------------------------------------------------- chips ----
@@ -110,16 +114,28 @@ export function DealAlerts({ dealId, me, alerts, onChanged }: {
     onChanged()
   }
 
+  // THE COUNT AND THE BUTTON LIVE IN THE HEAD - deal-page-stages.html.
+  // The count was a word at the top of the body and the button was at the
+  // very bottom, under the list, so on a long box you had to scroll to
+  // add a thing. And THE WORD "TALLER" IS GONE: Fabio, pointing at the
+  // cluster of "5 / Taller / +" that used to be here, "I said taller, the
+  // word taller next to the button on the notes section. I don't like
+  // that." The box still grows - you drag the handle on its bottom edge,
+  // which is what everything else on a screen does.
   return (
-    <div className={PANEL}>
-      <div className={HEAD}>
-        <span>⚠ Needs action</span>
-        {open.length > 0 && <span className="ml-auto text-waiting font-bold">{open.length} open</span>}
-        <button onClick={grow.toggle}
-          className={`${open.length > 0 ? '' : 'ml-auto '}text-[10.5px] font-[650] text-info`}>
-          {grow.toggleWord}
-        </button>
-      </div>
+    <Bubble tone="urgent" title="Needs action"
+      icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                 strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17h.01" /></svg>}
+      actions={<>
+        <Pill hot={open.length > 0}>{open.length}</Pill>
+        {!adding && (
+          <Act tone="urgent" small main onClick={() => setAdding(true)}
+            icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                       strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12h14" /></svg>}>Add</Act>
+        )}
+      </>}>
       <div className={BODY}>
         {/* WHO READS IT. Not a note - a thing somebody has to do, and it shows
             on the pipeline list without the deal being opened. 22 Oct 2026:
@@ -180,15 +196,10 @@ export function DealAlerts({ dealId, me, alerts, onChanged }: {
               <span className="text-[11px] text-faint">No date is fine &mdash; it stays amber rather than counting down.</span>
             </div>
           </div>
-        ) : (
-          <button onClick={() => setAdding(true)}
-            className="text-[11.5px] text-muted border border-line rounded-lg px-2.5 py-1 hover:bg-page">
-            + Add
-          </button>
-        )}
-        {msg && <p className="text-[11.5px] text-[#C4553B] m-0 mt-2">{msg}</p>}
+        ) : null}
+        {msg && <p className="text-[11.5px] text-chase m-0 mt-2">{msg}</p>}
       </div>
-    </div>
+    </Bubble>
   )
 }
 
@@ -200,6 +211,8 @@ export function FileNotes({ dealId, me, notes, onChanged }: {
   onChanged: () => void
 }) {
   const [body, setBody] = useState('')
+  // Shut until somebody presses Add note in the head.
+  const [writing, setWriting] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const list = newestFirst(notes || [])
@@ -215,19 +228,22 @@ export function FileNotes({ dealId, me, notes, onChanged }: {
     setBusy(false)
     if (error || !data?.length) { setMsg('NOT SAVED - ' + (error?.message || 'the database refused it.')); return }
     setBody('')
+    setWriting(false)
     onChanged()
   }
 
   return (
-    <div className={PANEL}>
-      <div className={HEAD}>
-        <span>🕐 File update</span>
-        {list.length > 0 && <span className="ml-auto text-muted">{list.length}</span>}
-        <button onClick={grow.toggle}
-          className={`${list.length > 0 ? '' : 'ml-auto '}text-[10.5px] font-[650] text-info`}>
-          {grow.toggleWord}
-        </button>
-      </div>
+    <Bubble tone="plain" title="File update"
+      icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                 strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 2" /></svg>}
+      actions={<>
+        <Pill>{list.length}</Pill>
+        <Act tone="plain" small main onClick={() => setWriting(true)}
+          icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                     strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 5v14M5 12h14" /></svg>}>Add note</Act>
+      </>}>
       <div className={BODY}>
         {/* WHO READS IT, and the one thing that makes this box different from
             the other two: nothing here can be typed over. */}
@@ -271,19 +287,35 @@ export function FileNotes({ dealId, me, notes, onChanged }: {
             below. It holds nothing until you press it, and it is empty again
             afterwards - so the tests that check a field survives a reload skip
             it. See tests/browser/typing-survives.spec.ts. */}
-        <textarea data-compose="1" value={body} onChange={e => setBody(e.target.value)} rows={3}
-          className={INPUT + ' mt-2.5 resize-y'} placeholder="Add a note…" />
-        <div className="flex gap-2 items-center mt-1.5">
-          <button onClick={add} disabled={busy || !body.trim()}
-            className="text-[11.5px] font-semibold bg-ink text-page rounded-lg px-3 py-1.5 disabled:opacity-40">
-            {busy ? 'Saving…' : 'Add note'}
+        {/* SHUT UNTIL YOU WANT IT - deal-page-stages.html draws a dashed
+            "Add a note…" line, not a three-line box sitting open on every
+            deal. One press and it is the same box it always was, with the
+            same data-compose and the same Add note. */}
+        {writing ? (
+          <>
+            <textarea data-compose="1" value={body} onChange={e => setBody(e.target.value)} rows={3}
+              autoFocus className={INPUT + ' mt-2.5 resize-y'} placeholder="Add a note…" />
+            <div className="flex gap-2 items-center mt-1.5">
+              <button onClick={add} disabled={busy || !body.trim()}
+                className="text-[11.5px] font-semibold bg-ink text-page rounded-lg px-3 py-1.5 disabled:opacity-40">
+                {busy ? 'Saving…' : 'Add note'}
+              </button>
+              <button onClick={() => { setWriting(false); setBody(''); setMsg('') }}
+                className="text-[11.5px] text-faint hover:text-ink">Cancel</button>
+              <span className={`text-[11px] ${msg ? 'text-chase' : 'text-faint'}`}>
+                {msg || 'Nothing here is ever overwritten.'}
+              </span>
+            </div>
+          </>
+        ) : (
+          <button onClick={() => setWriting(true)}
+            className="w-full text-left mt-2.5 border border-dashed border-card-line rounded-[10px]
+              px-3 py-2.5 text-[11.5px] text-faint hover:bg-page transition">
+            Add a note&hellip;
           </button>
-          <span className={`text-[11px] ${msg ? 'text-[#C4553B]' : 'text-faint'}`}>
-            {msg || 'Nothing here is ever overwritten.'}
-          </span>
-        </div>
+        )}
       </div>
-    </div>
+    </Bubble>
   )
 }
 

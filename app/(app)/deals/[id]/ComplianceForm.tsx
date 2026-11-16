@@ -1813,6 +1813,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
           actions={[
             {
               label: 'Done',
+              tone: 'done' as const,
               onClick: () => { if (!complianceCompletedAt) markComplianceComplete() },
               primary: !complianceCompletedAt,
               done: !!complianceCompletedAt,
@@ -1821,6 +1822,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
             },
             {
               label: 'Sent to compliance',
+              tone: 'info' as const,
               onClick: () => {},
               done: !!deal.compliance_sent_at,
               waiting: !deal.compliance_sent_at,

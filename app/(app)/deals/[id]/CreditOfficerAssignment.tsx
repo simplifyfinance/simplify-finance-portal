@@ -1,9 +1,10 @@
 'use client'
+import { KV } from '@/components/TheBubble'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { can } from '@/lib/permissions'
 
-export default function CreditOfficerAssignment({ dealId, brokerName, userRole }: { dealId: string; brokerName: string; userRole?: string }) {
+export default function CreditOfficerAssignment({ dealId, brokerName, userRole , row }: { dealId: string; brokerName: string; userRole?: string; row?: boolean }) {
   const supabase = createSupabaseBrowser()
   // Was hard-coded to admin, so opening up reassignDeals would have changed
   // nothing on screen - the API would have allowed it and the button would
@@ -66,6 +67,60 @@ export default function CreditOfficerAssignment({ dealId, brokerName, userRole }
   // NOBODY ASSIGNED AND NOBODY WHO COULD ASSIGN: there is nothing useful to
   // say, so the strip stays out of the way. Everyone else sees the state.
   if (!assignedId && !isAdmin) return null
+
+  // A ROW IN THE DEAL BOX - deal-page-stages.html, 16 Nov 2026.
+  //
+  // THE SENTENCE STAYS AND SO DOES THE BUTTON. "The credit team cannot see
+  // this deal until somebody is on it" is the reason the empty state matters,
+  // and it goes under the row rather than beside it, where it was pushing the
+  // scenario chip onto a second line.
+  if (row) return (
+    <>
+      <KV label="Credit" tone={assignedId ? undefined : 'missing'}
+        end={isAdmin && !showPicker
+          ? <button onClick={() => setShowPicker(true)}>
+              {assignedId ? 'Reassign' : 'Assign'}
+            </button>
+          : null}>
+        {assignedId ? assignedName : 'Nobody assigned'}
+      </KV>
+      {(!assignedId || msg || err || showPicker) && (
+        <div className="pl-[116px] pb-2 flex items-center gap-2 flex-wrap">
+          {!assignedId && !showPicker && (
+            <span className="text-[11.5px] text-muted">
+              The credit team cannot see this deal until somebody is on it.
+            </span>
+          )}
+          {msg && <span className="text-xs text-done">{msg}</span>}
+          {err && <span className="text-xs text-chase">{err}</span>}
+          {isAdmin && showPicker && eligible.filter(o => o.id !== assignedId).length === 0 && (
+            <>
+              <span className="text-[11.5px] text-chase">
+                No credit officer is linked to {brokerName || 'this broker'}. Link one in Settings first.
+              </span>
+              <button onClick={() => setShowPicker(false)}
+                className="text-xs text-faint hover:text-ink">Close</button>
+            </>
+          )}
+          {isAdmin && showPicker && eligible.filter(o => o.id !== assignedId).length > 0 && (
+            <>
+              <select className="border border-field-line bg-field rounded-lg px-2 py-1.5 text-xs"
+                value={picked} onChange={e => setPicked(e.target.value)}>
+                <option value="">— select officer —</option>
+                {eligible.filter(o => o.id !== assignedId).map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </select>
+              <button onClick={handleReassign} disabled={!picked || reassigning}
+                className="text-xs bg-ink text-page px-3 py-1.5 rounded-lg disabled:opacity-40">
+                {reassigning ? 'Saving...' : 'Confirm'}
+              </button>
+              <button onClick={() => { setShowPicker(false); setPicked('') }}
+                className="text-xs text-faint hover:text-ink">Cancel</button>
+            </>
+          )}
+        </div>
+      )}
+    </>
+  )
 
   return (
     <div className="flex items-center gap-2 flex-wrap">

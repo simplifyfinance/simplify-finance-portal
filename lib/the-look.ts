@@ -64,8 +64,16 @@ export const THE_LOOK: Piece[] = [
     proof: { file: PAGE, contains: '<DealProgress' } },
   { mock: V4, piece: 'The five tabs as cards with an icon and a status line',
     proof: { file: PAGE, contains: '<DealTabCards' } },
-  { mock: V4, piece: 'Next action box beside the tab cards',
-    proof: { file: CARDS, contains: 'Next action' } },
+  // TAKEN OFF ON 16 NOV 2026, the same way the four board tiles were.
+  //
+  // It read "Waiting on: Mellissa Sedin to complete BC" while the head of the
+  // deal said the same thing two inches above it, and the board said it a
+  // third time with a whole column of its own. One fact, drawn three times.
+  //
+  // The entry stays on the list, unbuilt, because a piece that was approved
+  // and then deliberately removed is worth remembering. Its reason is in the
+  // GONE list in lib/nothing-on-the-deal-page-is-lost.test.ts.
+  { mock: V4, piece: 'Next action box beside the tab cards', proof: null },
   { mock: V4, piece: 'Two columns: the form, and the rail beside it',
     proof: { file: PAGE, contains: '<DealRail>' } },
   // The proof is that it is INSIDE the rail, not merely imported somewhere -

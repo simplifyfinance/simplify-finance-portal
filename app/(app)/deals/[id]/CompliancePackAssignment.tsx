@@ -1,4 +1,5 @@
 'use client'
+import { KV } from '@/components/TheBubble'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { can } from '@/lib/permissions'
@@ -19,7 +20,7 @@ import { isAway, sayDate } from '@/lib/compliance-allocation'
 // "Nobody" on every deal in the book would be noise on a question nobody is
 // asking yet.
 
-export default function CompliancePackAssignment({ dealId, userRole }: { dealId: string; userRole?: string }) {
+export default function CompliancePackAssignment({ dealId, userRole , row }: { dealId: string; userRole?: string; row?: boolean }) {
   const supabase = createSupabaseBrowser()
   const canMove = can(userRole, 'reassignDeals')
   const [name, setName] = useState('')
@@ -113,6 +114,49 @@ export default function CompliancePackAssignment({ dealId, userRole }: { dealId:
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
   const theyAreAway = isAway(
     { id: ownerId, name, onLeaveFrom: leave.from, onLeaveUntil: leave.until }, today)
+
+  // A ROW IN THE DEAL BOX - deal-page-stages.html, 16 Nov 2026. The away
+  // warning keeps its red, because it is a warning and it is the one thing on
+  // this row somebody has to act on.
+  if (row) return (
+    <>
+      <KV label="Compliance pack"
+        end={canMove && !showPicker ? <button onClick={openPicker}>Reassign</button> : null}>
+        {name || 'Somebody'}
+        {when && <span className="text-faint text-[11.5px]"> &middot; {when}</span>}
+      </KV>
+      {(showPicker || msg || err || theyAreAway) && (
+        <div className="pl-[116px] pb-2 flex items-center gap-2 flex-wrap">
+          {msg && <span className="text-xs text-done">{msg}</span>}
+          {err && <span className="text-xs text-chase">{err}</span>}
+          {theyAreAway && (
+            <span className="text-[12px] text-chase">
+              {name || 'They'} {leave.until ? `is away until ${sayDate(String(leave.until))}` : 'is away'}.
+              {canMove ? <b> Reassign this one</b> : <b> Ask for it to be reassigned</b>} if it cannot wait.
+            </span>
+          )}
+          {canMove && showPicker && (
+            <>
+              <select className="border border-field-line bg-field rounded-lg px-2 py-1.5 text-xs"
+                aria-label="Move the compliance pack to"
+                value={picked} onChange={e => setPicked(e.target.value)}>
+                <option value="">— who is taking it —</option>
+                {team.filter(p => p.id !== ownerId).map(p => (
+                  <option key={p.id} value={p.id}>{p.full_name}</option>
+                ))}
+              </select>
+              <button onClick={move} disabled={!picked || busy}
+                className="text-xs bg-ink text-page px-3 py-1.5 rounded-lg disabled:opacity-40">
+                {busy ? 'Moving…' : 'Reassign and email them'}
+              </button>
+              <button onClick={() => { setShowPicker(false); setPicked('') }}
+                className="text-xs text-faint hover:text-ink">Cancel</button>
+            </>
+          )}
+        </div>
+      )}
+    </>
+  )
 
   return (
     <div className="flex flex-col gap-1.5 items-start">

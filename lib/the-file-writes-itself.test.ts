@@ -46,7 +46,7 @@ describe('there is one log, and it is the one that was already there', () => {
   it('the box keeps its name and its promise', () => {
     // Fabio named these on 22 Oct and lib/three-boxes-in-order.test.ts holds
     // the names. This one holds the sentence under the heading.
-    expect(FILE).toContain('🕐 File update')
+    expect(FILE).toContain('title="File update"')  // 16 Nov 2026: now the box head
     expect(FILE).toContain('The log. Nothing here can be typed over, and the portal writes to it as well.')
   })
 })

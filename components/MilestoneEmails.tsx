@@ -128,9 +128,12 @@ export default function MilestoneEmails({ deal, onUpdated }: {
 
   return (
     <div ref={box} className="relative">
+      {/* THE ONE FILLED BUTTON IN THE DEAL'S HEAD, and it is the blue the rest
+          of that box wears - deal-page-stages.html, 16 Nov 2026. It was solid
+          black, which made it the loudest thing on the page and said nothing
+          about what it does. */}
       <button onClick={() => setListOpen(o => !o)} aria-expanded={listOpen} aria-haspopup="menu"
-        className="text-xs font-semibold text-page bg-ink border border-ink rounded-[10px] px-3.5 py-2
-          hover:opacity-90 transition inline-flex items-center gap-2">
+        className="bt" data-main style={{ ['--c' as any]: 'var(--color-info)' }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
           <rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 5L2 7" />

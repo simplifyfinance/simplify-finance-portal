@@ -1,5 +1,6 @@
 "use client"
 import Link from 'next/link'
+import { Bubble } from '@/components/TheBubble'
 import { useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite } from '@/lib/checked-write'
@@ -80,14 +81,10 @@ export default function DealLinks({ deal, onUpdated }: {
   const box = "w-full mt-1 text-[11.5px] border border-gray-200 rounded-lg px-2 py-1 bg-field focus:outline-none focus:border-brand"
 
   return (
-    <div className="bg-card border border-card-line rounded-xl mb-3 px-3.5 py-3">
-      <div className="flex items-center gap-2 mb-2.5">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="text-faint">
-          <rect x="2" y="4" width="20" height="16" rx="2" /><path d="m2 7 10 6 10-6" />
-        </svg>
-        <span className="text-[9.5px] font-bold tracking-[.09em] uppercase text-faint">SalesTrekker &amp; links</span>
-      </div>
+    <Bubble tone="plain" title="SalesTrekker &amp; links"
+      icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+             strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="4" width="20" height="16" rx="2" /><path d="m2 7 10 6 10-6" /></svg>}>
 
       <div>
         {rows.map(r => {
@@ -142,6 +139,6 @@ export default function DealLinks({ deal, onUpdated }: {
           <p className="text-[11px] text-chase leading-snug mt-1.5">{problem}</p>
         )}
       </div>
-    </div>
+    </Bubble>
   )
 }

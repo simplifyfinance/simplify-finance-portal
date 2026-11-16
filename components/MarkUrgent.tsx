@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { Act } from '@/components/TheBubble'
 import { checkedWrite } from '@/lib/checked-write'
 import { addSystemNote } from '@/components/DealFile'
 import {
@@ -24,10 +25,12 @@ import {
 const BOX = 'w-full border border-field-line rounded-lg px-2.5 py-2 text-[12.5px] bg-card ' +
             'text-ink outline-none focus:border-brand placeholder:text-faint resize-none'
 
-export default function MarkUrgent({ deal, me, onSaved }: {
+export default function MarkUrgent({ deal, me, onSaved, header }: {
   deal: any
   me?: { id?: string | null; name?: string }
   onSaved?: (patch: any) => void
+  /** In the deal's head, as a button with a flag on it, rather than a rail card. */
+  header?: boolean
 }) {
   const supabase = createSupabaseBrowser()
   const [open, setOpen] = useState(false)
@@ -52,6 +55,74 @@ export default function MarkUrgent({ deal, me, onSaved }: {
     setOpen(false); setWhy('')
     onSaved?.(patch)
   }
+
+  // IN THE HEAD OF THE DEAL, WITH A FLAG ON IT.
+  //
+  // Fabio, 16 Nov 2026: "the mark urgent makes no sense being there, right?
+  // With the little flag, can you bring that to the top next to Open BC?"
+  //
+  // It was last in the rail, under the documents and the links - which is a
+  // long way to scroll to say a deal is on fire. Same flag, same reason, same
+  // rule about who may clear it. Only the place changed.
+  if (header) return (
+    <span className="relative inline-flex">
+      <Act tone="urgent" main={!!urgent}
+        onClick={() => { setOpen(v => !v); setProblem('') }}
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                   strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 21V4" /><path d="M5 5h11l-2 3 2 3H5" /></svg>}>
+        {urgent ? 'Urgent' : 'Mark urgent'}
+      </Act>
+      {open && (
+        <div className="absolute right-0 top-full mt-1.5 z-40 w-[320px] bg-card border border-card-line
+                        rounded-xl shadow-[0_18px_44px_-18px_rgba(20,20,15,.45)] p-3.5">
+          {urgent ? (
+            <>
+              <p className="text-[12px] text-chase leading-[1.5] m-0">
+                <b className="text-ink">{urgentLine(now)}</b>
+              </p>
+              {problem && <p className="text-[11.5px] text-chase m-0 mt-2">{problem}</p>}
+              {mayClear ? (
+                <button disabled={busy}
+                  onClick={() => void save(NOT_URGENT_PATCH, 'No longer urgent.')}
+                  className="block text-[11.5px] font-semibold text-brand-ink mt-2">
+                  {busy ? 'Saving…' : 'Not urgent any more →'}
+                </button>
+              ) : (
+                <p className="text-[11px] text-muted leading-[1.45] m-0 mt-2">
+                  {urgent.byName || 'Whoever set it'} marked this, so only they can take it off.
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <textarea value={why} onChange={e => setWhy(e.target.value)} autoFocus rows={3}
+                placeholder="The client’s finance clause is Friday."
+                className={BOX} />
+              <p className="text-[11px] text-faint leading-[1.5] m-0 mt-1">
+                Required. &ldquo;Urgent&rdquo; with nothing after it is why nobody reads the word.
+              </p>
+              {problem && <p className="text-[11.5px] text-chase m-0 mt-2 leading-[1.5]">{problem}</p>}
+              <div className="flex items-center gap-2 mt-3">
+                <button onClick={() => { setOpen(false); setProblem(''); setWhy('') }} disabled={busy}
+                  className="text-[12px] text-muted">Cancel</button>
+                <button disabled={busy}
+                  onClick={() => {
+                    const bad = validateUrgent(why)
+                    if (bad) { setProblem(bad); return }
+                    void save(urgentPatch(me || {}, why), `Marked urgent: ${why.trim()}`)
+                  }}
+                  className="ml-auto text-[12px] font-semibold bg-ink text-page rounded-lg px-3 py-1.5
+                    disabled:opacity-50">
+                  {busy ? 'Saving…' : 'Mark urgent'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </span>
+  )
 
   if (urgent) {
     return (

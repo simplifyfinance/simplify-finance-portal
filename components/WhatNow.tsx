@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { toneColour, type Tone } from '@/components/TheBubble'
 import { showingOwner, ownerOf, daysOnStage, stageIsDone, type Stage } from '@/lib/who-did-this-stage'
 
 // ONE ROW, THE SAME ON THE BC AND THE LENDING OPTIONS.
@@ -31,6 +32,19 @@ import { showingOwner, ownerOf, daysOnStage, stageIsDone, type Stage } from '@/l
 export type Action = {
   label: string
   onClick: () => void
+  // WHAT KIND OF THING IT IS, AND THEREFORE WHAT COLOUR IT WEARS.
+  //
+  // 16 Nov 2026, deal-page-stages.html. Every button on this row used to be
+  // black, white or grey, so "Done", "Send to client" and "Send it back" - a
+  // handover, an email to a client, and telling somebody their work needs
+  // redoing - were three identical rectangles. Fabio chose four meanings:
+  // done is green, anything that goes out is blue, anything that hands work
+  // back is the deep pink, and everything else is grey.
+  //
+  // The colour is named at the call site because only the form knows what the
+  // button means. It is NOT guessed from the label - a guess would read
+  // "Send it back" and "Send to client" as the same thing.
+  tone?: Tone
   /** The one somebody came here to press. Black. */
   primary?: boolean
   /** Already happened. Green, with whatever `since` says beside it. */
@@ -105,7 +119,7 @@ export default function WhatNow({
       <div className="inline-flex gap-[3px] bg-line-soft rounded-[10px] p-[3px]">
         {([['form', 'Form'], ['email', 'Email']] as const).map(([k, label]) => (
           <button key={k} onClick={() => onView(k)}
-            className={`text-[13.5px] rounded-lg px-4 py-2 ${
+            className={`text-[12.5px] rounded-lg px-3.5 py-[7px] ${
               view === k ? 'bg-card text-ink font-semibold shadow-sm' : 'text-muted hover:text-ink'}`}>
             {label}
             {k === 'email' && emailStale && (
@@ -124,7 +138,8 @@ export default function WhatNow({
         <div className="relative">
           <button onClick={() => onOwnerChange && canAllocate && !done && setOpen(o => !o)}
             disabled={!onOwnerChange || !canAllocate || done}
-            className="text-left text-[14px] rounded-[9px] px-3.5 py-1.5 border-[1.5px] border-brand-ink bg-info-bg text-brand-ink font-bold disabled:opacity-80">
+            className="text-left text-[12.5px] rounded-[9px] px-3 py-[5px] border border-info-edge
+              bg-info-bg text-brand-ink font-semibold disabled:opacity-80">
             <span className="block text-[10px] font-bold uppercase tracking-[0.05em] text-info opacity-75">
               {done ? 'Did this' : 'Doing this'}
             </span>
@@ -155,12 +170,18 @@ export default function WhatNow({
 
       {actions.map((a, i) => (
         <span key={i} className="inline-flex items-center gap-2">
+          {/* THE SAME BUTTON THE WHOLE DEAL PAGE USES - see .bt in
+              app/globals.css and components/TheBubble.tsx. Only the CLASSES
+              changed here on 16 Nov 2026. Every onClick, every disabled rule
+              and every piece of wording is the one that was already there:
+              these are the buttons that move a deal and email a client, and
+              a look is not a reason to touch what they do. */}
           <button onClick={a.onClick} disabled={a.waiting || a.done} title={a.title}
-            className={`text-[14px] rounded-[9px] px-4 py-2 font-bold border ${
-              a.done ? 'bg-done-bg text-done border-done-edge'
-              : a.waiting ? 'bg-line-soft text-faint border-field-line border-dashed font-normal'
-              : a.primary ? 'bg-ink text-page border-ink'
-              : 'bg-card text-ink border-field-line hover:bg-page'}`}>
+            className="bt"
+            data-main={a.primary && !a.done && !a.waiting ? '' : undefined}
+            data-done={a.done ? '' : undefined}
+            data-waiting={a.waiting ? '' : undefined}
+            style={{ ['--c' as any]: a.done ? 'var(--color-done)' : toneColour(a.tone || 'info') }}>
             {a.done ? `✓ ${a.doneLabel || a.label}` : a.label}
           </button>
           {a.since && <span className="text-[12px] text-faint">{a.since}</span>}

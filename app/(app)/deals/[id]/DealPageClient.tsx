@@ -6,6 +6,7 @@ import DealPresence from '@/components/DealPresence'
 import DealTabCards, { DEAL_TABS } from '@/components/DealTabCards'
 import FileNotesTab from '@/components/FileNotesTab'
 import DealRail, { RailCard, RailNotes } from '@/components/DealRail'
+import { Bubble, Act, KV } from '@/components/TheBubble'
 import DealLinks from '@/components/DealLinks'
 import DealMore from '@/components/DealMore'
 import DealHistory from '@/components/DealHistory'
@@ -23,9 +24,7 @@ import LOForm from './LOForm'
 import ComplianceForm from './ComplianceForm'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
 import CompliancePackAssignment from './CompliancePackAssignment'
-import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
 import ClientAgreed from '@/components/ClientAgreed'
-import { whoHasIt } from '@/lib/who-has-it'
 import DealProgress, { currentStage } from './DealProgress'
 import DealSettlement from './DealSettlement'
 import DealSettlementPanel from './DealSettlementPanel'
@@ -306,7 +305,105 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
       <TestDealBand deal={dealData} userRole={userRole} me={me}
         onChanged={(isTest) => setDealData((prev: any) => ({ ...prev, is_test: isTest }))} />
 
-      <div className="bg-card border border-gray-100 rounded-xl p-5 mb-4 flex items-start justify-between">
+      {/* THE PAGE IS TWO COLUMNS NOW, TOP TO BOTTOM - deal-page-stages.html.
+          It used to be one column of full-width bands with a two-column grid
+          bolted on at the bottom for the form and the rail, so the rail started
+          800px down the page and everything above it was a band. Fabio, 16 Nov
+          2026: "look how busy this is." Six boxes, two columns, one colour
+          each. */}
+      <div className="grid grid-cols-[minmax(0,1.62fr)_minmax(330px,1fr)] gap-4 items-start
+                      max-[1100px]:grid-cols-1">
+        <div className={stage === 'Statements' ? 'min-w-0 col-span-2' : 'min-w-0'}>
+
+      <Bubble tone="info" title="The deal"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                   strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="6" width="18" height="13" rx="2" /><path d="M8 6V4h8v2" /><path d="M3 11h18" />
+        </svg>}
+        actions={<>
+          {/* URGENT, IN THE HEAD, WITH THE FLAG. Fabio, 16 Nov 2026: "can you
+              bring that to the top next to Open BC?" It was the last card in
+              the rail. See components/MarkUrgent.tsx. */}
+          <MarkUrgent header deal={dealData} me={me}
+            onSaved={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+
+          {/* OPEN BC, where the mock puts it: the thing you reach for most, on
+              the row rather than two clicks in. It is the same stage change the
+              tab cards make. */}
+          <Act tone="info" onClick={() => changeStage('BC')}
+            icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="4" y="2" width="16" height="20" rx="2" /><path d="M8 6h8M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h8" />
+            </svg>}>Open BC</Act>
+
+          {/* THE CLIENT EMAILS, IN THE HEADER - one-inside-the-deal-v4.html.
+              They were a full width band above the tabs. Telling a client their
+              loan is approved happens when the bank says so, not when a
+              particular tab is open, and a formally approved deal is usually
+              lodged - which is exactly when a tab is locked. So it stays out
+              here, outside the lock, just smaller. */}
+          <MilestoneEmails deal={dealData} me={me}
+            onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+
+          <Act tone="plain" onClick={() => setEditingName(true)}
+            icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                 strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z" /></svg>}>Edit</Act>
+
+          {/* EVERYTHING ELSE BEHIND ONE WORD. Fabio, 5 Oct 2026: "more is the
+              right move we need to simplify the view so dont want them
+              visible." OneDrive, SalesTrekker and Summary moved to the rail -
+              see components/DealLinks.tsx - and these two live here. Same
+              clone, same close. */}
+          <DealMore>
+            {/* TWO JOBS, AND THEY STOPPED LOOKING LIKE TWO FLAVOURS OF ONE BUTTON.
+                *
+                * 13 Oct 2026. Both items read "clone" and both were a bare
+                * label, so Fabio's team could not tell them apart: "clone is
+                * clone, they're just used to cloning".
+                *
+                * One of these IS a clone and the other is not, so the word
+                * stays on the one they already know and comes off the other
+                * entirely. The line underneath each is doing most of the work,
+                * and the rule between them stops the eye reading a list. */}
+            {/* TWO CLONES, BECAUSE THEY COST DIFFERENT THINGS. 15 Oct 2026,
+                Fabio: "put a little note that if you clone it to lending
+                options, you won't be able to change BC." The line underneath
+                each is doing most of the work. */}
+            <button onClick={() => cloneThisDeal('borrowing-capacity')} disabled={cloning} className="text-xs rounded-lg px-2.5 py-2 hover:bg-page transition flex items-start gap-2.5 text-left disabled:opacity-40">
+                <svg className="mt-[2px] text-muted shrink-0" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="9" rx="1.4"/><path d="M11 5V3.4A1.4 1.4 0 0 0 9.6 2H4.4A1.4 1.4 0 0 0 3 3.4v7.2A1.4 1.4 0 0 0 4.4 12H5"/></svg>
+                <span className="min-w-0">
+                  <b className="block text-[12.5px] font-semibold text-ink leading-snug">
+                    {cloning ? 'Cloning...' : 'Clone to the borrowing capacity'}</b>
+                  <span className="block text-[11px] text-muted leading-[1.5] mt-[2px]">
+                    Same clients, same figures. Lending options start blank, so the scenario is still yours to change.</span>
+                </span>
+              </button>
+            <button onClick={() => cloneThisDeal('lending-options')} disabled={cloning} className="text-xs rounded-lg px-2.5 py-2 hover:bg-page transition flex items-start gap-2.5 text-left disabled:opacity-40">
+                <svg className="mt-[2px] text-muted shrink-0" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="9" rx="1.4"/><path d="M11 5V3.4A1.4 1.4 0 0 0 9.6 2H4.4A1.4 1.4 0 0 0 3 3.4v7.2A1.4 1.4 0 0 0 4.4 12H5"/></svg>
+                <span className="min-w-0">
+                  <b className="block text-[12.5px] font-semibold text-ink leading-snug">
+                    {cloning ? 'Cloning...' : 'Clone with the lending options'}</b>
+                  <span className="block text-[11px] text-muted leading-[1.5] mt-[2px]">
+                    Lender options and pricing come too, for another bank.{' '}
+                    <span className="text-chase">The scenario is locked.</span></span>
+                </span>
+              </button>
+            <div className="h-px bg-line-soft mx-2.5 my-1" />
+            <button onClick={() => cloneThisDeal('clients')} disabled={cloning} className="text-xs rounded-lg px-2.5 py-2 hover:bg-page transition flex items-start gap-2.5 text-left disabled:opacity-40">
+                <svg className="mt-[2px] text-muted shrink-0" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="5.5" r="2.4"/><path d="M2.2 13.2c0-2.1 1.7-3.4 3.8-3.4s3.8 1.3 3.8 3.4"/><path d="M12 5v4M14 7h-4"/></svg>
+                <span className="min-w-0">
+                  <b className="block text-[12.5px] font-semibold text-ink leading-snug">
+                    {cloning ? 'Creating...' : 'Start another deal for these clients'}</b>
+                  {/* Deliberately NOT "for a purchase alongside a refinance".
+                      Fabio: "I don't want to pigeonhole that because it could
+                      be other situations." */}
+                  <span className="block text-[11px] text-muted leading-[1.5] mt-[2px]">
+                    Carries their position AFTER this deal settles.</span>
+                </span>
+              </button>
+          </DealMore>
+        </>}>
         <div>
           {editingName ? (
             <div className="flex items-center gap-2 mb-1">
@@ -539,137 +636,50 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
               )}
             </div>
           )}
-          {/* Client and loan type are not repeated here - the deal name already contains both. */}
-          <div className="flex gap-2 items-center flex-wrap">
-            {/* CHANGEABLE, like the credit officer beside it. Until 17 Sep 2026
-                this was a label and the control that does the work was two tabs
-                away, at the bottom of an email preview. */}
-            <BrokerAssignment dealId={dealData.id} currentBroker={dealData.assigned_broker} userRole={userRole} chip />
-            <CreditOfficerAssignment dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />
-            {/* Whose desk the compliance pack is on, beside the credit officer,
+          {/* THE FACTS ABOUT THE DEAL, AS ROWS - deal-page-stages.html.
+              Until 16 Nov 2026 these were chips on one wrapping line: a grey
+              pill for the broker, a red one when nobody was in credit, a blue
+              one for the scenario, and a bright blue "Assign a credit officer"
+              button in the middle of them. Fabio, with the mock beside the
+              real page: "look how far are we from the mock up!" Same controls,
+              same rules about who may press them - see the row mode in each.
+              Client and loan type are not here: the deal name has both. */}
+          <div className="mt-3">
+            <BrokerAssignment row dealId={dealData.id} currentBroker={dealData.assigned_broker} userRole={userRole} />
+            <CreditOfficerAssignment row dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />
+            {/* Whose desk the compliance pack is on, under the credit officer,
                 because it answers the same kind of question. It only appears
                 once a pack has actually gone out. */}
-            <CompliancePackAssignment dealId={deal.id} userRole={userRole} />
+            <CompliancePackAssignment row dealId={deal.id} userRole={userRole} />
             {templateLabel(dealData.bc_data?.template) && (
-              <span className="inline-flex items-baseline gap-1.5 bg-info-bg border border-info-edge rounded-lg px-2.5 py-1">
-                <span className="text-[9.5px] font-bold tracking-wider uppercase text-brand-ink/70">Scenario</span>
-                <span className="text-[13px] font-semibold text-info">{templateLabel(dealData.bc_data?.template)}</span>
-              </span>
+              <KV label="Scenario" end={<button onClick={() => changeStage('BC')}>Change</button>}>
+                {templateLabel(dealData.bc_data?.template)}
+              </KV>
             )}
-            {/* TWO WORDS IN FRONT, THE SENTENCE BEHIND THEM.
-                22 Oct 2026. The chip said "Waiting on: Melissa to complete
-                Compliance" whether Melissa was typing or waiting on the
-                client's payslips - see lib/who-has-it.ts. The two words answer
-                the question people actually ask; the old sentence still sits
-                beside them in grey, because it says what is next and that is
-                worth knowing too. */}
-            {(() => {
-              const has = whoHasIt(dealData)
-              const waitingOn = getWaitingOnLabel(dealData)
-              if (!has) return waitingOn ? (
-                <span className="inline-flex items-baseline gap-2 bg-waiting-bg border border-waiting-edge rounded-lg px-3 py-1">
-                  <span className="text-[13px] font-semibold text-waiting">{waitingOn.text}</span>
-                </span>
-              ) : null
-              return (
-                <span className="inline-flex items-center gap-2">
-                  <span className={`text-[13px] font-semibold rounded-lg px-3 py-1 ${has.style}`}>{has.label}</span>
-                  {waitingOn && (
-                    <span className="text-[12px] text-muted">{waitingOn.text.replace(/^Waiting on:\s*/i, '')}</span>
-                  )}
-                </span>
-              )
-            })()}
-            {/* Alerts belong in the header, not in a panel further down. An alert
-                is only worth calling urgent if somebody who was not going to
-                scroll sees it anyway. */}
-            <AlertChips alerts={alerts} />
+            {/* THE PERMANENT RECORD, as a row. The green band above says it on
+                the day; this says it for as long as the deal is open. Fabio
+                picked "B with A on top of it", 16 Nov 2026. */}
+            <ClientAgreed deal={dealData} mode="row" />
           </div>
+
+          {/* THE "WITH CLIENT" CHIP IS GONE, ON PURPOSE. 18 Nov 2026.
+              The board now has a column for BC-with-credit beside
+              BC-with-client, so the chip was the card printing its own
+              address. Fabio: "doesn't that defeat the purpose now that we
+              have the breakdown of all the portal between us and them".
+              Who in credit is holding it is said once, on Where it is.
+              Recorded in the GONE list in
+              lib/nothing-on-the-deal-page-is-lost.test.ts. */}
+          {/* Alerts belong in the header, not in a panel further down. An alert
+              is only worth calling urgent if somebody who was not going to
+              scroll sees it anyway. */}
+          {alerts.length > 0 && (
+            <div className="flex gap-2 items-center flex-wrap mt-2.5">
+              <AlertChips alerts={alerts} />
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {/* OPEN BC, where the mock puts it: the thing you reach for most, on
-              the row rather than two clicks in. It is the same stage change the
-              tab cards make. */}
-          <button onClick={() => changeStage('BC')}
-            className="text-xs font-semibold text-info bg-info-bg border border-info-edge rounded-[10px] px-3.5 py-2
-              hover:opacity-90 transition inline-flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="4" y="2" width="16" height="20" rx="2" /><path d="M8 6h8M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h8" />
-            </svg>
-            Open BC
-          </button>
-
-          {/* THE CLIENT EMAILS, IN THE HEADER - one-inside-the-deal-v4.html.
-              They were a full width band above the tabs. Telling a client their
-              loan is approved happens when the bank says so, not when a
-              particular tab is open, and a formally approved deal is usually
-              lodged - which is exactly when a tab is locked. So it stays out
-              here, outside the lock, just smaller. */}
-          <MilestoneEmails deal={dealData} me={me}
-            onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
-
-          <button onClick={() => setEditingName(true)}
-            className="text-xs text-muted bg-page border border-line rounded-[10px] px-3.5 py-2
-              hover:bg-line-soft hover:text-ink transition">Edit</button>
-
-          {/* EVERYTHING ELSE BEHIND ONE WORD. Fabio, 5 Oct 2026: "more is the
-              right move we need to simplify the view so dont want them
-              visible." OneDrive, SalesTrekker and Summary moved to the rail -
-              see components/DealLinks.tsx - and these two live here. Same
-              clone, same close. */}
-          <DealMore>
-            {/* TWO JOBS, AND THEY STOPPED LOOKING LIKE TWO FLAVOURS OF ONE BUTTON.
-                *
-                * 13 Oct 2026. Both items read "clone" and both were a bare
-                * label, so Fabio's team could not tell them apart: "clone is
-                * clone, they're just used to cloning".
-                *
-                * One of these IS a clone and the other is not, so the word
-                * stays on the one they already know and comes off the other
-                * entirely. The line underneath each is doing most of the work,
-                * and the rule between them stops the eye reading a list. */}
-            {/* TWO CLONES, BECAUSE THEY COST DIFFERENT THINGS. 15 Oct 2026,
-                Fabio: "put a little note that if you clone it to lending
-                options, you won't be able to change BC." The line underneath
-                each is doing most of the work. */}
-            <button onClick={() => cloneThisDeal('borrowing-capacity')} disabled={cloning} className="text-xs rounded-lg px-2.5 py-2 hover:bg-page transition flex items-start gap-2.5 text-left disabled:opacity-40">
-                <svg className="mt-[2px] text-muted shrink-0" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="9" rx="1.4"/><path d="M11 5V3.4A1.4 1.4 0 0 0 9.6 2H4.4A1.4 1.4 0 0 0 3 3.4v7.2A1.4 1.4 0 0 0 4.4 12H5"/></svg>
-                <span className="min-w-0">
-                  <b className="block text-[12.5px] font-semibold text-ink leading-snug">
-                    {cloning ? 'Cloning...' : 'Clone to the borrowing capacity'}</b>
-                  <span className="block text-[11px] text-muted leading-[1.5] mt-[2px]">
-                    Same clients, same figures. Lending options start blank, so the scenario is still yours to change.</span>
-                </span>
-              </button>
-            <button onClick={() => cloneThisDeal('lending-options')} disabled={cloning} className="text-xs rounded-lg px-2.5 py-2 hover:bg-page transition flex items-start gap-2.5 text-left disabled:opacity-40">
-                <svg className="mt-[2px] text-muted shrink-0" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="9" rx="1.4"/><path d="M11 5V3.4A1.4 1.4 0 0 0 9.6 2H4.4A1.4 1.4 0 0 0 3 3.4v7.2A1.4 1.4 0 0 0 4.4 12H5"/></svg>
-                <span className="min-w-0">
-                  <b className="block text-[12.5px] font-semibold text-ink leading-snug">
-                    {cloning ? 'Cloning...' : 'Clone with the lending options'}</b>
-                  <span className="block text-[11px] text-muted leading-[1.5] mt-[2px]">
-                    Lender options and pricing come too, for another bank.{' '}
-                    <span className="text-chase">The scenario is locked.</span></span>
-                </span>
-              </button>
-            <div className="h-px bg-line-soft mx-2.5 my-1" />
-            <button onClick={() => cloneThisDeal('clients')} disabled={cloning} className="text-xs rounded-lg px-2.5 py-2 hover:bg-page transition flex items-start gap-2.5 text-left disabled:opacity-40">
-                <svg className="mt-[2px] text-muted shrink-0" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="5.5" r="2.4"/><path d="M2.2 13.2c0-2.1 1.7-3.4 3.8-3.4s3.8 1.3 3.8 3.4"/><path d="M12 5v4M14 7h-4"/></svg>
-                <span className="min-w-0">
-                  <b className="block text-[12.5px] font-semibold text-ink leading-snug">
-                    {cloning ? 'Creating...' : 'Start another deal for these clients'}</b>
-                  {/* Deliberately NOT "for a purchase alongside a refinance".
-                      Fabio: "I don't want to pigeonhole that because it could
-                      be other situations." */}
-                  <span className="block text-[11px] text-muted leading-[1.5] mt-[2px]">
-                    Carries their position AFTER this deal settles.</span>
-                </span>
-              </button>
-            <div className="h-px bg-line-soft mx-2.5 my-1" />
-            <CloseDeal deal={dealData} onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
-          </DealMore>
-        </div>
-      </div>
+      </Bubble>
 
       {/* WHAT NOBODY HAS STARTED - one-inside-the-deal-v4.html, the band under
           the broker and credit officer line. The BC question used to sit lower
@@ -690,7 +700,31 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           "when we lodge drop it." See lib/the-client-agreed.ts. */}
       <ClientAgreed deal={dealData} />
 
-      <DealProgress deal={dealData} />
+      {/* WHERE IT IS - deal-page-stages.html. The stage bar and the six tab
+          cards are one question, so they are one box. They were two bands with
+          a handover note wedged between them.
+          THE BEADS THEMSELVES ARE UNTOUCHED. Fabio, 16 Nov 2026: "the way the
+          arrows are with the tick inside every ball on all the stages... last
+          time you changed that, it took me forever to get this design." */}
+      <Bubble tone="done" title="Where it is"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                   strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="10" r="3" />
+          <path d="M12 2a8 8 0 0 0-8 8c0 5.5 8 12 8 12s8-6.5 8-12a8 8 0 0 0-8-8z" />
+        </svg>}
+        actions={dealData.assigned_credit_officer ? (
+          <Act tone="info" small
+            icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                       strokeLinecap="round" strokeLinejoin="round">
+              <path d="M7 11v9H4v-9z" />
+              <path d="M7 11l4-7a2 2 0 0 1 3 2l-1 5h5a2 2 0 0 1 2 2.3l-1 5A2 2 0 0 1 17 20H7" />
+            </svg>}>
+            With {String(dealData.assigned_credit_officer).split(' ')[0]}
+          </Act>
+        ) : null}>
+        <DealProgress deal={dealData} />
+        <DealTabCards deal={dealData} stage={stage} onPick={changeStage} />
+      </Bubble>
 
       {/* WHAT CREDIT SAID WHEN THEY HANDED IT OVER.
           13 Oct 2026. It sits right under the stage bar because the broker
@@ -786,10 +820,6 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           subject. See components/AnzAssessmentEmail.tsx. */}
       <AnzAssessmentEmail deal={dealData} />
 
-      {/* THE FIVE TABS, AS CARDS - one-inside-the-deal-v4.html.
-          See components/DealTabCards.tsx. The row of pill buttons this
-          replaces said nothing but its own name. */}
-      <DealTabCards deal={dealData} stage={stage} onPick={changeStage} />
 
       {/* THE FORM, AND THE RAIL BESIDE IT - one-inside-the-deal-v4.html.
           2 Nov 2026 - THE RAIL IS AS WIDE AS THE SCREEN ALLOWS. It was pinned
@@ -801,9 +831,18 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           Everything in the rail used to be stacked full width above the form,
           or - for Important and File notes - inside the settlement grid, which
           a Fact Find deal never draws. See components/DealRail.tsx. */}
-      <div className={stage === 'Statements' ? '' :
-        'grid grid-cols-[minmax(0,1.9fr)_minmax(0,clamp(330px,26vw,440px))] gap-3 items-start max-[1100px]:grid-cols-1'}>
-        <div className="min-w-0">
+      {/* THE TAB YOU ARE ON, IN A BOX WITH A NAME ON IT - deal-page-stages.html.
+          The form used to start against the page with nothing saying which of
+          the six you were looking at except the card above it.
+          THE BUTTONS INSIDE EACH FORM ARE UNTOUCHED BY THIS. Done, Send to
+          client, Client agreed and Send it back are where they have always
+          been. Fabio, 16 Nov 2026: "I do not want to lose functionality." */}
+      <Bubble tone="info" title={tabs.find(t => t.key === stage)?.label || stage}
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                   strokeLinecap="round" strokeLinejoin="round">
+          <rect x="5" y="3" width="14" height="18" rx="2" />
+          <path d="M9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01" />
+        </svg>}>
       <TabLock locked={isLocked(dealData) && !dealUnlocked} tab={stage} dealId={dealData.id}
         deal={dealData} role={userRole} me={me}
         onUnlocked={() => { setDealUnlocked(true); reloadFile() }}
@@ -823,6 +862,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
             dealName={dealData.deal_name} />}
         </TabBoundary>
       </TabLock>
+      </Bubble>
         </div>
 
         {stage !== 'Statements' && <DealRail>
@@ -844,16 +884,19 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
             * this is there when you want it and out of the way when you do not.
             * One button on the deal rather than one beside every figure - see
             * components/SomethingWrong.tsx. 17 Aug 2026. */}
-          {/* URGENT, WITH THE REASON THAT MAKES IT MEAN ANYTHING, and - for
-            * whoever in credit is holding this deal - the way to hand it back
-            * when it cannot be worked. Alan's item 3, 11 Nov 2026. See
-            * lib/my-work.ts. */}
-          <MarkUrgent deal={dealData} me={me}
-            onSaved={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
-          <CreditCannotAction deal={dealData} me={me}
-            onDone={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+          {/* LAST, ON PURPOSE - deal-page-stages.html. Needs action and the
+              documents are today's work; these three are there when you want
+              them and out of the way when you do not. Closing a deal came out
+              of the More menu to sit with them, because "this deal is wrong"
+              and "this deal is over" are the same shelf. */}
           <SomethingWrong deal={dealData} me={me}
             whereNow={tabs.find(t => t.key === stage)?.label || stage} />
+          <CreditCannotAction deal={dealData} me={me}
+            onDone={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+          <div className="bub" style={{ ['--acc' as any]: 'var(--color-muted)', opacity: .78 }}>
+            <CloseDeal deal={dealData}
+              onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+          </div>
         </DealRail>}
       </div>
     </div>

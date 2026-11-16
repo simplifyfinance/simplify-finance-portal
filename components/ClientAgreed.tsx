@@ -20,9 +20,42 @@ import { clientAgreed } from '@/lib/the-client-agreed'
 // Where the office recorded it the line names the person instead, which is
 // just as useful and a great deal more honest than a tick that means neither.
 
-export default function ClientAgreed({ deal }: { deal: any }) {
+// TWO PLACES, AND THEY DO DIFFERENT JOBS.
+//
+// 16 Nov 2026. Fabio: "once the client has agreed to proceed with the BC and
+// we're in compliance, why is that still there between compliance and
+// settlement and settled?" He was right - a green band carried for three weeks
+// stops being news and starts being furniture.
+//
+// He picked B with A on top of it. So:
+//
+//   band  the green line, ON THE DAY IT HAPPENS ONLY. That is the day a broker
+//         needs to see it without looking for it. Tomorrow it is gone.
+//   row   a line in the deal box, which does not expire. It is a fact about
+//         the deal, like the broker's name, and it is read when somebody asks
+//         rather than shouted every time the page opens.
+export default function ClientAgreed({ deal, mode = 'band' }: {
+  deal: any
+  mode?: 'band' | 'row'
+}) {
   const said = clientAgreed(deal)
   if (!said) return null
+
+  // A LINE IN THE DEAL BOX. Never expires, never shouts.
+  if (mode === 'row') return (
+    <div className="flex items-baseline gap-3 py-1.5 text-[13px] text-ink border-t border-line">
+      <span className="text-[9px] font-extrabold tracking-[.11em] uppercase text-faint
+                       w-[104px] shrink-0">Client agreed</span>
+      <span>
+        {said.what.replace(/^The client /, '')}
+        {said.day ? <span className="text-muted"> &middot; {said.day}</span> : null}
+        <span className="text-faint">, {said.how}</span>
+      </span>
+    </div>
+  )
+
+  // THE BAND, ON THE DAY. Anything older than today is a row and nothing else.
+  if (said.days !== 0) return null
 
   return (
     <div className="flex items-center gap-2.5 bg-done-bg border border-done-edge rounded-[10px]

@@ -2080,12 +2080,14 @@ Key assumptions: ${checklistText}`
           // it, and only until they have.
           ...(deal.assigned_credit_officer && !bcCompletedAt ? [{
             label: markingComplete ? 'Marking...' : 'Done',
+            tone: 'done' as const,
             onClick: () => setHandingOver(true),
             primary: true,
             title: 'Tells the broker the BC is ready for their review',
           }] : []),
           {
             label: 'Send to client',
+            tone: 'info' as const,
             doneLabel: 'Sent to client',
             onClick: () => {
               if (!canSendToClient) return
@@ -2123,6 +2125,7 @@ Key assumptions: ${checklistText}`
                  : freshness.state === 'questions-moved' ? 'Heads up: the questions have changed since this email was written. Rebuild it.' : '',
           },
           {
+            tone: 'done' as const,
             label: deal.client_proceeded
               ? `Client agreed${agreedDay(proceedInfo.when)}`
               : 'Client agreed',
@@ -2137,6 +2140,7 @@ Key assumptions: ${checklistText}`
           // lib/send-it-back.ts, which is where all three rules live.
           ...(canSendToClient && canSendBack(deal, 'bc').ok ? [{
             label: '\u21BA Send it back',
+            tone: 'urgent' as const,
             onClick: () => setSendingBack(true),
             title: 'Tells credit this BC needs doing again, and why',
           }] : []),

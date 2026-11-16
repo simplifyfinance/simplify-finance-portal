@@ -45,6 +45,8 @@ export type Agreed = {
   aside: string
   /** True only where the client pressed it themselves. */
   byClient: boolean
+  /** Whole days since, in Sydney. 0 is today. Null where the date will not parse. */
+  days: number | null
 }
 
 /** Sydney, never the server's clock. A lodgement day taught us that once. */
@@ -140,6 +142,7 @@ export function clientAgreed(deal: any, now: Date = new Date()): Agreed | null {
     how: howWords(hit.source, hit.by),
     aside: ago ? `${hit.stage} · ${ago}` : hit.stage,
     byClient: txt(hit.source) === 'client',
+    days: n,
   }
 }
 

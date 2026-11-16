@@ -1,4 +1,5 @@
 'use client'
+import { Bubble } from '@/components/TheBubble'
 import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { whyNotRequestable, whyOnTheList, timeWords, agoWords } from '@/lib/documents-say-why'
@@ -245,22 +246,20 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
 
   return (
     <>
-    <div className="bg-card border border-[var(--color-line)] rounded-xl mb-4 overflow-hidden">
+    <Bubble tone="docs" title="What we need from the client"
+      icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                 strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>}
+      actions={
+        <button onClick={() => setOpen(o => !o)}
+          aria-label={open ? 'Hide documents' : 'Show documents'}
+          className="text-[11px] font-[650] text-info">{open ? 'Hide' : 'Show'}</button>
+      }>
       {/* THREE COUNTS, NOT ONE SENTENCE - one-inside-the-deal-v4.html.
           The numbers are the same three this box already worked out; they were
           printed as a line of prose across the top of a full-width box, which
           does not fit beside a form. Show still opens the same list. */}
-      <div className="px-3.5 pt-3">
-        <div className="flex items-center gap-2">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="text-faint">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />
-          </svg>
-          <span className="text-[9.5px] font-bold tracking-[.09em] uppercase text-faint">Documents</span>
-          <button onClick={() => setOpen(o => !o)}
-            aria-label={open ? 'Hide documents' : 'Show documents'}
-            className="ml-auto text-[11px] font-[650] text-info">{open ? 'Hide' : 'Show'}</button>
-        </div>
+      <div>
         <dl className="mt-2.5 mb-0">
           <div className="flex items-baseline gap-2 py-[3px]">
             <dt className="text-[12.5px] text-body">To request</dt>
@@ -627,12 +626,23 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
           )}
         </div>
       )}
-    </div>
+    </Bubble>
 
+    {/* RED OFF, WORDS KEPT - 16 Nov 2026.
+          This was a red slab, and it says the same thing as the warning at the
+          top of the deal. Fabio: "can we just stop with the red... it's just
+          too loud." It is an ordinary card now, with the red spent on the
+          triangle and nothing else. Whether it should be here at all, when
+          components/DealPrompts.tsx already says it, is Fabio's call and not
+          a thing to decide by deleting it. */}
     {nudge && (
-      <div className="bg-chase-bg border border-chase-edge rounded-xl px-4 py-3 mb-4">
+      <div className="quiet-warn" style={{ marginTop: -4 }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+             strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17h.01" />
+        </svg>
         <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-[13px] font-semibold text-[var(--color-info)]">
+          <span className="text-[13px] font-semibold text-ink">
             {asked === 0
               ? `Nobody has asked the client for ${pending.length === 1 ? 'this document' : `these ${pending.length} documents`}.`
               : `${pending.length} ${pending.length === 1 ? 'document has' : 'documents have'} never been asked for.`}
@@ -646,7 +656,7 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
             line draws on first paint, and Node and Chrome disagree about the
             short form of September - which tears the whole page up. See
             lib/same-date-everywhere.ts. */}
-        <p className="m-0 mt-1 text-[11.5px] text-[var(--color-info)]">
+        <p className="m-0 mt-1 text-[11.5px] text-muted basis-full">
           {asked === 0
             ? 'The list came off the fact find. This sends the same email as the button inside the list.'
             : `The other ${asked} went out${lastRound ? ` on ${dayMonth(lastRound.at, false)}` : ''}. The client is not asked twice.`}

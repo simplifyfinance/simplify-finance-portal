@@ -36,6 +36,11 @@
   --color-info-bg: #EAF7FE;
   --color-info-edge: #BFE4F7;
 
+  /* The three a deal-page section can wear. Urgent is NOT chase - see
+     lib/colours.ts for why red is not allowed to do this job. */
+  --color-urgent: #A3376B;
+  --color-docs: #0F6E6E;
+
   --color-card-chase: #FDF2F2;
   --color-card-chase-edge: #F2CBCB;
   --color-card-waiting: #F7F4FD;
@@ -105,6 +110,8 @@
   --color-info: #6FD3FF;
 
   --color-chase: #FF8F8F;
+  --color-urgent: #E894B8;
+  --color-docs: #5FC9C9;
   --color-waiting: #B49BF0;
   --color-done: #64E8BB;
 
@@ -195,3 +202,91 @@ body {
   @keyframes breathe { 0%, 100% { opacity: .7; } }
   @keyframes ringrun { to { transform: rotate(0deg); } }
 }
+
+/* ======================================================= 16 Nov 2026
+   THE DEAL PAGE, AS DRAWN IN deal-page-stages.html.
+
+   Every section of the deal page is a box that wears ONE colour: a tinted
+   square holding its icon, its heading in that colour, and its own buttons in
+   it. Fabio, 16 Nov 2026, looking at the page as it was: "look how busy this
+   is." Seven boxes each shouting in a different direction is what busy looks
+   like; seven boxes each with one quiet colour is not.
+
+   WHY THIS IS CSS AND NOT TAILWIND CLASSES. The button has a colour that is
+   handed to it per box, and it changes on hover. An inline style beats a
+   hover: class every time - we proved that the hard way on the board's card
+   shadow, 18 Nov 2026 - so the colour comes in as a custom property and the
+   rules below read it. One place, both states, no fight. */
+
+.bub {
+  border: 1px solid var(--color-card-line);
+  background: var(--color-card);
+  border-radius: 16px;
+  padding: 17px 19px;
+  margin-bottom: 13px;
+  box-shadow: 0 1px 2px rgba(20, 20, 15, .04), 0 16px 30px -26px rgba(20, 20, 15, .3);
+}
+
+/* The head: icon, name, and whatever this box lets you do, pushed right. */
+.bub-h { display: flex; align-items: center; gap: 9px; margin: 0 0 13px; }
+.bub-h h2 {
+  font-size: 10px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase;
+  color: var(--acc); margin: 0;
+}
+.bub-h .acts { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.bub-ic {
+  width: 22px; height: 22px; border-radius: 7px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--acc) 14%, transparent);
+  color: var(--acc);
+}
+.bub-ic svg { width: 13px; height: 13px; }
+
+/* ONE FILLED BUTTON PER BOX, AND NO MORE. The filled one is the thing you came
+   to this box to do. Everything else is outlined in the same colour so the row
+   reads as one family rather than five competing offers. */
+.bt {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  font-size: 12px; font-weight: 500; border-radius: 9px; padding: 7px 12px;
+  background: var(--color-card); color: var(--c, var(--color-muted));
+  border: 1px solid color-mix(in srgb, var(--c, var(--color-line)) 30%, var(--color-line));
+  cursor: pointer; transition: background .12s ease, box-shadow .12s ease;
+}
+.bt svg { width: 13px; height: 13px; flex: none; }
+.bt:hover:not(:disabled) { background: color-mix(in srgb, var(--c) 7%, var(--color-card)); }
+.bt[data-main] {
+  background: var(--c); border-color: var(--c); color: #fff; font-weight: 650;
+  box-shadow: 0 6px 14px -9px var(--c);
+}
+.bt[data-main]:hover:not(:disabled) { background: color-mix(in srgb, var(--c) 88%, #000); }
+.bt[data-small] { padding: 5px 10px; font-size: 11px; }
+.bt:disabled { opacity: .45; cursor: default; }
+/* ALREADY HAPPENED. Green, washed, with its tick - and NOT faded, because a
+   finished thing is a fact worth reading, not a disabled control. */
+.bt[data-done] {
+  background: var(--color-done-bg); border-color: var(--color-done-edge);
+  color: var(--color-done); font-weight: 650;
+}
+.bt[data-done]:disabled { opacity: 1; }
+.bt[data-waiting]:disabled { opacity: .45; border-style: dashed; }
+/* Not disabled - not yet EARNED. The client cannot agree to a BC that has not
+   been sent, so the button is there, in its own colour, waiting. */
+.bt[data-waiting] { opacity: .45; }
+
+/* RED ON THE MARK, NOT ON THE PAPER.
+   Fabio, 16 Nov 2026: "why does it have to be a big red thing that says
+   rework? ... maybe just the triangle is red and everything else is just a
+   normal colour. It's just too loud." So a warning is an ordinary line on an
+   ordinary card. The triangle is red and the one word that matters is red.
+   Nothing else is. */
+.quiet-warn {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  border-radius: 10px; padding: 9px 12px; margin-bottom: 12px;
+  font-size: 12px; line-height: 1.55;
+  background: var(--color-card); border: 1px solid var(--color-card-line);
+  color: var(--color-ink);
+}
+.quiet-warn > svg { width: 14px; height: 14px; flex: none; color: var(--color-chase); }
+.quiet-warn .key { color: var(--color-chase); font-weight: 700; }
+.quiet-warn .rest { color: var(--color-muted); }
+.quiet-warn .bt { margin-left: auto; }

@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { KV } from '@/components/TheBubble'
 import { can } from '@/lib/permissions'
 import { useBrokerNames } from '@/lib/broker-names'
 import { sameBroker } from '@/lib/broker-key'
@@ -17,7 +18,7 @@ import { sameBroker } from '@/lib/broker-key'
 // it is now the only place this lives - the two buried copies are gone, because
 // three copies of one control is three chances for two of them to disagree
 // about who the broker is.
-export default function BrokerAssignment({ dealId, currentBroker, userRole, chip }: { dealId: string; currentBroker: string; userRole?: string; chip?: boolean }) {
+export default function BrokerAssignment({ dealId, currentBroker, userRole, chip, row }: { dealId: string; currentBroker: string; userRole?: string; chip?: boolean; row?: boolean }) {
   // Everybody on the team, not just an admin - see reassignDeals in
   // lib/permissions.ts. manageAssignments is about the settings screens.
   const isAdmin = can(userRole, 'reassignDeals')
@@ -51,6 +52,38 @@ export default function BrokerAssignment({ dealId, currentBroker, userRole, chip
     }
     setSaving(false)
   }
+
+  // A ROW IN THE DEAL BOX - deal-page-stages.html, 16 Nov 2026. Same control,
+  // same rules about who may press it. It stopped being a chip.
+  if (row) return (
+    <>
+      <KV label="Broker"
+        end={isAdmin && !showPicker
+          ? <button onClick={() => setShowPicker(true)}>Reassign</button>
+          : null}>
+        {assignedBroker ? nameFor(assignedBroker) : <span className="text-faint">Nobody yet</span>}
+      </KV>
+      {isAdmin && showPicker && (
+        <div className="flex items-center gap-2 pb-2 pl-[116px]">
+          <select className="border border-field-line rounded-lg px-2 py-1.5 text-xs bg-card"
+            value={picked} onChange={e => setPicked(e.target.value)}>
+            <option value="">— select broker —</option>
+            {brokerOptions.filter(b => !sameBroker(b.key, assignedBroker)).map(b => (
+              <option key={b.key} value={b.key}>{b.name}</option>
+            ))}
+          </select>
+          <button onClick={handleReassign} disabled={!picked || saving}
+            className="text-xs bg-ink text-page px-3 py-1.5 rounded-lg disabled:opacity-40">
+            {saving ? 'Saving...' : 'Confirm'}
+          </button>
+          <button onClick={() => { setShowPicker(false); setPicked('') }}
+            className="text-xs text-faint hover:text-ink">Cancel</button>
+          {msg && <span className="text-xs text-done">{msg}</span>}
+          {err && <span className="text-xs text-chase">{err}</span>}
+        </div>
+      )}
+    </>
+  )
 
   return (
     <div className="flex items-center gap-2 flex-wrap">

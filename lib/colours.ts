@@ -96,6 +96,26 @@ export const INFO      = '#107EA8'
 export const INFO_BG   = '#EAF7FE'
 export const INFO_EDGE = '#BFE4F7'
 
+// ------------------------------------------- the three a section can wear
+//
+// 16 Nov 2026, deal-page-stages.html. Every box on the deal page carries one
+// colour: the icon, the heading and its own button all wear it. Four of the
+// seven already had a name here - info, done, waiting and muted - and these are
+// the three that did not.
+//
+// URGENT IS NOT CHASE. Chase is #D32F2F, a true red, and red on this page is
+// reserved for a warning's triangle and the one word that matters. Fabio, 16
+// Nov 2026: "can we just stop with the red... it's just too loud." So urgent is
+// a deep pink that carries weight without reading as an alarm, and it is what
+// Mark urgent and Send it back wear.
+export const URGENT = '#A3376B'   // mark urgent, send it back, needs action
+export const DOCS   = '#0F6E6E'   // what we need from the client
+
+// THERE IS NO THIRD ONE. deal-page-stages.html drew Links in a bronze, and a
+// bronze is an amber - lib/colours.test.ts caught it on the way in, which is
+// exactly the job that test was given on 4 Oct 2026. Links wears MUTED. It is
+// the quietest box on the rail and it does not need a colour of its own.
+
 // ------------------------------------------------------------ a washed card
 //
 // A card wearing a status wears it ALL THE WAY ROUND, lightly - never a stripe
@@ -222,6 +242,10 @@ export const DARK = {
   chase:   '#FF8F8F',
   waiting: '#B49BF0',
   done:    '#64E8BB',
+
+  // The three section colours, lifted off the dark card rather than inverted.
+  urgent:  '#E894B8',
+  docs:    '#5FC9C9',
 
   chaseBg:     '#3D1D1D', chaseEdge:   '#642E2E',
   waitingBg:   '#282140', waitingEdge: '#45366E',

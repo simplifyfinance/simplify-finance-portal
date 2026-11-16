@@ -22,17 +22,29 @@
 // the same ink saying both.
 
 /** Pink, violet, bronze. Fabio named all three, and bronze is not gold. */
+// CHOSEN BY FABIO, 16 NOV 2026, LOOKING AT THE WHOLE BOARD RATHER THAN SWATCHES.
+//
+// The first set was a pink, a purple and a bronze, and it was picked off a
+// strip of colour chips. Fabio: "you didn't change the colors, you just changed
+// the tone" - and then, of the second set: "I want to see with the black column
+// on the left, like what would I look at it every day?" So the board was drawn
+// twelve times over and these three were picked off the real thing.
+//
+// DINISHA IS NOT GREEN, AND THAT IS THE ONE RULE HERE. Green belongs to a
+// client who has agreed - see AGREED below, which takes the whole card. Four
+// greens were drawn beside an agreed card and all four were some degree of the
+// same mistake; the emerald was indistinguishable. Plum is a long way from it.
 const BY_NAME: Record<string, string> = {
-  katie: '#E23D93',
-  mellissa: '#6D5DF6',
-  melissa: '#6D5DF6',
-  dinisha: '#B5762F',
+  katie: '#2A48B8',     // ultramarine
+  mellissa: '#2B9BE0',  // sky
+  melissa: '#2B9BE0',
+  dinisha: '#7A4F7A',   // plum
 }
 
 // Anybody else in credit gets one of these, the same one every time. Far enough
 // apart to tell across a desk, and none of them close to the three above or to
 // the green a deal turns when the client says yes.
-const SPARE = ['#0E6FA0', '#B25A33', '#5B4B8A', '#0F6E6E', '#7A2E2E', '#3B5BA5']
+const SPARE = ['#B25A33', '#0F6E6E', '#7A2E2E', '#946017', '#5E7B3A', '#8C2140']
 
 /** The first name, lowercased. What the map is keyed on. */
 function firstName(name: any): string {

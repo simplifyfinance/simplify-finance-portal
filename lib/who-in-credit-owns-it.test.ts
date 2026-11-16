@@ -11,19 +11,29 @@ describe('the colour of a deal card', () => {
   })
 
   it('is the colour Fabio named, whichever way the name is spelled', () => {
-    expect(creditColour('Katie Amos')).toBe('#E23D93')
-    expect(creditColour('Mellissa Sedin')).toBe('#6D5DF6')
-    expect(creditColour('Melissa Sedin')).toBe('#6D5DF6')
-    expect(creditColour('Dinisha Devadason')).toBe('#B5762F')
+    expect(creditColour('Katie Amos')).toBe('#2A48B8')
+    expect(creditColour('Mellissa Sedin')).toBe('#2B9BE0')
+    expect(creditColour('Melissa Sedin')).toBe('#2B9BE0')
+    expect(creditColour('Dinisha Devadason')).toBe('#7A4F7A')
   })
 
-  // BRONZE, NOT GOLD. Fabio, 17 Nov 2026, rejecting the first attempt:
-  // "Bronze is definitely the color now for the nation, not yellow."
-  it('gives Dinisha bronze and never a yellow', () => {
-    const [r, g, b] = [1, 3, 5].map(i => parseInt(creditColour('Dinisha')!.slice(i, i + 2), 16))
-    expect(r).toBeGreaterThan(g)
-    expect(g).toBeGreaterThan(b)
-    expect(b).toBeLessThan(90)
+  // DINISHA IS NOT GREEN, AND IT IS NOT A NEAR MISS EITHER.
+  //
+  // 16 Nov 2026. Fabio asked to see Dinisha in green, with Katie and Mellissa
+  // left alone. Four greens were drawn on the real board beside a card that had
+  // turned green because the client agreed, and the closest of them could not
+  // be told apart from it. He picked plum instead.
+  //
+  // So this does not check for plum - a colour written down twice is a colour
+  // free to drift. It checks the thing the choice was made FOR: green is the
+  // client's, and nobody in credit may wear it or anything near it.
+  it('keeps Dinisha well clear of the green that means the client agreed', () => {
+    const hex = (c: string) => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16))
+    const [r, g, b] = hex(creditColour('Dinisha')!)
+    expect(g, 'a green-dominant card is the agreed card').not.toBeGreaterThan(Math.max(r, b))
+    const [ar, ag, ab] = hex(AGREED)
+    const apart = Math.abs(r - ar) + Math.abs(g - ag) + Math.abs(b - ab)
+    expect(apart, `too close to ${AGREED}`).toBeGreaterThan(120)
   })
 
   it('gives anybody else a colour, and the same one every time', () => {
@@ -39,7 +49,7 @@ describe('the colour of a deal card', () => {
   })
 
   it('mixes against the theme, so the dark screen needs no second set of numbers', () => {
-    const skin = cardSkin('#E23D93')
+    const skin = cardSkin('#2A48B8')
     expect(skin.background).toContain('var(--color-card)')
     expect(skin.borderColor).toContain('var(--color-card-line)')
   })
@@ -50,8 +60,8 @@ describe('the card sits on a shadow', () => {
   // none, so hovering deepened nothing. Fabio: "the shading is still not
   // showing. It doesn't lift up when I'm hovering."
   it('tinted with the owner where there is one', () => {
-    expect(cardSkin('#E23D93')['--sh']).toContain('#E23D93')
-    expect(cardSkin('#E23D93')['--shh']).toContain('#E23D93')
+    expect(cardSkin('#2A48B8')['--sh']).toContain('#2A48B8')
+    expect(cardSkin('#2A48B8')['--shh']).toContain('#2A48B8')
   })
 
   it('and a plain one on a card nobody in credit has yet', () => {
@@ -63,7 +73,7 @@ describe('the card sits on a shadow', () => {
   // FIRST TIME. Both shadows are variables now and the card wears them through
   // classes, so :hover can win.
   it('never hands the shadow back as an inline boxShadow again', () => {
-    expect(cardSkin('#E23D93').boxShadow).toBeUndefined()
+    expect(cardSkin('#2A48B8').boxShadow).toBeUndefined()
     expect(cardSkin(null).boxShadow).toBeUndefined()
   })
 

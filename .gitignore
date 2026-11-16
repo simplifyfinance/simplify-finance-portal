@@ -74,3 +74,4 @@ playwright-report/
 
 # Local email previews - rendered from the real builders to look at, never shipped.
 .preview-out/
+look/

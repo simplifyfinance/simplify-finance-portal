@@ -29,8 +29,11 @@ const GROW = readFileSync('components/useGrow.ts', 'utf8')
 
 describe('the three are named for what they are', () => {
   it('Needs action, not Important notes', () => {
-    expect(FILE).toContain('⚠ Needs action')
-    expect(FILE, 'the old name collides with the client emails').not.toContain('⚠ Important notes')
+    // 16 Nov 2026: the name moved out of a strip across the top of the panel
+    // and into the box head - see components/TheBubble.tsx. Same name, same
+    // box, drawn by something else. The warning triangle is the box's icon now.
+    expect(FILE).toContain('title="Needs action"')
+    expect(FILE, 'the old name collides with the client emails').not.toContain('title="Important notes"')
   })
 
   it('Sales notes, not Internal notes', () => {
@@ -41,8 +44,8 @@ describe('the three are named for what they are', () => {
   })
 
   it('File update, not File notes', () => {
-    expect(FILE).toContain('🕐 File update')
-    expect(FILE).not.toContain('🕐 File notes')
+    expect(FILE).toContain('title="File update"')
+    expect(FILE).not.toContain('title="File notes"')
   })
 })
 

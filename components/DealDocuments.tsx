@@ -1,4 +1,5 @@
 'use client'
+import { Bubble } from '@/components/TheBubble'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { builtFrom, behindLine, documentsAreCurrent } from '@/lib/keeping-up'
@@ -284,18 +285,10 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
   }
 
   return (
-    <div className="bg-card border border-card-line rounded-xl mb-3 px-3.5 py-3">
-      {/* A ROW PER DOCUMENT, THE WORD ON THE RIGHT - one-inside-the-deal-v4.html.
-          Three wide buttons stacked in a 330px rail made a staircase; Fabio,
-          5 Oct 2026, with the mock beside it: "needs to look like this see
-          nice boxes". Same three presses, same rebuild. */}
-      <div className="flex items-center gap-2 mb-2.5">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="text-faint">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />
-        </svg>
-        <span className="text-[9.5px] font-bold tracking-[.09em] uppercase text-faint">Build a PDF</span>
-      </div>
+    <Bubble tone="docs" title="Build a PDF"
+      icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+             strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>}>
       <div>
         {(Object.keys(KINDS) as Kind[]).map(kind => (
           <div key={kind} className="flex items-baseline gap-2 py-[3px]">
@@ -368,6 +361,6 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
           ))}
         </div>
       )}
-    </div>
+    </Bubble>
   )
 }

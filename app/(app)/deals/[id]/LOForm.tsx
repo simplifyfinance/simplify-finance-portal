@@ -2041,6 +2041,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         actions={[
           ...(deal.assigned_credit_officer && !loCompletedAt ? [{
             label: markingLoComplete ? 'Marking...' : 'Done',
+            tone: 'done' as const,
             onClick: () => { if (needsReason) return; setHandingOver(true) },
             primary: true,
             // THE ONE THING ON THIS TAB THAT REFUSES. See the "Only one
@@ -2051,6 +2052,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           }] : []),
           {
             label: sending ? 'Copying...' : 'Send to client',
+            tone: 'info' as const,
             doneLabel: 'Sent to client',
             onClick: () => {
               if (!canSendToClient || needsReason) return
@@ -2083,6 +2085,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           // because the stage does - one press, two emails, a gap between them.
           // See lib/docs-received.ts. Same shape as everything else on the row.
           {
+            tone: 'info' as const,
             label: docs.kind === 'none'
               ? (assessorMissing(docsDeal) ? 'Allocate a credit assessor first'
                  : docsBusy ? 'Marking\u2026' : 'Docs received')
@@ -2094,6 +2097,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           },
           {
             label: deal.lo_client_proceeded ? 'Client agreed' : 'Client agreed',
+            tone: 'done' as const,
             onClick: () => setShowMoveToCompliancePopup(true),
             done: !!deal.lo_client_proceeded,
             waiting: !deal.lo_sent_at && !deal.lo_client_proceeded,
@@ -2103,6 +2107,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           // SEND IT BACK. Same three rules as the BC - see lib/send-it-back.ts.
           ...(canSendToClient && canSendBack(deal, 'lo').ok ? [{
             label: '\u21BA Send it back',
+            tone: 'urgent' as const,
             onClick: () => setSendingBack(true),
             title: 'Tells credit these lending options need doing again, and why',
           }] : []),

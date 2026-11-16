@@ -137,11 +137,27 @@ describe('and the board says it with its columns instead of a chip', () => {
 })
 
 describe('the other screens still read it the same way', () => {
-  it('the deal page, the deals list and Today', () => {
-    for (const f of ['app/(app)/deals/[id]/DealPageClient.tsx',
-                     'app/(app)/deals/page.tsx',
+  // THE DEAL PAGE CAME OFF THIS LIST ON 16 NOV 2026, and that is the decision,
+  // not an oversight.
+  //
+  // The board grew a column for BC-with-credit beside BC-with-client, so the
+  // chip on the deal page was the card printing its own address. Fabio:
+  // "doesn't that defeat the purpose now that we have the breakdown of all the
+  // portal between us and them". It is on the GONE list in
+  // lib/nothing-on-the-deal-page-is-lost.test.ts with the date and the reason.
+  //
+  // THE RULE ITSELF IS UNTOUCHED. whoHasIt still decides the board's columns
+  // and still answers for the deals list and Today, which is what this test
+  // was always really guarding.
+  it('the deals list and Today', () => {
+    for (const f of ['app/(app)/deals/page.tsx',
                      'components/TodayPlan.tsx']) {
       expect(readFileSync(f, 'utf8'), `${f} stopped reading whoHasIt`).toContain('whoHasIt')
     }
+  })
+
+  it('and the deal page says who in credit has it, once, on Where it is', () => {
+    const page = readFileSync('app/(app)/deals/[id]/DealPageClient.tsx', 'utf8')
+    expect(page).toMatch(/With \{String\(dealData\.assigned_credit_officer\)/)
   })
 })

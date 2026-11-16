@@ -17,7 +17,11 @@ const lo = readFileSync('app/(app)/deals/[id]/LOForm.tsx', 'utf8')
 
 describe('the deal card header', () => {
   it('carries the control, not a label', () => {
-    expect(header).toMatch(/<BrokerAssignment[^>]*chip/)
+    // 16 Nov 2026: `chip` became `row`. The point of this test is unchanged -
+    // the header carries the CONTROL that reassigns, not the broker's name
+    // printed as text. deal-page-stages.html draws it as a row in the deal
+    // box; see the row mode in BrokerAssignment.tsx.
+    expect(header).toMatch(/<BrokerAssignment[^>]*row/)
     expect(header, 'the header is printing the broker as plain text again')
       .not.toMatch(/uppercase text-\[#A29889\]">Broker<\/span>/)
   })

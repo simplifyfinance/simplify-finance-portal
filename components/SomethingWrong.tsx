@@ -1,4 +1,5 @@
 'use client'
+import { Bubble } from '@/components/TheBubble'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite } from '@/lib/checked-write'
@@ -103,10 +104,10 @@ export default function SomethingWrong({ deal, me, whereNow }: {
   }
 
   return (
-    <div className="bg-card border border-card-line rounded-xl px-3.5 py-3">
-      <p className="text-[9.5px] font-bold tracking-[.09em] uppercase text-faint m-0 mb-2">
-        Something wrong?
-      </p>
+    <Bubble tone="plain" title="Something wrong?"
+      icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+             strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" /></svg>}>
 
       {mine.length > 0 && !open && (
         <>
@@ -187,6 +188,6 @@ export default function SomethingWrong({ deal, me, whereNow }: {
           </div>
         </div>
       )}
-    </div>
+    </Bubble>
   )
 }

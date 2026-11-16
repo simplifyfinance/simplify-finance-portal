@@ -84,9 +84,22 @@ describe('a tab can never be mistaken for an action', () => {
       .not.toContain('bg-ink')
   })
 
-  it('and the actions are the only black thing', () => {
+  // 16 Nov 2026: THE FILLED ONE, NOT THE BLACK ONE.
+  //
+  // The buttons stopped being black and took the deal page's four meanings
+  // instead - green for finished, blue for anything that goes out, deep pink
+  // for handing work back, grey for the rest. See deal-page-stages.html and
+  // the .bt rules in app/globals.css.
+  //
+  // What this test is for has not changed: exactly one button on the row is
+  // FILLED, and the view switch is never it.
+  it('and the actions are the only filled thing', () => {
     const actionBlock = row.slice(row.indexOf('{actions.map'))
-    expect(actionBlock).toContain('bg-ink text-page')
+    expect(actionBlock, 'nothing on the row is the one thing to press')
+      .toContain('data-main')
+    const i = row.indexOf('THE VIEW.')
+    expect(row.slice(i, row.indexOf('What now', i)), 'the view switch is filled like an action')
+      .not.toContain('data-main')
   })
 })
 
@@ -137,7 +150,12 @@ describe('the buttons', () => {
 
   it('are shown greyed rather than hidden', () => {
     expect(row).toContain('waiting')
-    expect(row).toContain('border-dashed')
+    // The dashed, faded state moved into .bt[data-waiting] in app/globals.css
+    // on 16 Nov 2026, so the row marks the button and the stylesheet draws it.
+    expect(row, 'a not-yet button is no longer marked at all').toContain('data-waiting')
+    expect(readFileSync('app/globals.css', 'utf8'),
+      'the stylesheet stopped drawing a not-yet button as dashed and faded')
+      .toMatch(/\.bt\[data-waiting\][^}]*border-style: dashed/)
   })
 
   it('say the same words on both screens', () => {
@@ -148,9 +166,17 @@ describe('the buttons', () => {
   })
 
   it('and use the portal’s own colours, no amber', () => {
-    for (const token of ['bg-done-bg', 'bg-info-bg', 'bg-ink', 'bg-line-soft']) {
+    // 16 Nov 2026: the colours are named rather than spelled - the row asks
+    // for var(--color-done) and for a tone out of components/TheBubble.tsx,
+    // which reads lib/colours.ts. A hex typed in here would be the drift that
+    // lib/colours.test.ts exists to stop.
+    expect(row).toContain('var(--color-done)')
+    expect(row).toContain('toneColour(')
+    for (const token of ['bg-info-bg', 'bg-line-soft']) {
       expect(row).toContain(token)
     }
+    expect(row, 'a colour is spelled out by hand instead of named')
+      .not.toMatch(/#[0-9A-Fa-f]{6}/)
     expect(row).not.toMatch(/amber|yellow|orange/)
   })
 })
