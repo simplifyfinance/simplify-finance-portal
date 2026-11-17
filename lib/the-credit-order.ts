@@ -50,8 +50,15 @@
 // somebody's behalf has decided their morning for them, and ten is twice what
 // anybody finishes.
 
+// AND LAST, THE ONES SHE CANNOT ACT ON.
+//
+// 19 Nov 2026. A deal with the client is on her list so she can chase it, not
+// so she can assess it. It goes under everything she can actually finish - an
+// unrecognised stage already sorted last, but the order of this list is the
+// thing people read to understand the screen, so it is written down.
 /** Closest to a lodged deal first. Anything unrecognised sorts last. */
-export const CREDIT_STAGES = ['Compliance', 'LO', 'BC', 'Fact Find'] as const
+export const CREDIT_STAGES =
+  ['Compliance', 'LO', 'BC', 'Fact Find', 'With the client'] as const
 export type CreditStage = typeof CREDIT_STAGES[number]
 
 /**

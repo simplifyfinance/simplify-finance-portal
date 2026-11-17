@@ -45,6 +45,10 @@ const SOFT = 'text-[12px] text-muted'
 const WHY_P = 'text-[10.5px] text-chase bg-chase-bg border border-chase-edge rounded-full px-2 py-[1px] whitespace-nowrap font-bold'
 const WHY_R = 'text-[10.5px] text-chase bg-chase-bg border border-chase-edge rounded-full px-2 py-[1px] whitespace-nowrap font-bold uppercase tracking-[.03em]'
 const BRK = 'text-[10.5px] text-info bg-info-bg border border-info-edge rounded-full px-2 py-[1px] whitespace-nowrap font-bold'
+// THE WEEK'S CHIP. Black, because every other colour on this screen already
+// means something - see the note beside WEEK_ON in components/TodayPlan.tsx.
+const WEEK_C = 'text-[9.5px] font-extrabold uppercase tracking-[0.05em] rounded-full px-2 py-[2px] whitespace-nowrap border border-ink bg-ink text-page'
+const WAIT_P = 'text-[10.5px] text-waiting bg-waiting-bg border border-waiting-edge rounded-full px-2 py-[1px] whitespace-nowrap font-bold'
 const CAP = 'text-[10.5px] font-bold tracking-[0.08em] uppercase text-muted'
 
 /** Which band a deal sits under on the list. The two instructions, then stages. */
@@ -58,7 +62,12 @@ const BAND_NOTE: Record<string, string> = {
   'Sent back': 'a broker returned it',
   'A broker asked': "today's ask",
   Compliance: 'closest to lodging',
+  // 19 Nov 2026. Not work she can finish, which is why it says so.
+  'With the client': 'chase or wait',
 }
+
+/** The one band she cannot action. It draws quieter and it sorts last. */
+const WITH_CLIENT = 'With the client'
 
 /** Typing two letters is enough to start looking. One letter matches the book. */
 const ENOUGH = 2
@@ -153,10 +162,17 @@ export default function PickTheDay({
           &#10003;
         </button>
         <Link href={`/deals/${d.id}`}
-          className={`truncate text-[13.5px] hover:underline ${on ? 'font-semibold' : 'text-body'}`}>
+          className={`truncate text-[13.5px] hover:underline ${
+            on ? 'font-semibold' : d.stage === WITH_CLIENT ? 'text-muted' : 'text-body'}`}>
           {d.name}
         </Link>
         <span className="flex-1" />
+        {/* THE WEEK, THEN THE CLIENT, THEN THE BROKER - the order the mock
+            draws them in. docs/approved-looks/today-priority-for-the-week.html */}
+        {d.thisWeek && <span className={WEEK_C}>This week</span>}
+        {/* WHAT THE CLIENT IS SITTING ON - documents, signing, to respond. The
+            word comes from whoHasIt(), the one place that answers it. */}
+        {d.stage === WITH_CLIENT && d.why && <span className={WAIT_P}>{d.why}</span>}
         {d.rework && <span className={WHY_R}>{reworkChip(d.rework as any)}</span>}
         {d.broker && <span className={BRK}>{brokerLabel(d.broker).toUpperCase()}</span>}
         {!d.rework && d.priority && (
@@ -198,6 +214,9 @@ export default function PickTheDay({
             </span>
           )}
           <span className="flex-1" />
+          {/* IT FOLLOWS THE DEAL INTO HER DAY. A chip that disappears the
+              moment she ticks it is a chip she stops trusting. */}
+          {d.thisWeek && <span className={WEEK_C}>This week</span>}
           <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-[.04em] text-faint">
             {d.rework ? 'Back' : d.priority ? 'Asked' : d.stage}
           </span>
@@ -349,7 +368,8 @@ export default function PickTheDay({
               {bands.map(b => (
                 <div key={b.name}>
                   <div className="mb-[2px] mt-3 flex items-center gap-2.5 first:mt-1">
-                    <span className="whitespace-nowrap text-[10px] font-extrabold uppercase tracking-[0.08em] text-brand-ink">
+                    <span className={`whitespace-nowrap text-[10px] font-extrabold uppercase tracking-[0.08em] ${
+                      b.name === WITH_CLIENT ? 'text-waiting' : 'text-brand-ink'}`}>
                       {b.name}
                     </span>
                     <span className="flex-1 border-t border-line-soft" />

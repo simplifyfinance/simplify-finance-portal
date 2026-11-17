@@ -8,10 +8,11 @@ import BrokerWeek from '@/components/BrokerWeek'
 import WhereMyDealsAre from '@/components/WhereMyDealsAre'
 import { askAbout } from '@/lib/the-brokers-monday'
 import TheOrderCame from '@/components/TheOrderCame'
-import { whoHasIt } from '@/lib/who-has-it'
+import { whoHasIt, holderLabel } from '@/lib/who-has-it'
 import { isFinished, phaseOf, PHASE_LABEL } from '@/lib/deal-phase'
 import { whichToday, type TodayView } from '@/lib/which-today'
 import { creditDay, openWithSuggestion, PRE_TICKED } from '@/lib/the-credit-order'
+import { lodgingThisWeek, theWeeksPriority, weekWords } from '@/lib/the-weeks-priority'
 import { daysWaiting, waitedWords, oldestFirst } from '@/lib/how-long-waiting'
 // A broker is never matched by lower-casing a name - brokerKey() takes the
 // first word, so "Fabio De Castro".toLowerCase() never equals "fabio".
@@ -23,7 +24,8 @@ import {
   stillOwed, whereSheIsUpTo, yesterdayShown, type Added as DoneAdded,
 } from '@/lib/the-morning-three'
 import {
-  draftDay, finishedOn, finishedAcross, planBoard, notTold, stageWaitingOn, creditHasIt,
+  draftDay, finishedOn, finishedAcross, planBoard, notTold, stageWaitingOn, stageOrClient,
+  WITH_THE_CLIENT, creditHasIt,
   reworkWaiting, askWaiting, stageOpenedAt,
   startingOrder, splitAtLine, withNote,
   type PlanDeal, type Plan,
@@ -88,6 +90,15 @@ const PILL = 'text-[10.5px] font-bold rounded-full px-2 py-0.5 whitespace-nowrap
 const PILL_US = `${PILL} bg-info-bg text-info border-info-edge`
 const PILL_OK = `${PILL} bg-done-bg text-done border-done-edge`
 const PILL_NOT = `${PILL} bg-chase-bg text-chase border-chase-edge`
+// THE WEEK'S CHIP IS BLACK, AND THAT IS NOT A DECORATION.
+//
+// 19 Nov 2026. Every colour on this screen is spoken for - red is chase,
+// purple is the client, green is done, blue is work in hand. A fifth meaning
+// needs a fifth colour, and the portal has one already: the ink the board's
+// stage bars are drawn in, which is the business talking rather than a deal's
+// own state. See lib/colours.ts.
+const WEEK_ON  = 'text-[9.5px] font-extrabold uppercase tracking-[0.05em] rounded-full px-2 py-[2px] whitespace-nowrap border border-ink bg-ink text-page'
+const WEEK_OFF = `${PILL} bg-waiting-bg text-waiting border-waiting-edge`
 
 function Row({ children }: { children: React.ReactNode }) {
   return <div className="flex items-center gap-2.5 py-2 border-b border-line-soft last:border-b-0 text-[13.5px]">{children}</div>
@@ -223,7 +234,20 @@ export default function TodayPlan({
     return draftDay(base
       .filter(live)
       .map(d => ({
-        id: d.id, name: d.deal_name, stage: stageWaitingOn(d) || '',
+        id: d.id, name: d.deal_name,
+        // WITH THE CLIENT IS ON HER LIST TOO - 19 Nov 2026, see stageOrClient().
+        // A broker's own day is unchanged: his client deals are on the right of
+        // this page already, and putting them here as well would list one file
+        // twice on one screen.
+        stage: (meOfficerId ? stageOrClient(d) : stageWaitingOn(d)) || '',
+        // WHAT THE CLIENT IS SITTING ON, in the portal's own word. "documents"
+        // and "signing" come from whoHasIt(); step 3 and step 6 of the ladder
+        // are the client responding, which lib/deal-status.ts has always
+        // called "respond".
+        why: whoHasIt(d)?.holder === 'client' ? (whoHasIt(d)!.why || 'to respond') : undefined,
+        // ONE OF THE WEEK'S LODGEMENTS. Read off the week somebody already
+        // set - see lib/the-weeks-priority.ts. Nothing new is stored.
+        thisWeek: lodgingThisWeek(d, now),
         // CHRONOLOGICAL BY WHEN THE STAGE OPENED, not by when the deal was
         // handed to this person. See stageOpenedAt() - 12 Nov 2026.
         since: stageOpenedAt(d) || d.credit_assigned_at || d.created_at,
@@ -341,7 +365,18 @@ export default function TodayPlan({
       : sameBroker(d.assigned_broker, brokerKey))
     .filter(live)
     .map(d => ({ deal: d, has: whoHasIt(d) }))
-    .filter(x => x.has && x.has.holder !== 'us'), [deals, meOfficerId, brokerKey])
+    // THE CLIENT ONES MOVED TO HER LIST - 19 Nov 2026.
+    //
+    // This box held 54 of Mellissa's deals, with-client and with-lender mixed
+    // together, while the list below drew four. The client ones are hers to
+    // chase, so they are a band on the list now - see stageOrClient(). Leaving
+    // them here as well would put one deal in two boxes on one screen, which
+    // is how a count stops being believed.
+    //
+    // A BROKER'S BOX IS UNCHANGED: his client deals are not on his list.
+    .filter(x => x.has && x.has.holder !== 'us')
+    .filter(x => !(meOfficerId && x.has!.holder === 'client')),
+    [deals, meOfficerId, brokerKey])
 
   const board = planBoard(plans)
   const late = notTold(plans, now, today)
@@ -642,6 +677,75 @@ export default function TodayPlan({
     </Card>
   )
 
+  // PRIORITY FOR THE WEEK. 19 Nov 2026 - see lib/the-weeks-priority.ts.
+  //
+  // Fabio: "I'd rather a new box that shows deals that are on our today and
+  // they update as we update... just a box saying priority for the week."
+  //
+  // It is HER deals, lodging this week, and whether she has put each one in
+  // her day. A deal the week is counting on that is not in anybody's day is
+  // the one thing on this screen worth a box of its own.
+  //
+  // CREDIT ONLY. Fabio: "this is for Katie Mel and Dinsiha."
+  const weekRows = useMemo(() => theWeeksPriority(
+    drafted
+      .filter(d => (d as any).thisWeek)
+      .map(d => ({
+        id: d.id,
+        name: d.name,
+        where: d.stage === WITH_THE_CLIENT && (d as any).why
+          ? `With client \u00b7 ${(d as any).why}`
+          : d.stage,
+        days: daysSince(d.since),
+      })),
+    todayIds.map(String),
+  ), [drafted, todayIds])
+
+  const weekBox = view === 'credit' && (
+    <div className="mb-3 rounded-xl border-[1.5px] border-ink bg-card overflow-hidden">
+      <div className="flex items-center gap-2 bg-ink px-5 py-2.5">
+        <span className="text-[10.5px] font-bold tracking-[0.08em] uppercase text-page">
+          Priority for the week
+        </span>
+        <span className="flex-1" />
+        <span className="text-[15px] font-extrabold text-page">{weekRows.length}</span>
+      </div>
+      <div className="px-5 py-3">
+        {/* THE SCREEN IS NEVER BLANK. 15 Nov 2026, Fabio: "if it's blank, it's
+          * blank, but the boxes are there." A week with nothing of hers in it
+          * is an answer, and a box that vanishes is a box nobody trusts. */}
+        {weekRows.length === 0 ? (
+          <div className={SOFT}>{weekWords(weekRows)}</div>
+        ) : (
+          <>
+            {weekRows.map(r => (
+              <div key={r.id}
+                className="flex items-start gap-2.5 py-2 border-b border-line-soft last:border-b-0">
+                <div className="min-w-0">
+                  <Link href={`/deals/${r.id}`}
+                    className="block truncate text-[13px] font-semibold text-ink hover:underline">
+                    {r.name}
+                  </Link>
+                  <div className="mt-[2px] text-[11.5px] tabular-nums text-faint">
+                    {r.where}{r.days !== null ? ` \u00b7 ${r.days} days` : ''}
+                  </div>
+                </div>
+                <span className="flex-1" />
+                <span className={r.onToday ? WEEK_ON : WEEK_OFF}>
+                  {r.onToday ? 'On today' : 'Not on today'}
+                </span>
+              </div>
+            ))}
+            <p className="mt-2.5 text-[11px] leading-relaxed text-faint">
+              These are the ones you said are lodging this week. Move one to next week
+              on the run-through and it drops off here by itself. Nothing to tidy up.
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  )
+
   const waitingBox = elsewhere.length > 0 && (
     <Card>
       {/* WHOSE DEALS. 12 Nov 2026: this counts only the deals of whoever is
@@ -663,7 +767,7 @@ export default function TodayPlan({
         * carries the same information without the accusation.
         * See lib/how-long-waiting.ts. */}
       <div className={CAP}>
-        {meOfficerId ? 'Yours, waiting on someone else'
+        {meOfficerId ? 'Yours, with the lender'
           : view === 'broker' ? 'Chase these — waiting on somebody outside'
           : 'Your deals, waiting on someone else'}
         {' '}&mdash; {elsewhere.length}
@@ -897,6 +1001,7 @@ export default function TodayPlan({
             * default nobody chose. A self-employed broker should not be shown
             * who on your team is behind. */}
           {view === 'credit' ? tellBox : view === 'admin' ? teamBox : null}
+          {weekBox}
           {waitingBox}
         </div>
       </div>

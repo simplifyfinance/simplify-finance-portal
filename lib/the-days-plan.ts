@@ -58,6 +58,10 @@ export type PlanDeal = {
   // not be found by typing the person on it. components/MilestoneFromTemplates
   // has matched both for weeks; this is the same rule, in the same words.
   client?: string
+  /** "documents", "signing" - what the client is sitting on. See whoHasIt(). */
+  why?: string
+  /** One of the week's lodgements. See lib/the-weeks-priority.ts. */
+  thisWeek?: boolean
   // SENT BACK BY A BROKER, which beats a priority and beats the queue.
   //
   // 27 Oct 2026. See lib/send-it-back.ts. A rework is not a new deal arriving;
@@ -104,6 +108,31 @@ export function stageWaitingOn(deal: any): string | null {
   if (i === 4 || i === 5) return 'LO'
   if (i === 7) return 'Compliance'
   return null
+}
+
+// AND THE SAME QUESTION FOR A DEAL THAT IS NOT OURS TO ACT ON.
+//
+// 19 Nov 2026. Fabio, on Mellissa's list drawing four deals when she holds
+// thirty-one: "add everything that has with client, because yeah, it's really
+// hard to tell apart."
+//
+// stageWaitingOn() is deliberately narrow - it answers WHICH STAGE IS SITTING
+// WITH US and nothing else, and every count built on it is right because of
+// that. So this does not loosen it. It adds the one band underneath.
+//
+// A deal with the client is not work she can do. It is work she can CHASE,
+// and a list that hides it is a list that cannot be chased from. The deal she
+// sent out eleven days ago is the one that should bother her, and before this
+// it was the one thing the screen would not show her.
+//
+// WITH THE LENDER IS STILL OUT. A lodged file is not credit's to chase and
+// putting it here would make the list a copy of the board.
+export const WITH_THE_CLIENT = 'With the client'
+
+export function stageOrClient(deal: any): string | null {
+  const ours = stageWaitingOn(deal)
+  if (ours) return ours
+  return whoHasIt(deal)?.holder === 'client' ? WITH_THE_CLIENT : null
 }
 
 // IS CREDIT CARRYING THE STAGE THAT IS SITTING WITH US?

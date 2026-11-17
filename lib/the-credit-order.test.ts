@@ -14,10 +14,20 @@ const row = (id: string, stage: string, since: string) => ({ id, stage, since })
 
 describe('the order is the distance to a lodged deal', () => {
   it('compliance, then LO, then BC, then fact find', () => {
-    expect(CREDIT_STAGES).toEqual(['Compliance', 'LO', 'BC', 'Fact Find'])
+    expect(CREDIT_STAGES)
+      .toEqual(['Compliance', 'LO', 'BC', 'Fact Find', 'With the client'])
     expect(stageRank('Compliance')).toBeLessThan(stageRank('LO'))
     expect(stageRank('LO')).toBeLessThan(stageRank('BC'))
     expect(stageRank('BC')).toBeLessThan(stageRank('Fact Find'))
+  })
+
+  // 19 Nov 2026. A deal with the client is on her list so she can chase it,
+  // not so she can assess it, so it sits under everything she can finish -
+  // including the fact find, which is the furthest of her own work from a
+  // lodged deal. See stageOrClient() in lib/the-days-plan.ts.
+  it('and a deal she cannot action sits under everything she can', () => {
+    expect(stageRank('Fact Find')).toBeLessThan(stageRank('With the client'))
+    expect(stageRank('With the client')).toBe(CREDIT_STAGES.length - 1)
   })
 
   it('and anything it does not recognise sorts last, never first', () => {

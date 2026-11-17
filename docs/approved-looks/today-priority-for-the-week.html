@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Mellissa — Today, with the client deals on the list</title>
+<style>
+  :root{
+    --page:#F7F4EF; --card:#FFFFFF; --line:#E8E2D8; --line-soft:#F1ECE4;
+    --card-line:#EBE5DB; --field-line:#DCD5C9;
+    --ink:#17140F; --body:#4D4841; --muted:#6F6A62; --faint:#A79F93;
+    --chase:#D32F2F; --chase-bg:#FDEDED; --chase-edge:#F5C9C9;
+    --waiting:#5B3A9E; --waiting-bg:#F4F1FC; --waiting-edge:#DACFF1;
+    --done:#137A55; --done-bg:#EAFAF4; --done-edge:#B4E7D5;
+    --info:#107EA8; --info-bg:#EAF7FE; --info-edge:#BFE4F7;
+    --brand-ink:#107EA8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--body);
+    font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .bar{background:#0F1115;color:#EFEAE2;padding:10px 20px;display:flex;align-items:center;gap:10px;font-size:12.5px}
+  .bar .tag{background:#4FBBEA;color:#0F1115;font-size:10px;font-weight:800;letter-spacing:.06em;
+    text-transform:uppercase;border-radius:5px;padding:3px 7px}
+  .bar b{color:#fff}
+  .bar .dim{color:#9A9287}
+  .pad{padding:22px 24px 40px}
+  h1{font-size:21px;color:var(--ink);margin:0 0 16px;letter-spacing:-.01em;font-weight:700}
+  h1 span{font-size:13px;color:var(--muted);font-weight:400;margin-left:8px}
+  .grid{display:grid;grid-template-columns:1fr 360px;gap:18px;align-items:start}
+  .cap{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .card{background:var(--card);border:1px solid var(--card-line);border-radius:12px;padding:15px 19px;margin-bottom:14px}
+  .green{border-color:var(--done-edge);background:var(--done-bg)}
+  .pushband{background:var(--info-bg);border:1px solid var(--info-edge);border-radius:12px;padding:13px 19px;margin-bottom:14px}
+
+  .row{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line-soft);padding:8px 0}
+  .row:last-child{border-bottom:0}
+  .sp{flex:1}
+  .nm{font-size:13.5px;color:var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .days{font-size:11.5px;color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .pill{font-size:10.5px;font-weight:700;border-radius:99px;padding:1px 8px;white-space:nowrap;border:1px solid}
+  .brk{color:var(--info);background:var(--info-bg);border-color:var(--info-edge)}
+  .wait{color:var(--waiting);background:var(--waiting-bg);border-color:var(--waiting-edge)}
+  .lend{color:var(--muted);background:var(--line-soft);border-color:var(--line)}
+  .week{color:#F7F4EF;background:var(--ink);border-color:var(--ink);
+    letter-spacing:.05em;text-transform:uppercase;font-size:9.5px;font-weight:800;padding:2px 8px}
+  .tick{width:19px;height:19px;flex:none;border:1px solid var(--field-line);background:var(--card);border-radius:6px}
+  .tick.on{background:var(--ink);border-color:var(--ink);color:var(--page);
+    font-size:11px;font-weight:800;text-align:center;line-height:17px}
+
+  .head{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .count{margin-left:auto;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+  .note{font-size:11.5px;line-height:1.6;color:var(--faint);margin:0 0 8px}
+  .find{width:100%;border:1px solid var(--field-line);background:var(--page);
+    border-radius:10px;padding:9px 13px;font-size:13.5px;color:var(--muted);margin-bottom:6px}
+  .scroll{max-height:300px;overflow-y:auto;padding-right:6px}
+  .scroll::-webkit-scrollbar{width:8px}
+  .scroll::-webkit-scrollbar-thumb{background:#D8D1C4;border-radius:99px}
+  .band{display:flex;align-items:center;gap:10px;margin:13px 0 2px}
+  .band:first-child{margin-top:1px}
+  .band b{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--brand-ink);white-space:nowrap}
+  .band.client b{color:var(--waiting)}
+  .band.wk b{color:var(--ink)}
+  .band .rule{flex:1;border-top:1px solid var(--line-soft)}
+  .band small{font-size:10.5px;color:var(--faint);white-space:nowrap}
+  .row.faded .nm{color:var(--muted)}
+
+  .dayrow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line-soft);font-size:13.5px}
+  .dayrow:last-child{border-bottom:0}
+  .num{width:20px;height:20px;flex:none;border-radius:6px;background:var(--ink);color:var(--page);
+    font-size:11px;font-weight:700;text-align:center;line-height:20px}
+  .stage{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
+  .bigno{font-size:26px;font-weight:800;letter-spacing:-.02em;color:var(--ink);line-height:1}
+  .chip{display:inline-block;border-radius:9px;padding:8px 14px;font-size:13px;font-weight:600;
+    background:var(--done-bg);border:1px solid var(--done-edge);color:var(--done)}
+  .rcol .rrow{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--line-soft);font-size:13px;color:var(--ink)}
+  .rcol .rrow:last-child{border-bottom:0}
+  .ok{color:var(--done);font-weight:700}
+  .label{font-size:11px;color:var(--faint);margin:10px 0 8px;letter-spacing:.04em;text-transform:uppercase;font-weight:700}
+</style></head>
+<body>
+
+<div class="bar">
+  <span class="tag">Viewing as</span><b>Mellissa Sedin</b>
+  <span class="dim">&mdash; credit. This is their Today exactly as they see it.</span>
+</div>
+
+<div class="pad">
+<h1>Good morning Mellissa<span>17 Nov</span></h1>
+
+<div class="grid">
+<div>
+
+  <div class="pushband">
+    <div class="cap" style="color:var(--info);margin-bottom:5px">A push you made never arrived</div>
+    <div style="font-size:13.5px;color:var(--ink)"><b>Maeve Lindqvist 2026</b>
+      <span style="color:var(--muted);margin-left:8px">You pushed this and it never arrived. Nobody has this deal.</span></div>
+  </div>
+
+  <div class="card green">
+    <div class="head"><span class="cap">1 &mdash; Yesterday, written from what moved</span>
+      <span class="count ok">&#10003; 8:59 AM</span></div>
+    <div class="row"><span class="ok">&#10003;</span><span class="nm">Priya Raghunathan 2026</span><span class="sp"></span>
+      <span class="days">BC done &middot; 0.1 days on you</span></div>
+    <div class="row"><span class="ok">&#10003;</span><span class="nm">Callum Ferreira 2026</span><span class="sp"></span>
+      <span class="days">BC done &middot; 4.7 days on you</span></div>
+    <div class="row"><span class="ok">&#10003;</span><span class="nm">Maeve Lindqvist 2026</span><span class="sp"></span>
+      <span class="days">Compliance done &middot; 6.2 days on you</span></div>
+    <div style="margin-top:12px"><span class="chip">&#10003; That is what I did</span></div>
+  </div>
+
+  <div class="card">
+    <div class="head"><span class="cap" style="color:var(--ink)">2 &mdash; This is my day</span>
+      <span class="count">drag to reorder</span></div>
+    <div style="display:flex;align-items:baseline;gap:9px;margin:5px 0 8px">
+      <span class="bigno">3</span>
+      <span style="font-size:12px;color:var(--muted)">of 58 &mdash; most people get through four or five</span>
+    </div>
+    <div class="dayrow"><span class="num">1</span>Theodora Blankenship 2026<span class="sp"></span>
+      <span class="pill week">This week</span><span class="stage">Compliance</span></div>
+    <div class="dayrow"><span class="num">2</span>Rosalind Achebe 2026<span class="sp"></span>
+      <span class="pill week">This week</span><span class="stage">LO</span></div>
+    <div class="dayrow"><span class="num">3</span>Hamish Trelawney 2026<span class="sp"></span><span class="stage">BC</span></div>
+    <div style="margin-top:12px"><span class="chip">&#10003; Told the brokers &mdash; 8:59 am</span></div>
+  </div>
+
+  <!-- ============== THE BOX THAT CHANGES ============== -->
+  <div class="card">
+    <div class="head"><span class="cap">Everything with you</span>
+      <span class="count">58 files &middot; 3 ticked</span></div>
+    <p class="note">Nothing is ticked for you. The order is the suggestion &mdash; compliance
+      first, then lending options, then borrowing capacity. The ones sitting with a
+      client are last.</p>
+    <div class="find">Find a deal &mdash; type a client name</div>
+
+    <div class="scroll">
+      <div class="band"><b>Compliance</b><span class="rule"></span><small>1 &middot; closest to lodging</small></div>
+      <div class="row"><span class="tick on">&#10003;</span><span class="nm">Theodora Blankenship 2026</span><span class="sp"></span>
+        <span class="pill week">This week</span><span class="pill brk">MARK</span><span class="days">2.1 days</span></div>
+
+      <div class="band"><b>Lending options</b><span class="rule"></span><small>1</small></div>
+      <div class="row"><span class="tick on">&#10003;</span><span class="nm">Rosalind Achebe 2026</span><span class="sp"></span>
+        <span class="pill week">This week</span><span class="pill brk">MARK</span><span class="days">5.4 days</span></div>
+
+      <div class="band"><b>BC</b><span class="rule"></span><small>4</small></div>
+      <div class="row"><span class="tick"></span><span class="nm">Oleander Whitcombe 2026</span><span class="sp"></span>
+        <span class="pill brk">JUSTIN</span><span class="days">24.9 days</span></div>
+      <div class="row"><span class="tick"></span><span class="nm">Caspian Okafor 2026</span><span class="sp"></span>
+        <span class="pill brk">MARK</span><span class="days">13.7 days</span></div>
+      <div class="row"><span class="tick on">&#10003;</span><span class="nm">Hamish Trelawney 2026</span><span class="sp"></span>
+        <span class="pill brk">FABIO</span><span class="days">10.8 days</span></div>
+      <div class="row"><span class="tick"></span><span class="nm">Saoirse Nakamura 2026</span><span class="sp"></span>
+        <span class="pill brk">FABIO</span><span class="days">3.9 days</span></div>
+
+      <div class="band client"><b>With the client</b><span class="rule"></span><small>52 &middot; chase or wait</small></div>
+      <div class="row faded"><span class="tick"></span><span class="nm">Ignatius Vandermolen 2026</span><span class="sp"></span>
+        <span class="pill wait">documents</span><span class="days">69 days</span></div>
+      <div class="row faded"><span class="tick"></span><span class="nm">Perpetua Olanrewaju 2026</span><span class="sp"></span>
+        <span class="pill wait">signing</span><span class="days">44 days</span></div>
+      <div class="row faded"><span class="tick"></span><span class="nm">Barnaby Castellanos 2026</span><span class="sp"></span>
+        <span class="pill wait">documents</span><span class="days">38 days</span></div>
+      <div class="row faded"><span class="tick"></span><span class="nm">Wilhelmina Asante 2026</span><span class="sp"></span>
+        <span class="pill week">This week</span><span class="pill wait">documents</span><span class="days">31 days</span></div>
+      <div class="row faded"><span class="tick"></span><span class="nm">Lysandra Brightmoor 2026</span><span class="sp"></span>
+        <span class="pill wait">documents</span><span class="days">27 days</span></div>
+      <div class="row faded"><span class="tick"></span><span class="nm">Octavian Mbatha 2026</span><span class="sp"></span>
+        <span class="pill wait">signing</span><span class="days">22 days</span></div>
+      <div class="row faded"><span class="tick"></span><span class="nm">Marigold Petrosyan 2026</span><span class="sp"></span>
+        <span class="pill wait">documents</span><span class="days">19 days</span></div>
+      <div class="row faded"><span class="tick"></span><span class="nm">Fenwick Adeyemi 2026</span><span class="sp"></span>
+        <span class="pill wait">documents</span><span class="days">15 days</span></div>
+      <div class="row faded"><span class="tick"></span><span class="nm">Evangeline Sturrock 2026</span><span class="sp"></span>
+        <span class="pill wait">signing</span><span class="days">12 days</span></div>
+      <div class="row faded"><span class="tick"></span><span class="nm">Desmond Kirkbride 2026</span><span class="sp"></span>
+        <span class="pill wait">documents</span><span class="days">8 days</span></div>
+    </div>
+  </div>
+
+  <p class="label">The chip on the row, up close</p>
+  <div class="card" style="display:flex;gap:28px;align-items:center;flex-wrap:wrap">
+    <div>
+      <div class="row" style="border:0;padding:0"><span class="tick"></span>
+        <span class="nm">Theodora Blankenship 2026</span>
+        <span style="width:14px"></span><span class="pill week">This week</span>
+        <span style="width:8px"></span><span class="pill brk">MARK</span>
+        <span style="width:10px"></span><span class="days">2.1 days</span></div>
+    </div>
+    <p style="font-size:12px;color:var(--muted);line-height:1.6;max-width:430px;margin:0">
+      Black, because every status colour already means something &mdash; red is chase,
+      purple is the client, green is done, blue is in hand. Black is the colour of the
+      stage bars on the board, which is management's voice already.
+      It reads off the lodgement week you already set on the Monday run&#8209;through.
+      <b style="color:var(--ink)">Nothing new to type, nothing new stored.</b>
+    </p>
+  </div>
+
+</div>
+
+<!-- ============== RIGHT ============== -->
+<div class="rcol">
+  <div class="card">
+    <div class="cap" style="margin-bottom:8px">3 &mdash; Inform management</div>
+    <div class="rrow"><span class="ok">&#9679;</span><b>Yesterday</b><span class="sp"></span><span class="days">confirmed 8:59 am</span></div>
+    <div class="rrow"><span class="ok">&#9679;</span><b>Today</b><span class="sp"></span><span class="days">confirmed 8:59 am</span></div>
+    <div style="margin-top:10px"><span class="chip" style="display:block;text-align:center">&#10003; Sent to management &mdash; 8:59 am</span></div>
+  </div>
+
+  <!-- ============ THE NEW BOX ============ -->
+  <div class="card" style="border-color:var(--ink);border-width:1.5px;padding-top:0;overflow:hidden">
+    <div style="background:var(--ink);color:#F7F4EF;margin:0 -19px 12px;padding:10px 19px;
+                display:flex;align-items:center;gap:8px">
+      <span class="cap" style="color:#F7F4EF">Priority for the week</span>
+      <span class="sp"></span>
+      <span style="font-size:15px;font-weight:800;color:#fff">3</span>
+    </div>
+    <div class="rrow" style="padding-top:0">
+      <div style="min-width:0">
+        <div style="font-weight:600">Theodora Blankenship 2026</div>
+        <div class="days" style="margin-top:2px">Compliance &middot; 2.1 days</div>
+      </div>
+      <span class="sp"></span><span class="pill week">On today</span>
+    </div>
+    <div class="rrow">
+      <div style="min-width:0">
+        <div style="font-weight:600">Rosalind Achebe 2026</div>
+        <div class="days" style="margin-top:2px">Lending options &middot; 5.4 days</div>
+      </div>
+      <span class="sp"></span><span class="pill week">On today</span>
+    </div>
+    <div class="rrow">
+      <div style="min-width:0">
+        <div style="font-weight:600">Wilhelmina Asante 2026</div>
+        <div class="days" style="margin-top:2px">With client &middot; documents &middot; 31 days</div>
+      </div>
+      <span class="sp"></span><span class="pill wait">Not on today</span>
+    </div>
+    <p style="font-size:11px;color:var(--faint);line-height:1.6;margin:10px 0 0">
+      These are the ones you said are lodging this week. Move one to next week on the
+      run&#8209;through and it drops off here by itself. Nothing to tidy up.
+    </p>
+  </div>
+
+  <div class="card">
+    <div class="cap" style="margin-bottom:6px">Yours, with the lender &mdash; 6</div>
+    <div class="rrow">Wilbur Pennington 2026<span class="sp"></span><span class="pill lend">With lender</span><span class="days">61 days</span></div>
+    <div class="rrow">Anastasia Flintlock 2026<span class="sp"></span><span class="pill lend">With lender</span><span class="days">49 days</span></div>
+    <div class="rrow">Solomon Ravensworth 2026<span class="sp"></span><span class="pill lend">With lender</span><span class="days">42 days</span></div>
+    <div class="rrow">Cordelia Achterberg 2026<span class="sp"></span><span class="pill lend">With lender</span><span class="days">34 days</span></div>
+    <div class="rrow">Augustin Delacroix 2026<span class="sp"></span><span class="pill lend">With lender</span><span class="days">32 days</span></div>
+  </div>
+
+  <div class="card">
+    <div class="cap" style="margin-bottom:8px">What changed</div>
+    <p style="font-size:12.5px;line-height:1.75;margin:0;color:var(--body)">
+      <b style="color:var(--ink)">The with-client deals moved to the left.</b>
+      They were in this right-hand column, 54 of them mixed in with the lender ones.
+      They are her work to chase, so they are on her list now.<br><br>
+      <b style="color:var(--ink)">The box is the same height.</b> 58 files, same box, it
+      scrolls. Nothing on this page got taller.<br><br>
+      <b style="color:var(--ink)">The right column keeps the lender ones.</b> Those are
+      not hers to chase, so they stay a glance, not a list.<br><br>
+      <b style="color:var(--ink)">Priority for the week is its own box.</b> Top right,
+      under Inform management. It says which of them she has actually ticked into today.
+      It follows the week you set &mdash; move one to next week on the run&#8209;through
+      and it leaves this box on its own.<br><br>
+      <b style="color:var(--ink)">And the same chip on the row.</b> So when she is reading
+      the list she can see which one management is waiting on.
+    </p>
+  </div>
+</div>
+</div>
+</div>
+</body></html>
