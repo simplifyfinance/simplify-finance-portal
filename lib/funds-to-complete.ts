@@ -402,7 +402,18 @@ export function loanAmount(deal: any): number {
 // The BC's own answer, added up. Every split, never the first - a multi-split
 // deal read off the first one reports half the loan.
 export function bcSplitsTotal(deal: any): number {
-  const splits = deal?.bc_data?.splits || []
+  return splitsTotal(deal?.bc_data)
+}
+
+/**
+ * THE SAME SUM, FOR A BORROWING CAPACITY WITH NO DEAL AROUND IT.
+ *
+ * 19 Nov 2026. The valuation order is handed a bc and nothing else, and it now
+ * has to know how big the loan is to tell a rounding from an equity release -
+ * see lib/a-rounding-is-not-an-equity-release.ts. One sum, two doors.
+ */
+export function splitsTotal(bc: any): number {
+  const splits = bc?.splits || []
   return splits.reduce((s: number, x: any) => s + num(x?.amount), 0)
 }
 

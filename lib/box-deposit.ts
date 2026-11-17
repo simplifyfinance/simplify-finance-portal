@@ -1,4 +1,5 @@
 import { money, readMoney } from './money'
+import { isEquityRelease, releaseOnDeal } from './a-rounding-is-not-an-equity-release'
 import { lmiAmount, lmiTreatment } from './lmi'
 import { dutyStateOf } from './duty-state'
 import { fundsToComplete, refinancedDebt, isConstruction } from './funds-to-complete'
@@ -54,7 +55,10 @@ export type Shape = 'purchase' | 'refinance' | 'cashout' | 'release_and_purchase
 export function shapeOf(deal: any): Shape {
   const bc = deal?.bc_data || {}
   const buying = num(bc.purchasePrice) > 0 || num(bc.newPurchasePrice) > 0
-  const release = num(bc.equityRelease) > 0
+  // THE ROUNDING IS NOT A RELEASE - 19 Nov 2026. This decides the shape of
+  // the deal, and the shape decides the sentence the compliance pack sends to
+  // a lender. See lib/a-rounding-is-not-an-equity-release.ts.
+  const release = isEquityRelease(deal)
   const payout = refinancedDebt(deal) > 0
 
   // A TOP UP IS ITS OWN SHAPE, AND IT IS ASKED FIRST.
@@ -301,7 +305,7 @@ export function boxSeven(deal: any): Box {
   const lending = row.totalLending
   const price = num(bc.purchasePrice) || num(bc.newPurchasePrice)
   const deposit = num(bc.deposit) || num(bc.newPurchaseDeposit)
-  const release = num(bc.equityRelease)
+  const release = releaseOnDeal(deal)
   const payout = refinancedDebt(deal)
 
   if (shape === 'purchase') {

@@ -21,7 +21,8 @@ import { loanAmount } from './funds-to-complete'
 import { depositAsAssessed } from './contract-funding'
 import { isRefinance } from './document-rules'
 import { amountOf } from './deal-phase'
-import { balanceTotal, releaseTotal } from './complex-refinance'
+import { balanceTotal } from './complex-refinance'
+import { releaseOnDeal } from './a-rounding-is-not-an-equity-release'
 import { money } from './money'
 
 const num = (v: any): number => {
@@ -64,7 +65,10 @@ export function milestoneRows(deal: any): PurchaseRow[] {
     const add = (label: string, n: number) => { if (n > 0) rows.push({ label, value: money(n) }) }
     add('Loan amount', loanForEmail(deal))
     add('Balance being refinanced', balanceTotal(bc))
-    add('Cash out', releaseTotal(bc))
+    // NOT THE ROUNDING - 19 Nov 2026. "Cash out $1,500" in front of a client
+    // whose loan was rounded up to cover a month's interest reads as money
+    // they are getting. See lib/a-rounding-is-not-an-equity-release.ts.
+    add('Cash out', releaseOnDeal(deal))
     return rows
   }
 

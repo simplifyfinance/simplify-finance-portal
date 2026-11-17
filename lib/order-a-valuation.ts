@@ -1,4 +1,5 @@
 import { dutyStateOf, isStateCode } from './duty-state'
+import { isEquityReleaseOnBc } from './a-rounding-is-not-an-equity-release'
 
 // ORDERING A VALUATION, FROM WHAT THE DEAL ALREADY KNOWS.
 //
@@ -92,7 +93,12 @@ export function loanPurposeOf(security: any, bc: any, ff: any): string {
   if (statuses.some((x: string) => x === 'refinance' || x === 'to be refinanced')) return 'REFINANCE'
   // Nothing being refinanced against a house we already own and are lending
   // more against is an equity release, which is the third of the three.
-  if (txt(bc?.equityRelease)) return 'EQUITY_RELEASE'
+  //
+  // UNLESS IT IS THE ROUNDING - 19 Nov 2026. A refinance rounded up by $1,500
+  // to cover a month's interest used to go to the valuer as an equity release,
+  // which is a different job with a different question on it. See
+  // lib/a-rounding-is-not-an-equity-release.ts.
+  if (isEquityReleaseOnBc(bc)) return 'EQUITY_RELEASE'
   return 'REFINANCE'
 }
 

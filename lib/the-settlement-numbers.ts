@@ -21,7 +21,8 @@
 // and the email goes without the table rather than with a hole in it.
 import { fundsToComplete } from './funds-to-complete'
 import { loanForEmail } from './milestone-figures'
-import { balanceTotal, releaseTotal } from './complex-refinance'
+import { balanceTotal } from './complex-refinance'
+import { releaseOnDeal } from './a-rounding-is-not-an-equity-release'
 import { isRefinance, isPurchase } from './settlement'
 import { money } from './money'
 import { type MoneyRow } from './settlement-emails'
@@ -39,9 +40,16 @@ export function numbersKind(deal: any): NumbersKind {
   return 'none'
 }
 
-/** What is taken in hand on a refinance - the surplus, or nothing. */
+/**
+ * What is taken in hand on a refinance - the surplus, or nothing.
+ *
+ * THE ROUNDING IS NOT A SURPLUS - 19 Nov 2026. numbersWorthSending() reads
+ * this, so a refinance rounded up by $1,500 was firing a "your settlement
+ * numbers" email about money nobody sees. That is exactly the dollar-for-
+ * dollar case the spec says not to send.
+ */
 export function cashOut(deal: any): number {
-  return releaseTotal(deal?.bc_data || {})
+  return releaseOnDeal(deal)
 }
 
 /**
