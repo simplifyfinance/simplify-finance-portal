@@ -58,7 +58,9 @@ const LANES = GROUPS.flatMap(g => g.lanes)
 const LANE_PHASE: Record<string, Phase> = {
   lead: 'fact_find',
   bc_us: 'bc', bc_client: 'bc',
-  lo_us: 'lo', lo_client: 'lo',
+  // All three Lending options columns write the same stage. Which of them a
+  // deal sits in is worked out, never set - see laneOf().
+  lo_docs: 'lo', lo_us: 'lo', lo_client: 'lo',
   comp_us: 'compliance', comp_client: 'compliance_sent',
   lodged: 'lodged', preapproved: 'preapproved', offer_accepted: 'offer_accepted',
   formal: 'formal', contracts_returned: 'contracts_returned',

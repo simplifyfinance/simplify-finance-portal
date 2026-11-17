@@ -1,5 +1,5 @@
 import { phaseOf, type Phase } from './deal-phase'
-import { whoHasIt } from './who-has-it'
+import { whoHasIt, waitingOnDocuments } from './who-has-it'
 
 // THE BOARD IS A VIEW, NOT A PLACE A DEAL IS KEPT.
 //
@@ -61,7 +61,28 @@ export const GROUPS: Group[] = [
     { key: 'bc_us', label: 'With credit' },
     { key: 'bc_client', label: 'With client' },
   ] },
+  // THREE, NOT TWO - 19 Nov 2026.
+  //
+  // Fabio: "someone agrees with the borrowing capacity. They want to go
+  // ahead, but we're still waiting for documents to start the lending options
+  // process. So it's not with us, because it sounds like we're waiting on
+  // credit and then credit gets in trouble for not doing the deal, but it's
+  // not with the client because we haven't selected the options."
+  //
+  // Three different waits, and until today two of them shared a column:
+  //
+  //   Awaiting docs   we have asked, nothing is back, credit cannot start
+  //   With credit     the documents are in and credit is building the options
+  //   With client     the options have gone out and they are choosing a bank
+  //
+  // The middle one is the only one credit can be measured on. Lumping the
+  // first in with it put credit's name on a wait they cannot end, and lumping
+  // it in with the third hid a chase the sales team should be making.
+  //
+  // BORROWING CAPACITY IS NOT SPLIT THIS WAY. Asked directly: "no documents on
+  // BC please". A BC is written off what the client tells us.
   { key: 'lo', title: 'Lending options', tone: 'lo', lanes: [
+    { key: 'lo_docs', label: 'Awaiting docs' },
     { key: 'lo_us', label: 'With credit' },
     { key: 'lo_client', label: 'With client' },
   ] },
@@ -137,7 +158,16 @@ export function laneOf(deal: any): string | null {
   const w = whoHasIt(deal)
   const theirs = w?.holder === 'client'
   if (p === 'bc') return theirs ? 'bc_client' : 'bc_us'
-  if (p === 'lo') return theirs ? 'lo_client' : 'lo_us'
+  // THE THREE-WAY SPLIT, AND THE ORDER OF THE QUESTIONS MATTERS.
+  //
+  // Once the options have gone out the client is choosing a bank, whatever is
+  // or is not outstanding behind it - so that is asked first. Only then does
+  // an outstanding document mean "credit cannot start".
+  if (p === 'lo') {
+    if (!theirs) return 'lo_us'
+    if (deal?.lo_sent_at) return 'lo_client'
+    return waitingOnDocuments(deal) ? 'lo_docs' : 'lo_client'
+  }
   if (p === 'compliance') return theirs ? 'comp_client' : 'comp_us'
   if (p === 'compliance_sent') return 'comp_client'
   return null
@@ -157,8 +187,20 @@ export function readyToPush(deal: any): boolean {
   // that puts a deal in Compliance - see lib/deal-phase.ts - so a green card is
   // one sitting at the top of Compliance with nothing written on it yet. That
   // is exactly the pile to push, which is what the colour is for.
+  // GREEN STOPS AT THE PUSH, NOT AT THE WRITING - 19 Nov 2026.
+  //
+  // It used to stop the moment compliance was WRITTEN, so a deal that was
+  // still sitting there unpushed had already gone dark. Fabio: "once the
+  // compliance is pushed to sales tracker, just bring it back to the colour of
+  // the credit assessor that worked on the file so we can track that, because
+  // it will sit under compliance and lodgement. So if a bank calls, we can
+  // quickly show which colour worked on that file."
+  //
+  // So green is exactly the window between the client agreeing and the file
+  // going to SalesTrekker - which is the pile somebody has to clear. After
+  // that the card wears its assessor again, all the way to settlement.
   if (phaseOf(deal) !== 'compliance') return false
-  return !!deal.lo_client_proceeded && !deal.compliance_completed_at
+  return !!deal.lo_client_proceeded && !deal.compliance_sent_at
 }
 
 /** Newest first, in every column, for everybody. No sort to choose. */

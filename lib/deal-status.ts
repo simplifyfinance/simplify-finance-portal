@@ -1,4 +1,5 @@
 import { pastFactFind, isFinished, phaseOf } from './deal-phase'
+import { waitingOnDocuments } from './document-progress'
 
 // What a deal is waiting on, worked out from what has actually happened to it.
 //
@@ -17,6 +18,10 @@ type Step = {
   label: (officer: string) => string
   color: 'warning' | 'accent' | 'pro' | 'success'
 }
+
+// Where "credit writes the lending options" sits in the ladder below. Named
+// rather than typed as a number in two places - see getWaitingOnLabel.
+const LO_STEP = 4
 
 // In order. Each one cannot happen before the one above it.
 const STEPS: Step[] = [
@@ -65,6 +70,22 @@ export function getWaitingOnLabel(
 
   const next = STEPS[last + 1]
   if (!next) return { text: '✓ Ready to push to SalesTrekker', color: 'success' }
+
+  // IT STOPS NAMING CREDIT FOR A WAIT CREDIT CANNOT END - 19 Nov 2026.
+  //
+  // The client agreed to the BC, so the next unticked step is the lending
+  // options and this line said "Waiting on: Mellissa to complete LO" - on a
+  // deal where we had asked the client for documents and nothing had come
+  // back. Fabio: "it sounds like we're waiting on credit and then credit gets
+  // in trouble for not doing the deal."
+  //
+  // The board stopped saying it today too - the deal sits in its own Awaiting
+  // docs column. This is the same fact said in the same words, in the one
+  // place a person reads a sentence rather than a column.
+  if (last + 1 === LO_STEP && waitingOnDocuments(deal)) {
+    return { text: 'Waiting on: Client to send documents', color: 'pro' }
+  }
+
   return { text: next.label(officer), color: next.color }
 }
 

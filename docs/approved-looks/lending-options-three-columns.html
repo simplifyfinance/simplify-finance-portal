@@ -1,0 +1,310 @@
+<!doctype html><html lang="en"><head><title>Lending options — the approved look</title><meta charset="utf-8">
+<!-- THE PORTAL'S OWN STYLESHEET, lifted out of the build on 19 Nov 2026.
+     Every rule below came from .next/static/chunks, so this page cannot
+     show something the board cannot draw. Hover rules left out. -->
+<style>
+button{background:transparent;border:0;font:inherit;color:inherit;margin:0}
+:root{--font-sans:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";--font-mono:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;--color-red-50:#fef2f2;--color-red-100:#ffe2e2;--color-red-200:#ffcaca;--color-red-300:#ffa3a3;--color-red-400:#ff6568;--color-red-500:#fb2c36;--color-red-600:#e40014;--color-red-700:#bf000f;--color-red-800:#9f0712;--color-green-50:#f0fdf4;--color-green-200:#b9f8cf;--color-green-300:#7bf1a8;--color-green-500:#00c758;--color-green-600:#00a544;--color-green-700:#008138;--color-teal-100:#cbfbf1;--color-teal-700:#00776e;--color-purple-100:#f3e8ff;--color-purple-400:#c07eff;--color-purple-600:#9810fa;--color-purple-700:#8200da;--color-gray-50:#faf7f2;--color-gray-100:#f1ece4;--color-gray-200:#e8e2d8;--color-gray-300:#d3ccbf;--color-gray-400:#a79f93;--color-gray-500:#6f6a62;--color-gray-600:#4d4841;--color-gray-700:#332f29;--color-gray-800:#17140f;--color-black:#000;--color-white:#fff;--spacing:.25rem;--container-xs:20rem;--container-sm:24rem;--container-md:28rem;--container-lg:32rem;--container-xl:36rem;--container-2xl:42rem;--container-5xl:64rem;--container-6xl:72rem;--text-xs:.75rem;--text-xs--line-height:calc(1 / .75);--text-sm:.875rem;--text-sm--line-height:calc(1.25 / .875);--text-base:1rem;--text-base--line-height:calc(1.5 / 1);--text-lg:1.125rem;--text-lg--line-height:calc(1.75 / 1.125);--text-xl:1.25rem;--text-xl--line-height:calc(1.75 / 1.25);--text-2xl:1.5rem;--text-2xl--line-height:calc(2 / 1.5);--font-weight-light:300;--font-weight-normal:400;--font-weight-medium:500;--font-weight-semibold:600;--font-weight-bold:700;--font-weight-extrabold:800;--tracking-tight:-.025em;--tracking-normal:0em;--tracking-wide:.025em;--tracking-wider:.05em;--tracking-widest:.1em;--leading-tight:1.25;--leading-snug:1.375;--leading-relaxed:1.625;--radius-sm:.25rem;--radius-md:.375rem;--radius-lg:.5rem;--radius-xl:.75rem;--radius-2xl:1rem;--ease-in:cubic-bezier(.4, 0, 1, 1);--animate-spin:spin 1s linear infinite;--animate-pulse:pulse 2s cubic-bezier(.4, 0, .6, 1) infinite;--default-transition-duration:.15s;--default-transition-timing-function:cubic-bezier(.4, 0, .2, 1);--default-font-family:var(--font-sans);--default-mono-font-family:var(--font-mono);--color-brand:#4fbbea;--color-brand-ink:#107ea8;--color-brand-lift:#6fd3ff;--color-on-brand:#0f1115;--color-sidebar:#0f1115;--color-chase:#d32f2f;--color-chase-bg:#fdeded;--color-chase-edge:#f5c9c9;--color-waiting:#5b3a9e;--color-waiting-bg:#f4f1fc;--color-waiting-edge:#dacff1;--color-done:#137a55;--color-done-bg:#eafaf4;--color-done-edge:#b4e7d5;--color-info:#107ea8;--color-info-bg:#eaf7fe;--color-info-edge:#bfe4f7;--color-urgent:#a3376b;--color-docs:#0f6e6e;--color-links:#946017;--color-card-chase:#fdf2f2;--color-card-chase-edge:#f2cbcb;--color-card-waiting:#f7f4fd;--color-card-waiting-edge:#d7ccf0;--color-card-done:#f0fbf6;--color-card-done-edge:#bfe7d6;--color-page:#f7f4ef;--color-panel:#fff;--color-card:#fff;--color-line:#e8e2d8;--color-line-soft:#f1ece4;--color-card-line:#ebe5db;--color-field:#fff;--color-field-line:#dcd5c9;--color-ink:#17140f;--color-body:#4d4841;--color-muted:#6f6a62;--color-faint:#a79f93
+--color-red-50:lab(96.5005% 4.18508 1.52328);--color-red-100:lab(92.243% 10.2865 3.83865);--color-red-200:lab(86.017% 19.8815 7.75869);--color-red-300:lab(76.5514% 36.422 15.5335);--color-red-400:lab(63.7053% 60.745 31.3109);--color-red-500:lab(55.4814% 75.0732 48.8528);--color-red-600:lab(48.4493% 77.4328 61.5452);--color-red-700:lab(40.4273% 67.2623 53.7441);--color-red-800:lab(33.7174% 55.8993 41.0293);--color-green-50:lab(98.1563% -5.60117 2.75915);--color-green-200:lab(92.4222% -26.4702 12.9427);--color-green-300:lab(86.9953% -47.2691 25.0054);--color-green-500:lab(70.5521% -66.5147 45.8073);--color-green-600:lab(59.0978% -58.6621 41.2579);--color-green-700:lab(47.0329% -47.0239 31.4788);--color-teal-100:lab(95.1845% -17.4212 -.425422);--color-teal-700:lab(44.4134% -33.1436 -4.22149);--color-purple-100:lab(93.3333% 6.97437 -9.83434);--color-purple-400:lab(63.6946% 47.6127 -59.2066);--color-purple-600:lab(43.0295% 75.21 -86.5669);--color-purple-700:lab(36.1758% 69.8525 -80.0381)}
+.m-0{margin:0}
+.mt-\[2px\]{margin-top:2px}
+.mt-auto{margin-top:auto}
+.mb-2{margin-bottom:calc(var(--spacing) * 2)}
+.mb-2\.5{margin-bottom:calc(var(--spacing) * 2.5)}
+.ml-auto{margin-left:auto}
+.flex{display:flex}
+.h-2{height:calc(var(--spacing) * 2)}
+.h-2\.5{height:calc(var(--spacing) * 2.5)}
+.h-\[7px\]{height:7px}
+.w-2{width:calc(var(--spacing) * 2)}
+.w-2\.5{width:calc(var(--spacing) * 2.5)}
+.w-2\/3{width:66.6667%}
+.w-20{width:calc(var(--spacing) * 20)}
+.w-24{width:calc(var(--spacing) * 24)}
+.w-28{width:calc(var(--spacing) * 28)}
+.w-\[7px\]{width:7px}
+.flex-1{flex:1}
+.flex-none{flex:none}
+.flex-shrink-0{flex-shrink:0}
+.border-collapse{border-collapse:collapse}
+.flex-col{flex-direction:column}
+.flex-wrap{flex-wrap:wrap}
+.items-baseline{align-items:baseline}
+.items-center{align-items:center}
+.items-start{align-items:flex-start}
+.gap-1\.5{gap:calc(var(--spacing) * 1.5)}
+.gap-2\.5{gap:calc(var(--spacing) * 2.5)}
+.self-center{align-self:center}
+.rounded-\[2px\]{border-radius:2px}
+.rounded-\[10px\]{border-radius:10px}
+.rounded-\[11px\]{border-radius:11px}
+.rounded-full{border-radius:3.40282e38px}
+.rounded-xl{border-radius:var(--radius-xl)}
+.border{border-style:var(--tw-border-style);border-width:1px}
+.border-0{border-style:var(--tw-border-style);border-width:0}
+.border-2{border-style:var(--tw-border-style);border-width:2px}
+.border-\[1\.5px\]{border-style:var(--tw-border-style);border-width:1.5px}
+.border-y{border-block-style:var(--tw-border-style);border-block-width:1px}
+.border-t{border-top-style:var(--tw-border-style);border-top-width:1px}
+.border-t-0{border-top-style:var(--tw-border-style);border-top-width:0}
+.border-t-2{border-top-style:var(--tw-border-style);border-top-width:2px}
+.border-r{border-right-style:var(--tw-border-style);border-right-width:1px}
+.border-b{border-bottom-style:var(--tw-border-style);border-bottom-width:1px}
+.border-b-0{border-bottom-style:var(--tw-border-style);border-bottom-width:0}
+.border-b-2{border-bottom-style:var(--tw-border-style);border-bottom-width:2px}
+.border-l{border-left-style:var(--tw-border-style);border-left-width:1px}
+.border-l-2{border-left-style:var(--tw-border-style);border-left-width:2px}
+.border-l-4{border-left-style:var(--tw-border-style);border-left-width:4px}
+.border-l-\[3px\]{border-left-style:var(--tw-border-style);border-left-width:3px}
+.border-l-\[4px\]{border-left-style:var(--tw-border-style);border-left-width:4px}
+.border-dashed{--tw-border-style:dashed;border-style:dashed}
+.border-\[\#0F7B4F\]{border-color:#0f7b4f}
+.border-\[\#BBF7D0\]{border-color:#bbf7d0}
+.border-\[\#BFDBFE\]{border-color:#bfdbfe}
+.border-\[\#BFE0F2\]{border-color:#bfe0f2}
+.border-\[\#BFE2F5\]{border-color:#bfe2f5}
+.border-\[\#BFE6F9\]{border-color:#bfe6f9}
+.border-\[\#C9A227\]{border-color:#c9a227}
+.border-\[\#CBD2D8\]{border-color:#cbd2d8}
+.border-\[\#D8DDE2\]{border-color:#d8dde2}
+.border-\[\#DDE1E5\]{border-color:#dde1e5}
+.border-\[\#DDE2E6\]{border-color:#dde2e6}
+.border-\[\#E3E6E8\]{border-color:#e3e6e8}
+.border-\[\#E3E7EA\]{border-color:#e3e7ea}
+.border-\[\#E5DED2\]{border-color:#e5ded2}
+.border-\[\#E6D9BC\]{border-color:#e6d9bc}
+.border-\[\#E6E1D8\]{border-color:#e6e1d8}
+.border-\[\#E6E2DA\]{border-color:#e6e2da}
+.border-\[\#E7DECC\]{border-color:#e7decc}
+.border-\[\#EDE7DD\]{border-color:#ede7dd}
+.border-\[\#EEF0F2\]{border-color:#eef0f2}
+.border-\[\#EFCFC5\]{border-color:#efcfc5}
+.border-\[\#EFE8DC\]{border-color:#efe8dc}
+.border-\[\#F0D2CF\]{border-color:#f0d2cf}
+.border-\[\#F0EFEC\]{border-color:#f0efec}
+.border-\[\#F0F2F4\]{border-color:#f0f2f4}
+.border-\[\#F1ECE4\]{border-color:#f1ece4}
+.border-\[\#F2F4F5\]{border-color:#f2f4f5}
+.border-\[\#F4F6F7\]{border-color:#f4f6f7}
+.border-\[\#F6F2EA\]{border-color:#f6f2ea}
+.border-\[\#F6F7F8\]{border-color:#f6f7f8}
+.border-\[\#F7F6F4\]{border-color:#f7f6f4}
+.border-\[\#dfe4e9\]{border-color:#dfe4e9}
+.border-\[\#eef0f2\]{border-color:#eef0f2}
+.border-\[var\(--color-chase-edge\)\]{border-color:var(--color-chase-edge)}
+.border-\[var\(--color-done-edge\)\]{border-color:var(--color-done-edge)}
+.border-\[var\(--color-faint\)\]{border-color:var(--color-faint)}
+.border-\[var\(--color-field-line\)\]{border-color:var(--color-field-line)}
+.border-\[var\(--color-info\)\]{border-color:var(--color-info)}
+.border-\[var\(--color-info-bg\)\]{border-color:var(--color-info-bg)}
+.border-\[var\(--color-info-edge\)\]{border-color:var(--color-info-edge)}
+.border-\[var\(--color-line-soft\)\]{border-color:var(--color-line-soft)}
+.border-\[var\(--color-page\)\]{border-color:var(--color-page)}
+.border-black{border-color:var(--color-black)}
+.border-black\/10{border-color:#0000001a}
+.border-brand{border-color:var(--color-brand)}
+.border-brand-ink{border-color:var(--color-brand-ink)}
+.border-brand\/30{border-color:#4fbbea4d}
+.border-brand\/40{border-color:#4fbbea66}
+.border-card{border-color:var(--color-card)}
+.border-card-chase-edge{border-color:var(--color-card-chase-edge)}
+.border-card-done-edge{border-color:var(--color-card-done-edge)}
+.border-card-line{border-color:var(--color-card-line)}
+.border-card-waiting-edge{border-color:var(--color-card-waiting-edge)}
+.border-chase{border-color:var(--color-chase)}
+.border-chase-edge{border-color:var(--color-chase-edge)}
+.border-current,.border-current\/20{border-color:currentColor}
+.border-current\/20{border-color:color-mix(in oklab, currentcolor 20%, transparent)}
+.border-docs{border-color:var(--color-docs)}
+.border-docs\/30{border-color:#0f6e6e4d}
+.border-done{border-color:var(--color-done)}
+.border-done-edge{border-color:var(--color-done-edge)}
+.border-faint{border-color:var(--color-faint)}
+.border-field-line{border-color:var(--color-field-line)}
+.border-gray-50{border-color:var(--color-gray-50)}
+.border-gray-100{border-color:var(--color-gray-100)}
+.border-gray-200{border-color:var(--color-gray-200)}
+.border-gray-300{border-color:var(--color-gray-300)}
+.border-green-200{border-color:var(--color-green-200)}
+.border-green-300{border-color:var(--color-green-300)}
+.border-info{border-color:var(--color-info)}
+.border-info-edge{border-color:var(--color-info-edge)}
+.border-ink{border-color:var(--color-ink)}
+.border-line{border-color:var(--color-line)}
+.border-line-soft{border-color:var(--color-line-soft)}
+.border-red-200{border-color:var(--color-red-200)}
+.border-red-300{border-color:var(--color-red-300)}
+.border-red-500{border-color:var(--color-red-500)}
+.border-transparent{border-color:#0000}
+.border-waiting{border-color:var(--color-waiting)}
+.border-waiting-edge{border-color:var(--color-waiting-edge)}
+.border-white{border-color:var(--color-white)}
+.border-white\/10{border-color:#ffffff1a}
+.border-white\/20{border-color:#fff3}
+.border-white\/\[0\.09\]{border-color:#ffffff17}
+.border-t-transparent{border-top-color:#0000}
+.border-l-brand{border-left-color:var(--color-brand)}
+.border-l-brand-ink{border-left-color:var(--color-brand-ink)}
+.border-l-chase{border-left-color:var(--color-chase)}
+.border-l-green-500{border-left-color:var(--color-green-500)}
+.border-l-info{border-left-color:var(--color-info)}
+.border-l-ink{border-left-color:var(--color-ink)}
+.border-l-purple-400{border-left-color:var(--color-purple-400)}
+.border-l-red-400{border-left-color:var(--color-red-400)}
+.border-l-waiting{border-left-color:var(--color-waiting)}
+.bg-card{background-color:var(--color-card)}
+.bg-card-chase{background-color:var(--color-card-chase)}
+.bg-card-done{background-color:var(--color-card-done)}
+.bg-card-waiting{background-color:var(--color-card-waiting)}
+.bg-done-bg{background-color:var(--color-done-bg)}
+.bg-gray-50{background-color:var(--color-gray-50)}
+.bg-ink{background-color:var(--color-ink)}
+.bg-ink\/40{background-color:#17140f66}
+.bg-ink\/45{background-color:#17140f73}
+.bg-ink\/50{background-color:#17140f80}
+.bg-waiting-bg{background-color:var(--color-waiting-bg)}
+.p-2\.5{padding:calc(var(--spacing) * 2.5)}
+.px-0\.5{padding-inline:calc(var(--spacing) * .5)}
+.px-2{padding-inline:calc(var(--spacing) * 2)}
+.px-2\.5{padding-inline:calc(var(--spacing) * 2.5)}
+.px-3\.5{padding-inline:calc(var(--spacing) * 3.5)}
+.px-5{padding-inline:calc(var(--spacing) * 5)}
+.py-2\.5{padding-block:calc(var(--spacing) * 2.5)}
+.py-4{padding-block:calc(var(--spacing) * 4)}
+.py-\[1px\]{padding-block:1px}
+.pt-2{padding-top:calc(var(--spacing) * 2)}
+.pt-2\.5{padding-top:calc(var(--spacing) * 2.5)}
+.pb-2{padding-bottom:calc(var(--spacing) * 2)}
+.pb-2\.5{padding-bottom:calc(var(--spacing) * 2.5)}
+.pb-24{padding-bottom:calc(var(--spacing) * 24)}
+.text-\[10\.5px\]{font-size:10.5px}
+.text-\[10px\]{font-size:10px}
+.text-\[11\.5px\]{font-size:11.5px}
+.text-\[11px\]{font-size:11px}
+.text-\[12\.5px\]{font-size:12.5px}
+.text-\[13px\]{font-size:13px}
+.leading-relaxed{--tw-leading:var(--leading-relaxed);line-height:var(--leading-relaxed)}
+.font-bold{--tw-font-weight:var(--font-weight-bold);font-weight:var(--font-weight-bold)}
+.font-extrabold{--tw-font-weight:var(--font-weight-extrabold);font-weight:var(--font-weight-extrabold)}
+.font-semibold{--tw-font-weight:var(--font-weight-semibold);font-weight:var(--font-weight-semibold)}
+.tracking-\[\.04em\]{--tw-tracking:.04em;letter-spacing:.04em}
+.tracking-\[\.06em\]{--tw-tracking:.06em;letter-spacing:.06em}
+.tracking-\[\.13em\]{--tw-tracking:.13em;letter-spacing:.13em}
+.whitespace-nowrap{white-space:nowrap}
+.text-body{color:var(--color-body)}
+.text-done{color:var(--color-done)}
+.text-faint{color:var(--color-faint)}
+.text-ink{color:var(--color-ink)}
+.text-muted{color:var(--color-muted)}
+.text-page{color:var(--color-page)}
+.text-page\/85{color:#f7f4efd9}
+.text-waiting{color:var(--color-waiting)}
+.text-waiting\/80{color:#5b3a9ecc}
+.uppercase{text-transform:uppercase}
+.tabular-nums{--tw-numeric-spacing:tabular-nums;font-variant-numeric:var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)}
+</style>
+<style>
+ body{background:var(--color-page);margin:0;padding:22px;
+   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+ .lab{font-size:11px;color:var(--color-faint);letter-spacing:.04em;text-transform:uppercase;
+   font-weight:700;margin:0 0 10px}
+ .card{height:118px}
+</style></head><body>
+
+<p class="lab">Lending options &mdash; three columns</p>
+
+<div class="flex-none flex flex-col" style="width:794px">
+  <div class="mb-2.5 rounded-[11px] bg-ink flex items-center gap-2.5 px-3.5 py-2.5">
+    <span class="h-2 w-2 rounded-[2px] flex-none" style="background:#2E7BC4"></span>
+    <span class="text-[10.5px] font-extrabold tracking-[.13em] uppercase text-page whitespace-nowrap">Lending options</span>
+    <span class="text-[11px] font-bold text-faint whitespace-nowrap tabular-nums ml-auto">14 &middot; $9.2m</span>
+    <svg class="text-faint flex-none" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
+  </div>
+
+  <div class="flex gap-2.5 items-start">
+
+    <!-- AWAITING DOCS -->
+    <div class="flex-none rounded-xl border border-line-soft bg-gray-50 p-2.5" style="width:248px">
+      <div class="flex items-baseline gap-1.5 mb-2 px-0.5">
+        <span class="h-[7px] w-[7px] rounded-[2px] flex-none self-center" style="background:#2E7BC4"></span>
+        <span class="text-[10.5px] font-bold tracking-[.06em] uppercase text-muted">Awaiting docs</span>
+        <span class="ml-auto text-[10.5px] font-bold tabular-nums text-muted">5</span>
+      </div>
+      <div class="card border rounded-[10px] px-2.5 pt-2 pb-2 mb-2 bg-card border-card-line flex flex-col">
+        <div class="text-[13px] font-semibold text-ink">Oleander Whitcombe 2026</div>
+        <div class="text-[11.5px] text-muted mt-[2px]">$740k &middot; refinance</div>
+        <div class="mt-auto flex items-center gap-1.5">
+          <span class="text-[10px] font-bold uppercase tracking-[.04em] rounded-full px-2 py-[1px] border bg-waiting-bg text-waiting border-waiting-edge">Asked 9 days ago</span>
+        </div>
+      </div>
+      <div class="card border rounded-[10px] px-2.5 pt-2 pb-2 bg-card border-card-line flex flex-col">
+        <div class="text-[13px] font-semibold text-ink">Caspian Okafor 2026</div>
+        <div class="text-[11.5px] text-muted mt-[2px]">$1.1m &middot; purchase</div>
+        <div class="mt-auto flex items-center gap-1.5">
+          <span class="text-[10px] font-bold uppercase tracking-[.04em] rounded-full px-2 py-[1px] border bg-waiting-bg text-waiting border-waiting-edge">Asked 2 days ago</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- WITH CREDIT -->
+    <div class="flex-none rounded-xl border border-line-soft bg-gray-50 p-2.5" style="width:248px">
+      <div class="flex items-baseline gap-1.5 mb-2 px-0.5">
+        <span class="h-[7px] w-[7px] rounded-[2px] flex-none self-center" style="background:#2E7BC4"></span>
+        <span class="text-[10.5px] font-bold tracking-[.06em] uppercase text-muted">With credit</span>
+        <span class="ml-auto text-[10.5px] font-bold tabular-nums text-muted">6</span>
+      </div>
+      <div class="card border rounded-[10px] px-2.5 pt-2 pb-2 mb-2 flex flex-col"
+           style="background:#EAF2FB;border-color:#B9D4EE">
+        <div class="text-[13px] font-semibold text-ink">Theodora Blankenship 2026</div>
+        <div class="text-[11.5px] text-muted mt-[2px]">$860k &middot; refinance</div>
+        <div class="mt-auto text-[10.5px] text-muted">Mellissa &middot; 2 days</div>
+      </div>
+      <div class="card border rounded-[10px] px-2.5 pt-2 pb-2 flex flex-col"
+           style="background:#F2EDF8;border-color:#D9CCEC">
+        <div class="text-[13px] font-semibold text-ink">Saoirse Nakamura 2026</div>
+        <div class="text-[11.5px] text-muted mt-[2px]">$510k &middot; purchase</div>
+        <div class="mt-auto text-[10.5px] text-muted">Dinisha &middot; 1 day</div>
+      </div>
+    </div>
+
+    <!-- WITH CLIENT -->
+    <div class="flex-none rounded-xl border border-line-soft bg-gray-50 p-2.5" style="width:248px">
+      <div class="flex items-baseline gap-1.5 mb-2 px-0.5">
+        <span class="h-[7px] w-[7px] rounded-[2px] flex-none self-center" style="background:#2E7BC4"></span>
+        <span class="text-[10.5px] font-bold tracking-[.06em] uppercase text-muted">With client</span>
+        <span class="ml-auto text-[10.5px] font-bold tabular-nums text-muted">3</span>
+      </div>
+      <div class="card border rounded-[10px] px-2.5 pt-2 pb-2 mb-2 bg-card border-card-line flex flex-col">
+        <div class="text-[13px] font-semibold text-ink">Rosalind Achebe 2026</div>
+        <div class="text-[11.5px] text-muted mt-[2px]">$1.4m &middot; investment</div>
+        <div class="mt-auto flex items-center gap-1.5">
+          <span class="text-[10px] font-bold uppercase tracking-[.04em] rounded-full px-2 py-[1px] border bg-waiting-bg text-waiting border-waiting-edge">Choosing &middot; 4 days</span>
+        </div>
+      </div>
+      <div class="card border rounded-[10px] px-2.5 pt-2 pb-2 flex flex-col"
+           style="background:#EAFAF4;border-color:#B4E7D5">
+        <div class="text-[13px] font-semibold text-ink">Hamish Trelawney 2026</div>
+        <div class="text-[11.5px] text-muted mt-[2px]">$690k &middot; refinance</div>
+        <div class="mt-auto flex items-center gap-1.5">
+          <span class="text-[10px] font-bold uppercase tracking-[.04em] rounded-full px-2 py-[1px] border bg-done-bg text-done border-done-edge">Agreed &middot; push it</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<p class="lab" style="margin-top:26px">Where each card goes</p>
+<div class="rounded-xl border border-card-line bg-card px-5 py-4" style="width:794px">
+  <p class="text-[12.5px] leading-relaxed text-body m-0">
+    <b class="text-ink">Awaiting docs</b> &mdash; we have asked the client for documents and they have not come back.
+    Credit cannot start. The chip says how long we have been waiting.<br><br>
+    <b class="text-ink">With credit</b> &mdash; the documents are in. Credit is building the options.
+    The card wears the assessor's colour, as it does everywhere else.<br><br>
+    <b class="text-ink">With client</b> &mdash; the options have gone out and they are choosing a lender.<br><br>
+    <b class="text-ink">The green one</b> &mdash; they have agreed. It stays green until it is pushed to
+    SalesTrekker, then goes back to the assessor's colour for compliance and lodgement.
+  </p>
+</div>
+
+</body></html>

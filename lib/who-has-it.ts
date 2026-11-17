@@ -25,7 +25,7 @@
 
 import { waitingIndex } from './deal-status'
 import { isFinished, phaseOf } from './deal-phase'
-import { requestRounds, progressOf } from './document-progress'
+import { waitingOnDocuments } from './document-progress'
 
 export type Holder = 'us' | 'client' | 'lender'
 
@@ -50,27 +50,15 @@ const CHIP: Record<Holder, { label: string; style: string }> = {
 
 // WAITING ON DOCUMENTS IS WAITING ON THE CLIENT.
 //
-// 27 Oct 2026. Catherine, Operations Manager, item 1 of nine: "Show where a
-// deal is actually sitting. For example, a deal can be with doc collection
-// while the pipeline says it's with Credit."
-//
-// She is exactly right, and the ladder cannot see it. Once a client has agreed
-// to the BC, the next unticked step is the lending options, so the ladder says
-// credit. In the office the deal is sitting still because nobody has sent
-// their payslips.
-//
-// The portal already knows. Documents were asked for - progressOf() carries
-// the rounds - and "Docs received" has not been pressed. Those two facts
-// together are the whole answer, and neither of them is new.
+// The answer itself moved to lib/document-progress.ts on 19 Nov 2026, so the
+// waiting-on line on the deals list can ask the same question without this
+// file and that one importing each other in a circle. Re-exported because
+// every caller of it reads it from here.
 //
 // IT IS NOT A FOURTH ANSWER. Fabio cut this to three words in October: "just
 // say with us, with client kind of thing." So it stays With client, and says
 // what for.
-export function waitingOnDocuments(deal: any): boolean {
-  if (!deal) return false
-  if (deal.docs_received_at) return false
-  return requestRounds(progressOf(deal)).length > 0
-}
+export { waitingOnDocuments } from './document-progress'
 
 // THE LADDER, READ ONCE, MAPPED ONTO THREE ANSWERS.
 //

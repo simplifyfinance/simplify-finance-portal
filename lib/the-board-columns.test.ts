@@ -14,8 +14,9 @@ const compDone = { ...loDone, lo_sent_at: '2026-11-04T01:00:00Z', lo_client_proc
 
 describe('the board is one lane per stage and holder', () => {
   it('has a lane for every one of them, and no duplicates', () => {
-    expect(LANE_KEYS).toHaveLength(14)
-    expect(new Set(LANE_KEYS).size).toBe(14)
+    // 15 since 19 Nov 2026: Lending options gained "Awaiting docs".
+    expect(LANE_KEYS).toHaveLength(15)
+    expect(new Set(LANE_KEYS).size).toBe(15)
   })
 
   // 18 Nov 2026. The first cut folded the whole tracked half into one lane,
@@ -105,8 +106,55 @@ describe('the client said yes', () => {
     expect(readyToPush({ ...loDone, lo_sent_at: '2026-11-04T01:00:00Z' })).toBe(false)
   })
 
-  it('and not once compliance has been written - it is ordinary work again', () => {
-    expect(readyToPush(compDone)).toBe(false)
+  // 19 Nov 2026. It used to stop here, at compliance WRITTEN. Fabio: "once
+  // the compliance is pushed to sales tracker, just bring it back to the
+  // colour of the credit assessor that worked on the file." Written is not
+  // pushed, and a file written but not pushed is exactly the one to chase.
+  it('and stays green while it is written but not pushed', () => {
+    expect(readyToPush(compDone)).toBe(true)
+  })
+
+  it('and stops the moment it goes to SalesTrekker', () => {
+    expect(readyToPush({ ...compDone, compliance_sent_at: '2026-11-07T00:00:00Z' }))
+      .toBe(false)
+  })
+})
+
+// THREE WAITS, THREE COLUMNS - 19 Nov 2026.
+//
+// Fabio: "it's not with us, because it sounds like we're waiting on credit and
+// then credit gets in trouble for not doing the deal, but it's not with the
+// client because we haven't selected the options."
+describe('lending options is three columns', () => {
+  const agreedBc = { ...base, bc_completed_at: '2026-11-02T00:00:00Z',
+    bc_sent_at: '2026-11-02T01:00:00Z', client_proceeded: true }
+
+  // Asked for, nothing back. The deal cannot move and credit cannot move it.
+  const asked = { ...agreedBc,
+    document_progress: { requests: [{ at: '2026-11-03T00:00:00Z', by: 'me', keys: ['payslip'] }] } }
+
+  it('awaiting docs, while we are waiting on the client to send them', () => {
+    expect(laneOf(asked)).toBe('lo_docs')
+  })
+
+  it('with credit, the moment the documents are in', () => {
+    expect(laneOf({ ...asked, docs_received_at: '2026-11-05T00:00:00Z' })).toBe('lo_us')
+  })
+
+  it('with credit when nothing was ever asked for', () => {
+    expect(laneOf(agreedBc)).toBe('lo_us')
+  })
+
+  it('with client once the options have gone out, whatever is outstanding', () => {
+    expect(laneOf({ ...asked, lo_completed_at: '2026-11-06T00:00:00Z',
+                    lo_sent_at: '2026-11-06T01:00:00Z' })).toBe('lo_client')
+  })
+
+  // Asked directly on 19 Nov: "no documents on BC please". A BC is written off
+  // what the client tells us, not off their paperwork.
+  it('and borrowing capacity is still two columns', () => {
+    const bcGroup = GROUPS.find(g => g.key === 'bc')!
+    expect(bcGroup.lanes.map(l => l.key)).toEqual(['bc_us', 'bc_client'])
   })
 })
 

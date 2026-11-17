@@ -192,6 +192,27 @@ export function requestRounds(progress: DocProgress): RequestRound[] {
   return progress?.requests || []
 }
 
+// WAITING ON DOCUMENTS IS WAITING ON THE CLIENT.
+//
+// 27 Oct 2026. Catherine, Operations Manager: "a deal can be with doc
+// collection while the pipeline says it's with Credit." She is right, and the
+// ladder cannot see it: once a client has agreed to the BC the next unticked
+// step is the lending options, so the ladder says credit. In the office the
+// deal is sitting still because nobody has sent their payslips.
+//
+// Documents were asked for, and "Docs received" has not been pressed. Those
+// two facts together are the whole answer, and neither is new.
+//
+// IT LIVES HERE, not in who-has-it, since 19 Nov 2026 - lib/deal-status.ts
+// needs the same answer to stop printing a credit assessor's name on a deal
+// that is waiting on a client, and a second copy of this is the one thing
+// lib/no-duplicate-logic.test.ts exists to prevent.
+export function waitingOnDocuments(deal: any): boolean {
+  if (!deal) return false
+  if (deal.docs_received_at) return false
+  return requestRounds(progressOf(deal)).length > 0
+}
+
 // --- writing ---------------------------------------------------------------
 //
 // Every one of these returns a NEW progress object rather than changing the one

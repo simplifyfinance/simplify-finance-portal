@@ -127,7 +127,8 @@ describe('and the board says it with its columns instead of a chip', () => {
   const lanes = readFileSync('lib/the-board-columns.ts', 'utf8')
 
   it('the columns are built on it', () => {
-    expect(lanes).toContain("import { whoHasIt } from './who-has-it'")
+    expect(lanes).toContain("from './who-has-it'")
+    expect(lanes).toContain('whoHasIt')
     expect(lanes).toContain('const w = whoHasIt(deal)')
   })
 
