@@ -34,14 +34,36 @@
 
 const txt = (v: any) => String(v ?? '').trim()
 
-export type SplitKind = 'referrer' | 'broker_split'
+// FOUR KINDS, NOT TWO - 19 Nov 2026.
+//
+// There were two: a person outside the business who sent us a deal, and two of
+// ours sharing one. That is not the shape of the list. Six of the fourteen are
+// firms we have no arrangement with beyond a one-off, and three are firms we
+// work with properly - and a dropdown that calls an estate agency "a referrer"
+// beside Justin Cornock is a dropdown nobody reads.
+//
+// Fabio, on the grouping: "I like the way the dropdown box was separated, they
+// wrote, they referrers, partner firms etc."
+//
+// NOTHING IS LOST BY WIDENING IT. The column is free text with a default of
+// 'referrer', so every row that nobody has classified still reads exactly as
+// it did. See lib/splits-groups.ts for the order they are offered in.
+export type SplitKind = 'referrer' | 'broker_split' | 'firm' | 'other'
 
 export const SPLIT_KIND_LABEL: Record<SplitKind, string> = {
   referrer: 'Referrer',
   broker_split: 'Broker split',
+  firm: 'Partner firm',
+  other: 'Other',
 }
 
-export const SPLIT_KINDS: SplitKind[] = ['referrer', 'broker_split']
+export const SPLIT_KINDS: SplitKind[] = ['referrer', 'broker_split', 'firm', 'other']
+
+/** The kind as stored, or 'referrer' - which is what the column defaults to. */
+export function splitKind(v: any): SplitKind {
+  const k = txt(v)
+  return (SPLIT_KINDS as string[]).includes(k) ? (k as SplitKind) : 'referrer'
+}
 
 export function splitKindLabel(v: any): string {
   const k = txt(v)
@@ -130,7 +152,11 @@ export function splitFromRow(r: any): Split {
   return {
     id: txt(r?.id),
     name: txt(r?.name),
-    kind: txt(r?.kind) === 'broker_split' ? 'broker_split' : 'referrer',
+    // READ, NOT GUESSED. This used to say "broker_split, or else referrer",
+    // which quietly turned every partner firm back into a referrer the moment
+    // it was read - so fixing the table on 19 Nov would have changed nothing
+    // on screen. See lib/splits-groups.ts.
+    kind: splitKind(r?.kind),
     who: txt(r?.who),
     contactEmail: txt(r?.contact_email),
     upfront, trail, lines,
@@ -258,8 +284,10 @@ export function splitShortName(name: any): string {
 
 /** "They referred it" or "They wrote it" - the heading above a group. */
 export function splitGroupLabel(kind: any): string {
-  return txt(kind) === 'broker_split'
-    ? 'They wrote it \u2014 broking under our licence'
+  const k = splitKind(kind)
+  return k === 'broker_split' ? 'They wrote it \u2014 broking under our licence'
+    : k === 'firm' ? 'Partner firms'
+    : k === 'other' ? 'Everything else'
     : 'They referred it \u2014 we wrote the loan'
 }
 
@@ -341,7 +369,7 @@ export function splitOn(deal: any): ChosenSplit | null {
   return {
     id: id || null,
     name: txt(deal.commission_split_name),
-    kind: txt(deal.commission_split_kind) === 'broker_split' ? 'broker_split' : 'referrer',
+    kind: splitKind(deal.commission_split_kind),
     upfront: readPct(deal.commission_split_upfront),
     trail: readPct(deal.commission_split_trail),
     lines: Array.isArray(deal.commission_split_lines) && deal.commission_split_lines.length

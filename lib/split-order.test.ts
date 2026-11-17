@@ -149,9 +149,22 @@ describe('THE BOX ON SCREEN', () => {
     expect(BOX).toContain('commission_split_none')
   })
 
-  it('and it still refuses to make the order up for itself', () => {
-    expect(BOX).toContain("from '@/lib/split-order'")
-    expect(BOX).toContain('inOrder(')
-    expect(BOX).not.toContain('localeCompare')
+  // THE FLAT ORDER IS NO LONGER WHAT THE DROPDOWN USES - 19 Nov 2026.
+  //
+  // inOrder() put the seven they reach for at the top and folded the rest
+  // away. The box now groups by what the arrangement actually IS - they
+  // referred it, they wrote it, partner firms, everything else - which is
+  // what Fabio asked for when he saw the two side by side: "I like the way
+  // the dropdown box was separated." Inside a group it is alphabetical, and
+  // there is no fold, because four short groups do not need one.
+  //
+  // termsShort() in this file is still the one answer to "what are the terms
+  // in a few characters", and splits-groups asks it. The pinned order below
+  // is not wired to a screen any more; it is kept and tested because the
+  // ordering question will come back the moment somebody adds a fifteenth.
+  it('and the grouping replaced it, rather than a second copy of it', () => {
+    expect(BOX).toContain("from '@/lib/splits-groups'")
+    expect(BOX).toContain('splitGroups(')
+    expect(BOX).not.toContain('inOrder(')
   })
 })

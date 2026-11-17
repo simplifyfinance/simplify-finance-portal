@@ -1,12 +1,11 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import {
-  offered, splitInWords, chooseSplitPatch, splitOn, sharedWithLine,
-  splitShortName, splitGroupLabel,
-  termsHaveMoved, type Split,
+  offered, chooseSplitPatch, splitOn, sharedWithLine,
+  splitShortName, termsHaveMoved, type Split,
 } from '@/lib/who-shares-this-deal'
-import { inOrder, termsShort } from '@/lib/split-order'
+import { splitGroups, kindTail } from '@/lib/splits-groups'
 import { OFFICE } from '@/lib/same-date-everywhere'
 
 // IS THIS DEAL SHARED WITH ANYBODY?
@@ -28,12 +27,28 @@ import { OFFICE } from '@/lib/same-date-everywhere'
 // the three goals boxes do. A locked screen gets worked around by lunchtime;
 // something visible gets fixed.
 
-const INP = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand bg-card'
-const RED = 'w-full border border-red-500 bg-red-50/40 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500 ring-2 ring-red-500/10'
+// EVERY CLASS BELOW IS COPIED OUT OF THE APPROVED MOCK.
+//
+// docs/approved-looks/commission-splits.html, which was rendered with the
+// stylesheet the build produced, photographed, and agreed before a line of
+// this was written. lib/the-mock-and-the-screen.test.ts reads that file off
+// the disk and fails the ship if the two drift apart.
+const SHUT      = 'w-full flex items-center gap-2 rounded-lg border border-gray-200 bg-card px-3 py-2 text-left text-sm text-ink'
+const SHUT_OPEN = 'w-full flex items-center gap-2 rounded-lg border border-ink bg-card px-3 py-2 text-left text-sm text-ink'
+const SHUT_RED  = 'w-full flex items-center gap-2 rounded-lg border border-chase-edge bg-chase-bg px-3 py-2 text-left text-sm text-muted'
+const PANEL     = 'mt-1 rounded-lg border border-card-line bg-card overflow-hidden'
+const SCROLL    = 'max-h-[320px] overflow-y-auto'
+// THE OFF-WHITE BAND BETWEEN THE GROUPS. Fabio: "you do the little off-white
+// between they refer, they wrote, partner firms. Keep that off-white look and
+// feel." It is the page colour, which is the portal's own off-white.
+const HEAD      = 'flex items-baseline gap-1.5 bg-page px-3 py-1.5 border-b border-line-soft'
+const HEAD_B    = 'text-[9.5px] font-extrabold uppercase tracking-[0.07em] text-ink'
+const HEAD_N    = 'text-[10.5px] text-faint'
+const ITEM      = 'w-full block px-3 py-2 text-left text-[13.5px] text-ink hover:bg-page border-b border-line-soft'
+const ITEM_ON   = 'w-full flex items-center gap-2 px-3 py-2 text-left text-[13.5px] bg-info-bg text-info font-semibold border-b border-line-soft'
+const SUB       = 'block text-[11px] text-faint tabular-nums mt-[1px]'
 
 export const NOBODY = '__nobody__'
-/** Not an arrangement - the row that opens the rest of the list. */
-const MORE = '__more__'
 
 // THE NAME, AND TWO NUMBERS.
 //
@@ -51,10 +66,6 @@ const MORE = '__more__'
 // by whether they referred it or wrote it, and the split for the one that is
 // actually chosen is spelled out underneath in words - see sharedWithLine.
 // The handover is untouched and still carries every line.
-function splitLine(s: Split): string {
-  return splitShortName(s.name)
-}
-
 export default function WhoSharesThisDeal({ deal, byName, onChanged }: {
   deal: any
   /** Whoever is signed in. Recorded against the answer. */
@@ -68,8 +79,27 @@ export default function WhoSharesThisDeal({ deal, byName, onChanged }: {
   const [err, setErr] = useState('')
   const [missing, setMissing] = useState(false)
   const [live, setLive] = useState<any>(deal)
-  // The rarely-used ones stay folded until somebody asks for them.
-  const [showAll, setShowAll] = useState(false)
+  const [open, setOpen] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
+
+  // A CLICK ANYWHERE ELSE SHUTS IT.
+  //
+  // The browser's own dropdown did this for free. Drawing our own means doing
+  // it ourselves, and a panel left open over the rest of the fact find is
+  // worse than the box it replaced.
+  useEffect(() => {
+    if (!open) return
+    const away = (e: MouseEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) setOpen(false)
+    }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', away)
+    document.addEventListener('keydown', esc)
+    return () => {
+      document.removeEventListener('mousedown', away)
+      document.removeEventListener('keydown', esc)
+    }
+  }, [open])
 
   // IT ASKS THE DATABASE WHAT THIS DEAL SAYS, RATHER THAN TRUSTING A COPY.
   //
@@ -114,7 +144,7 @@ export default function WhoSharesThisDeal({ deal, byName, onChanged }: {
 
   // THE ONES THEY USE, IN THE ORDER THEY REACH FOR THEM. See lib/split-order.ts.
   const list = offered(rows)
-  const ordered = inOrder(list, s => s.name)
+  const groups = splitGroups(list)
   const on = splitOn(live)
   const value = on ? (on.none ? NOBODY : (on.id || '')) : ''
   const moved = termsHaveMoved(live, rows)
@@ -156,51 +186,76 @@ export default function WhoSharesThisDeal({ deal, byName, onChanged }: {
         Commission splits
         {unanswered && <span className="text-red-600 font-semibold ml-1">● Required</span>}
       </label>
-      {/* THE LIST IS THE SEVEN THEY USE, THEN A FOLD.
-          28 Oct 2026. Fourteen arrangements, alphabetical, each line repeating
-          the name and spelling out "upfront" and "trail". Fabio: "it's very,
-          very messy... my team is getting lost." He gave the order himself;
-          it lives in lib/split-order.ts. Anything the order has never heard of
-          lands below the fold, which is where a rarely-used one belongs. */}
-      <select className={unanswered ? RED : INP} value={value} disabled={busy}
-        aria-label="Commission splits"
-        onChange={e => e.target.value === MORE ? setShowAll(true) : pick(e.target.value)}>
-        {unanswered && <option value="">Select</option>}
-        {/* NOT SHARING WITH ANYBODY IS AN ANSWER, and it is the commonest one,
-            so it is first and it is said in the words Fabio uses for it. */}
-        <option value={NOBODY}>Simplify only</option>
-        {/* GROUPED BY WHAT THEY ACTUALLY DID - 17 Nov 2026. The kind has been
-            on every arrangement since 27 Oct; it was just never shown, so the
-            name was carrying it in a prefix. See splitGroupLabel. */}
-        {(['referrer', 'broker_split'] as const).map(kind => {
-          const mine = ordered.shown.filter(s => s.kind === kind)
-          if (mine.length === 0) return null
-          return (
-            <optgroup key={kind} label={splitGroupLabel(kind)}>
-              {mine.map(s => (
-                <option key={s.id} value={s.id}>{splitLine(s)}</option>
+      {/* THE BOX YOU PRESS.
+          19 Nov 2026. This was the browser's own select box and the mock beside
+          it was a drawn list. Fabio, with the two side by side: "the mock and
+          reality are COMPLETELY DIFFERENT." They were, and they could not have
+          been otherwise - the operating system draws that box, and it cannot
+          carry a styled heading, a tick, or a second line under a name. The
+          mock was never buildable with it. So the list is ours now.
+
+          THE TAIL AFTER THE NAME tells the two Justins apart without opening
+          anything. Fabio: "just say he is the referrer." See kindTail. */}
+      <div ref={box} className="relative">
+        <button type="button" disabled={busy}
+          onClick={() => setOpen(v => !v)}
+          aria-haspopup="listbox" aria-expanded={open}
+          aria-label="Commission splits"
+          className={unanswered ? SHUT_RED : open ? SHUT_OPEN : SHUT}>
+          {on ? (on.none ? 'Simplify only' : splitShortName(on.name)) : 'Select'}
+          {on && !on.none && kindTail(on.kind) && (
+            <span className="text-[11px] text-muted">&middot; {kindTail(on.kind)}</span>
+          )}
+          <span className="flex-1" />
+          <span className="text-[10px] text-faint">{open ? '\u25B2' : '\u25BC'}</span>
+        </button>
+
+        {open && (
+          <div className={PANEL} role="listbox">
+            <div className={SCROLL}>
+              {/* NOT SHARING WITH ANYBODY IS AN ANSWER, and it is the commonest
+                  one, so it is first and it is said in Fabio's own words. */}
+              <button type="button" role="option" aria-selected={value === NOBODY}
+                onClick={() => { setOpen(false); void pick(NOBODY) }}
+                className={value === NOBODY ? ITEM_ON : ITEM}>
+                {value === NOBODY && <span className="text-[11px]">&#10003;</span>}
+                Simplify only
+              </button>
+
+              {/* FOUR GROUPS, IN THE ORDER HE ASKED FOR THEM. The kinds come
+                  off the table - see lib/splits-groups.ts for why all fourteen
+                  were reading as referrers until 19 Nov. */}
+              {groups.map(g => (
+                <div key={g.kind}>
+                  <div className={HEAD}>
+                    <span className={HEAD_B}>{g.head}</span>
+                    {g.note && <span className={HEAD_N}>{g.note}</span>}
+                  </div>
+                  {g.rows.map(r => (
+                    <button key={r.split.id} type="button" role="option"
+                      aria-selected={value === r.split.id}
+                      onClick={() => { setOpen(false); void pick(r.split.id) }}
+                      className={value === r.split.id ? ITEM_ON : ITEM}>
+                      {value === r.split.id && <span className="text-[11px]">&#10003;</span>}
+                      {r.label}
+                      {/* ONLY WHERE TWO ROWS WOULD OTHERWISE READ THE SAME. */}
+                      {r.terms && <span className={SUB}>{r.terms}</span>}
+                    </button>
+                  ))}
+                </div>
               ))}
-            </optgroup>
-          )
-        })}
-        {!showAll && ordered.rest.length > 0 && (
-          <option value={MORE}>
-            {"\u2014 show the other " + ordered.rest.length + " \u2014"}
-          </option>
+
+              {/* AN ARRANGEMENT TAKEN OFF THE LIST STILL SHOWS ON A DEAL THAT
+                  USED IT. Otherwise the box reads as something else. */}
+              {on?.id && !list.some(sp => sp.id === on.id) && (
+                <div className={`${ITEM} text-muted`}>
+                  {splitShortName(on.name)} &mdash; no longer in use
+                </div>
+              )}
+            </div>
+          </div>
         )}
-        {showAll && ordered.rest.length > 0 && (
-          <optgroup label="Everything else">
-            {ordered.rest.map(s => (
-              <option key={s.id} value={s.id}>{splitLine(s)}</option>
-            ))}
-          </optgroup>
-        )}
-        {/* AN ARRANGEMENT TAKEN OFF THE LIST STILL SHOWS ON A DEAL THAT USED
-            IT. Otherwise the dropdown would silently read as something else. */}
-        {on?.id && !list.some(s => s.id === on.id) && (
-          <option value={on.id}>{on.name} — no longer in use</option>
-        )}
-      </select>
+      </div>
 
       {unanswered ? (
         <p className="text-[11px] text-red-600 mt-1">

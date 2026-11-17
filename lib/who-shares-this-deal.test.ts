@@ -53,7 +53,9 @@ describe('the list', () => {
     expect(harrow.kind).toBe('referrer')
     expect(offered(ROWS).find(s => s.name.startsWith('Mark'))!.kind).toBe('broker_split')
     expect(ridgeway.upfront).toBe(25)
-    expect(SPLIT_KINDS).toEqual(['referrer', 'broker_split'])
+    // FOUR SINCE 19 Nov 2026. A partner firm is not a referrer and an estate
+    // agency we used once is neither - see lib/splits-groups.ts.
+    expect(SPLIT_KINDS).toEqual(['referrer', 'broker_split', 'firm', 'other'])
     expect(splitKindLabel('broker_split')).toBe('Broker split')
   })
 
