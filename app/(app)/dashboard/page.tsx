@@ -6,6 +6,7 @@ import { LIGHT_SELECT, HEAVY_SELECT, whoNeedsTheDetail, withTheDetail }
 import { redirect } from 'next/navigation'
 import { whichToday } from '@/lib/which-today'
 import TodayPlan from '@/components/TodayPlan'
+import TablesWithoutRls from '@/components/TablesWithoutRls'
 import RunThrough from '@/components/RunThrough'
 import CreditBand from '@/components/CreditBand'
 import SettlementsBand from '@/components/SettlementsBand'
@@ -359,9 +360,26 @@ export default async function Dashboard(
       at: String(latestPush(d.push_log)?.at || ''),
     }))
 
+  // THE PORTAL CHECKS ITS OWN LOCKS - 18 Nov 2026.
+  //
+  // Admins only, and the function itself refuses anybody else rather than
+  // trusting this line - see docs/every-table-is-locked.sql. A table with no
+  // row level security is readable by anyone holding the public key, and the
+  // one that prompted this held every client's name, email and phone.
+  //
+  // A FAILED CHECK IS NOT A FAILED PAGE. The function arrives with a migration
+  // and this deploy can land first, so a missing function reads as "nothing to
+  // report" rather than taking the dashboard down with it.
+  let openTables: string[] = []
+  try {
+    const { data } = await supabase.rpc('tables_without_rls')
+    openTables = ((data as any[]) || []).map(r => String(r?.table_name || '')).filter(Boolean)
+  } catch { /* the band simply does not draw */ }
+
   return (
     <>
     <div className="px-6 pt-6">
+      <TablesWithoutRls tables={openTables} />
       {/* ON EVERY TODAY PAGE, NOT INSIDE ONE PANEL.
         *
         * 12 Nov 2026. It lived inside DashboardClient, which stopped rendering
