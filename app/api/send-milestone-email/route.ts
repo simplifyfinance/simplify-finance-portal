@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { bccForDeal, bccGap, cleanBcc, bccIsSendable } from '@/lib/files-itself-in-salestrekker'
+import {
+  signerFor, brokerCopy, replyTo as repliesTo, signatureNote, theTeamIsSigning,
+  TEAM_EMAIL, type BrokerOnFile,
+} from '@/lib/nobody-signs-for-somebody-else'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
 import { resolveBrand } from '@/lib/brand'
@@ -120,55 +124,6 @@ async function senderOf(supabase: any) {
   }
 }
 
-// WHO THE EMAIL IS SIGNED BY, WHEN THAT IS A CHOICE.
-//
-// The other three milestone emails are signed by whoever is logged in, because
-// announcing a bank's decision is done by the person who just read the letter.
-// The final check-in is a chase on behalf of the broker whose client went
-// quiet, and that is often not the person at the keyboard - see picksSender in
-// lib/milestone-emails.ts.
-//
-// THE BROKER RECORD HAS NO EMAIL OR PHONE. public.brokers holds the name, the
-// title, the Calendly link and the brands. The address and the mobile live on
-// the user_profiles row, and brokers.user_id is the link between them. A broker
-// nobody has linked to a login therefore has a name and no contact details -
-// which is a thing to SAY, not to paper over with the wrong person's mobile.
-// The screen is told via senderNote and prints it.
-async function brokerSender(supabase: any, brokerKey: string) {
-  if (!brokerKey) return null
-  const { data: b } = await supabase.from('brokers')
-    .select('broker_key, name, calendly, user_id, active')
-    .eq('broker_key', brokerKey).maybeSingle()
-  if (!b) return null
-
-  let email = '', phone = ''
-  if (b.user_id) {
-    // phone arrives with docs/sender-phone-schema.sql, so it is asked for and
-    // then asked for again without it - the same two-step senderOf uses, for
-    // the same reason: the deploy and the migration land in either order.
-    const withPhone = await supabase.from('user_profiles')
-      .select('email, phone').eq('id', b.user_id).maybeSingle()
-    if (withPhone.error) {
-      const plain = await supabase.from('user_profiles')
-        .select('email').eq('id', b.user_id).maybeSingle()
-      email = txt((plain.data as any)?.email)
-    } else {
-      email = txt((withPhone.data as any)?.email)
-      phone = txt((withPhone.data as any)?.phone)
-    }
-  }
-
-  return {
-    name: txt(b.name) || brokerKey,
-    email,
-    phone,
-    calendly: txt(b.calendly),
-    // Said out loud rather than discovered in a sent email.
-    note: b.user_id
-      ? (email ? '' : `${txt(b.name) || brokerKey} has a login but no email address on it, so the signature carries no E line.`)
-      : `${txt(b.name) || brokerKey} is not linked to a login, so the signature carries their name without an email or mobile. Link them in Settings, Brokers.`,
-  }
-}
 
 // --- the preview -----------------------------------------------------------
 //
@@ -244,6 +199,43 @@ function offerAcceptedChoices(get: (k: string) => any, deal: any) {
  * Nobody ticked, and the email names the team rather than a person. Vaguer,
  * and true.
  */
+/**
+ * THE BROKER WHOSE FILE THIS IS - name, login, and contact details.
+ *
+ * 19 Nov 2026. Read for every milestone email now: it decides who signs, who
+ * is copied and where a reply lands. See lib/nobody-signs-for-somebody-else.ts.
+ *
+ * THE BROKER RECORD HAS NO EMAIL OR PHONE. public.brokers holds the name, the
+ * Calendly link and the brands. The address and the mobile live on the
+ * user_profiles row, and brokers.user_id is the link between them. A broker
+ * nobody has linked to a login therefore has a name and no contact details -
+ * which is a thing to SAY on the send screen, not to paper over.
+ */
+async function brokerOnFile(supabase: any, brokerKey: string):
+    Promise<(BrokerOnFile & { calendly: string }) | null> {
+  const key = txt(brokerKey).toLowerCase()
+  if (!key) return null
+  const { data: b } = await supabase.from('brokers')
+    .select('broker_key, name, user_id, calendly').eq('broker_key', key).maybeSingle()
+  if (!b) return null
+  let email = '', phone = ''
+  if (b.user_id) {
+    // Same two-step as senderOf: the phone column may not have landed yet.
+    const withPhone = await supabase.from('user_profiles')
+      .select('email, phone').eq('id', b.user_id).maybeSingle()
+    if (withPhone.error) {
+      const plain = await supabase.from('user_profiles')
+        .select('email').eq('id', b.user_id).maybeSingle()
+      email = txt((plain.data as any)?.email)
+    } else {
+      email = txt((withPhone.data as any)?.email)
+      phone = txt((withPhone.data as any)?.phone)
+    }
+  }
+  return { name: txt(b.name) || key, email, phone, userId: txt(b.user_id),
+           calendly: txt(b.calendly) }
+}
+
 async function allStaff(supabase: any): Promise<Person[]> {
   try {
     const { data } = await supabase.from('user_profiles')
@@ -342,11 +334,16 @@ export async function GET(req: NextRequest) {
   // its own sender, and even then only if the chosen broker actually resolves -
   // a key that matches nothing falls back rather than sending an email signed
   // by nobody.
+  // WHO SIGNS IT. The broker on the file if he is the one pressing send,
+  // otherwise the team. 19 Nov 2026 - Fabio: "I never want a staff member to
+  // impersonate a broker." See lib/nobody-signs-for-somebody-else.ts.
   const tpl = templateById(templateId)
-  const chosen = tpl?.picksSender
-    ? await brokerSender(supabase, txt(req.nextUrl.searchParams.get('brokerKey')))
-    : null
-  const who = chosen || sender
+  const broker = await brokerOnFile(supabase, txt(deal?.assigned_broker))
+  // THE BRAND FIRST, because the team signs under the deal's own brand and a
+  // second brand is a different company at the foot of the email.
+  const theBrand = await resolveBrand(
+    txt(req.nextUrl.searchParams.get('brandId')) || await brandForDeal(supabase, deal))
+  const who = signerFor(sender, broker, theBrand?.name)
   const typedCalendly = txt(req.nextUrl.searchParams.get('calendly'))
 
   const lender = await loadLender(deal)
@@ -369,12 +366,14 @@ export async function GET(req: NextRequest) {
     //
     // brandOnDeal reads lo_data.brandId and falls back to the BC's, which is
     // where the forms put it. A pick on the screen still wins.
-    brand: await resolveBrand(
-      txt(req.nextUrl.searchParams.get('brandId')) || await brandForDeal(supabase, deal)),
+    brand: theBrand,
     sender: { name: who.name, email: who.email, phone: who.phone },
     // Typed on the screen wins for this one email; otherwise the broker's own
     // link. Neither, and the email simply has no button.
-    calendlyUrl: tpl?.picksSender ? (typedCalendly || (chosen?.calendly || '')) : '',
+    // THE BOOKING BUTTON IS THE FILE'S BROKER - 19 Nov 2026. It used to be
+    // whichever broker somebody picked from the dropdown, which is gone. A
+    // client booking a call should reach the man whose file it is.
+    calendlyUrl: typedCalendly || broker?.calendly || '',
     overrides,
     extra: txt(req.nextUrl.searchParams.get('extra')),
     expiry: txt(req.nextUrl.searchParams.get('expiry')),
@@ -385,10 +384,13 @@ export async function GET(req: NextRequest) {
   if (!built) return NextResponse.json({ error: 'Unknown template.' }, { status: 400 })
 
   const where = emailsGoTo({
-    deal, clientEmails: built.to, copyTo: built.cc, testerEmail: sender.email,
+    deal, clientEmails: built.to,
+    copyTo: [...built.cc, ...brokerCopy(sender, broker)],
+    testerEmail: sender.email,
   })
 
   const filingGap = bccGap(deal, { redirected: where.redirected })
+  const signing = signatureNote(sender, broker, theBrand?.name)
 
   return NextResponse.json({
     preview: true,
@@ -402,7 +404,8 @@ export async function GET(req: NextRequest) {
     // the quiet version of the fault this whole change is about. It sits with
     // the other problems rather than in a box of its own, because it is the
     // same kind of thing: worth knowing before you press send, not a refusal.
-    problems: [...built.problems, ...(filingGap ? [filingGap] : [])],
+    problems: [...built.problems, ...(filingGap ? [filingGap] : []),
+               ...(signing ? [signing] : [])],
     // AND WHETHER THE SCREEN HAS TO OFFER THE OUTLOOK STEP.
     //
     // 27 Oct 2026. Fabio: "copy the html and our outlook opnes with BCC inthere
@@ -437,7 +440,9 @@ export async function GET(req: NextRequest) {
     letterRequired: templateById(templateId)?.letterRequired ?? true,
     // The screen draws its own Sending as panel off this rather than keeping a
     // second list of which templates have one.
-    picksSender: tpl?.picksSender ?? false,
+    // NOBODY PICKS A SENDER ANY MORE. Kept false so the screen's own "Sending
+    // as" panel stays shut until that block is taken out - 19 Nov 2026.
+    picksSender: false,
     // AND WHETHER IT PICKS ONLY THE BRAND. See picksBrand in
     // lib/milestone-emails.ts - without this the settlement emails could only
     // ever go out as the default brand.
@@ -448,10 +453,12 @@ export async function GET(req: NextRequest) {
     dealBrand: await brandForDeal(supabase, deal),
     staff: pickOrder(staff),
     contactIds: introduced.map(p => p.id),
-    // Empty unless the chosen broker is missing contact details - see
-    // brokerSender above. Printed on the screen, not swallowed.
-    senderNote: chosen?.note || '',
+    // NOBODY PICKS A BROKER ANY MORE, so there is no missing-contact note to
+    // print. Kept while the screen still reads it - 19 Nov 2026.
+    senderNote: '',
     senderName: who.name,
+    teamIsSigning: theTeamIsSigning(sender, broker),
+    brokerName: broker?.name || '',
   })
 }
 
@@ -497,10 +504,9 @@ export async function POST(req: NextRequest) {
   // The same resolution the preview did, from the form rather than the query.
   // Both doors through one function, so a preview cannot show one signature and
   // the send go out under another.
-  const chosen = template.picksSender
-    ? await brokerSender(supabase, txt(form.get('brokerKey')))
-    : null
-  const who = chosen || sender
+  const broker = await brokerOnFile(supabase, txt(deal?.assigned_broker))
+  const theBrand = await resolveBrand(txt(form.get('brandId')) || await brandForDeal(supabase, deal))
+  const who = signerFor(sender, broker, theBrand?.name)
   const typedCalendly = txt(form.get('calendly'))
 
   const lender = await loadLender(deal)
@@ -509,9 +515,9 @@ export async function POST(req: NextRequest) {
     rules: lender.rules,
     rateNotice: await loadRateNotice(lender.row),
     // Same fallback as the preview, so what was read is what is sent.
-    brand: await resolveBrand(txt(form.get('brandId')) || await brandForDeal(supabase, deal)),
+    brand: theBrand,
     sender: { name: who.name, email: who.email, phone: who.phone },
-    calendlyUrl: template.picksSender ? (typedCalendly || (chosen?.calendly || '')) : '',
+    calendlyUrl: typedCalendly || broker?.calendly || '',
     overrides,
     extra: txt(form.get('extra')),
     expiry: txt(form.get('expiry')),
@@ -552,7 +558,11 @@ export async function POST(req: NextRequest) {
   }
 
   const where = emailsGoTo({
-    deal, clientEmails: built.to, copyTo: built.cc, testerEmail: sender.email,
+    deal, clientEmails: built.to,
+    // THE BROKER IS COPIED, EVERY EMAIL, with no way to turn it off. 19 Nov
+    // 2026, Fabio: "the broker is not being CC'd, and I don't like that."
+    copyTo: [...built.cc, ...brokerCopy(sender, broker)],
+    testerEmail: sender.email,
   })
   if (!where.to.length) {
     return NextResponse.json({
@@ -567,7 +577,10 @@ export async function POST(req: NextRequest) {
   // match. Resend refuses anything else outright.
   // The name at the foot and the name in the from line are the same person, so
   // this follows whoever signed it - the broker when the template picks one.
-  const fromAddress = txt(who.email).toLowerCase().endsWith(DOMAIN) ? who.email : FALLBACK_FROM
+  // THE NAME AND THE ADDRESS ARE THE SAME PERSON. The broker signs from his
+  // own address; the team signs from the portal's. Resend refuses anything off
+  // our domain, and both of these are on it.
+  const fromAddress = txt(who.email).toLowerCase().endsWith(DOMAIN) ? who.email : TEAM_EMAIL
   const subject = where.redirected ? testSubject(built.subject) : built.subject
 
   // REPLIES REACH BOTH. On a formal approval the client's reply has to land with
@@ -577,10 +590,15 @@ export async function POST(req: NextRequest) {
   // Resend takes reply_to as an array, but this codebase has never sent one, so
   // it is not assumed: a refusal falls back to the sender alone and the answer
   // is reported rather than guessed. One real send settles it.
+  // A REPLY GOES TO THE BROKER FIRST. His client, his answer. The sender stays
+  // on the list so a bounce reaches somebody who is at their desk, and the
+  // formal approval still adds settlements.
+  const replies = repliesTo(sender, broker)
   const replyBoth = template.copySettlements && !where.redirected
+  const base = replies.length ? replies : [sender.email || FALLBACK_FROM]
   const replyTo: string | string[] = replyBoth
-    ? [sender.email || FALLBACK_FROM, SETTLEMENTS_EMAIL]
-    : (sender.email || FALLBACK_FROM)
+    ? [...base, SETTLEMENTS_EMAIL]
+    : (base.length === 1 ? base[0] : base)
 
   // IT FILES ITSELF AGAINST THE DEAL. 22 Oct 2026 - none of these five did,
   // which is the whole of lib/files-itself-in-salestrekker.ts. A test deal is
@@ -588,7 +606,10 @@ export async function POST(req: NextRequest) {
   const bcc = bccForDeal(deal, { redirected: where.redirected })
 
   const payload = (reply: string | string[]) => ({
-    from: `${sender.name} <${fromAddress}>`,
+    // WHO IT IS FROM. The signer, never "whoever pressed the button" - those
+    // were different people and the name in the from line was the wrong one of
+    // the two. See lib/nobody-signs-for-somebody-else.ts.
+    from: `${who.name} <${fromAddress}>`,
     to: where.to,
     ...(where.cc.length ? { cc: where.cc } : {}),
     ...(bcc.length ? { bcc } : {}),

@@ -192,10 +192,22 @@ describe('the layout he picked', () => {
 // may not be at the keyboard - so it picks its sender, and the send screen
 // draws the same Sending as panel the Templates page uses.
 describe('it picks who it is from', () => {
-  it('is the only template that does', () => {
-    expect(templateById('final_checkin')!.picksSender).toBe(true)
-    for (const id of ['preapproval', 'preapproval_extension', 'formal_approval']) {
-      expect(templateById(id)!.picksSender).toBe(false)
+  // IT NO LONGER DOES - 19 Nov 2026.
+  //
+  // Catherine, on a formal approval signed by a credit assessor: "Is coming
+  // from Melissa - her name and email sig - was that intentional?" Fabio: "I
+  // never want a staff member to impersonate a broker."
+  //
+  // This template had a dropdown that let anyone send AS a broker, which is
+  // that exact thing. The rule is the same on every template now: the broker
+  // on the file signs his own, the team signs everybody else's, and the broker
+  // is copied either way. See lib/nobody-signs-for-somebody-else.ts.
+  //
+  // The booking button survives. It reads the broker on the FILE instead of
+  // the one somebody picked, which is who the client should be booking with.
+  it('and no template does any more', () => {
+    for (const id of ['final_checkin', 'preapproval', 'preapproval_extension', 'formal_approval']) {
+      expect(templateById(id)!.picksSender, id).toBe(false)
     }
   })
 

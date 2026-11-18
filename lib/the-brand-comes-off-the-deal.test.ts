@@ -50,8 +50,11 @@ describe('where the brand is written', () => {
 // was fixed.
 describe('every email reads it', () => {
   it('the preview asks which brands the broker is ticked for', () => {
-    expect(ROUTE).toContain(
-      "resolveBrand(\n      txt(req.nextUrl.searchParams.get('brandId')) || await brandForDeal(supabase, deal))")
+    // 19 Nov 2026: the answer is now held in a variable, because the team's
+    // signature reads the brand's name and has to be decided before the email
+    // is built. Same question, asked once instead of inline.
+    expect(ROUTE).toContain("txt(req.nextUrl.searchParams.get('brandId')) || await brandForDeal(supabase, deal)")
+    expect(ROUTE).toContain('const theBrand = await resolveBrand(')
     expect(ROUTE).toContain('return businessOfDeal(deal, data || [])')
   })
 
@@ -93,15 +96,15 @@ describe('which templates offer the control', () => {
     }
   })
 
-  it('and a template that picks its sender has always picked the brand with it', () => {
-    for (const t of TEMPLATES) {
-      if (t.picksSender) expect(t.picksBrand ?? false, t.id).toBe(false)
-    }
-    expect(templateById('final_checkin')!.picksSender).toBe(true)
+  // NOBODY PICKS A SENDER ANY MORE - 19 Nov 2026. The final check-in used to,
+  // and it carried the brand picker with it. Both are gone: the brand comes
+  // off the deal on every template now, which is what this whole file is
+  // about, and the signature follows lib/nobody-signs-for-somebody-else.ts.
+  it('and no template picks its sender at all', () => {
+    for (const t of TEMPLATES) expect(t.picksSender, t.id).toBe(false)
   })
 
-  it('the screen draws the brand control for either', () => {
-    expect(SCREEN).toContain("const brandId = (picksSender || picksBrand) ? sender.brandId : ''")
+  it('the screen still draws the brand control where a template picks one', () => {
     expect(SCREEN).toContain('<BrandPanel')
   })
 })

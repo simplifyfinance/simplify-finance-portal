@@ -83,7 +83,18 @@ export const TEMPLATES: MilestoneTemplate[] = [
   // FIRST, BECAUSE IT IS THE EARLIEST POINT A DEAL CAN REACH THIS LIST - the
   // borrowing capacity has gone and nothing has come back. TEMPLATES is in the
   // order a deal LIVES them; see LIVED below.
-  { id: 'final_checkin', name: 'Final check-in', letterRequired: false, copySettlements: false, picksSender: true },
+  // NOBODY PICKS A SENDER ANY MORE - 19 Nov 2026.
+  //
+  // This one had a dropdown: choose a broker, send as him. Fabio, reading
+  // Catherine's note about a formal approval signed by a credit assessor: "I
+  // never want a staff member to impersonate a broker."
+  //
+  // So the rule is the same on every template now - the broker on the file
+  // signs his own, the team signs everybody else's, and the broker is copied
+  // either way. See lib/nobody-signs-for-somebody-else.ts. The booking button
+  // this email carries reads the broker on the FILE rather than the one
+  // somebody picked.
+  { id: 'final_checkin', name: 'Final check-in', letterRequired: false, copySettlements: false, picksSender: false },
   // OFFER ACCEPTED. 21 Oct 2026. A pre-approved client has found a house and
   // the offer is on. There is no letter from a bank to attach - this one
   // announces what WE are doing and asks for what is still outstanding - and
