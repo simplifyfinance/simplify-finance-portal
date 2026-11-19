@@ -91,7 +91,11 @@ function notesBox(items: string[]) {
 // `bc` is the borrowing capacity record, passed in since 27 Oct 2026 so this
 // band can tell whether a capitalised premium is part of the lending. Nothing
 // in the lending options knew about LMI before that.
-function splitBand(lenders: any[], globals: any[], propertyValue: any, secs: any[] = [], bc: any = {}): string {
+/** A value as words, however it was typed. */
+const txt = (v: any) => String(v ?? '').trim()
+
+function splitBand(lenders: any[], globals: any[], propertyValue: any, secs: any[] = [], bc: any = {},
+                   bcSplits: any[] = [], loanTerm: any = ''): string {
   const per = lenders.map(l => resolveLenderSplits(l, globals))
   const deepest = per.reduce((m, rows) => Math.max(m, rows.length), 0)
   if (deepest === 0) return ''
@@ -101,13 +105,46 @@ function splitBand(lenders: any[], globals: any[], propertyValue: any, secs: any
   const totalCell = (inner: string) =>
     `<td bgcolor="#fbfbfb" style="background:#fbfbfb;padding:12px 14px;border:1px solid #e0e0e0;vertical-align:top">${inner}</td>`
 
+  // HOW LONG THE LOAN RUNS, AND HOW LONG THE INTEREST ONLY LASTS.
+  //
+  // 19 Nov 2026. Mark Gallo, of a three-lender comparison that went to a
+  // client: "Is it possible to get loan terms and interest only terms added to
+  // the LO?"
+  //
+  // Both were already on the deal and neither was in the email. The interest
+  // only years are on each lender's own split - they have to be, because a home
+  // loan on P&I and an investment split on IO are two answers to one question.
+  // The term is the borrowing capacity's, per split, falling back to the one
+  // term the BC holds for the whole deal.
+  //
+  // WHY THE TERM GOES ON THE GREY LINE. Fabio, shown it on the headline:
+  // "it's just too much wording". Four things on one line in a column a third
+  // of an email wide wraps, and a wrapped line reads as broken. So the headline
+  // keeps three - amount, rate, how it repays - and the term rides with the
+  // repayment underneath, which is the figure it qualifies anyway.
+  const termFor = (sp: any) => {
+    const own = (bcSplits || []).find((g: any) => txt(g?.id) && txt(g.id) === txt(sp?.id))
+    return txt(own?.termYears) || txt(loanTerm)
+  }
+
   const splitCell = (sp: any) => {
     if (!sp) return cell(`<p style="font-size:12px;color:#bbbbbb;margin:0"><span style="color:#bbbbbb;">&mdash;</span></p>`)
-    const line2 = [sp.rate ? `${sp.rate}%` : '', sp.repaymentType || ''].filter(Boolean).join(' &nbsp;\u00b7&nbsp; ')
+    // "IO 5 yrs" rather than "IO" on its own. On an interest only split the
+    // years are the whole point: the repayment under it only lasts that long.
+    const io = txt(sp.ioYears)
+    const type = /io|interest only/i.test(txt(sp.repaymentType)) && io
+      ? `${txt(sp.repaymentType)} ${io} ${io === '1' ? 'yr' : 'yrs'}`
+      : txt(sp.repaymentType)
+    const line2 = [sp.rate ? `${sp.rate}%` : '', type].filter(Boolean).join(' &nbsp;\u00b7&nbsp; ')
+    const term = termFor(sp)
+    const under = [
+      sp.repayment ? `${money(sp.repayment)} / month` : '',
+      term ? `${term} yr term` : '',
+    ].filter(Boolean).join(' &nbsp;\u00b7&nbsp; ')
     return cell(
       `<p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 2px"><span style="color:#343333;">${sp.label || 'Split'}</span></p>` +
       `<p style="font-size:12px;color:#444444;margin:0 0 1px"><span style="color:#444444;">${money(sp.amount) || ''}${line2 ? ' &nbsp;\u00b7&nbsp; ' + line2 : ''}</span></p>` +
-      (sp.repayment ? `<p style="font-size:11px;color:#777777;margin:0"><span style="color:#777777;">${money(sp.repayment)} / month</span></p>` : '')
+      (under ? `<p style="font-size:11px;color:#777777;margin:0"><span style="color:#777777;">${under}</span></p>` : '')
     )
   }
 
@@ -208,7 +245,8 @@ function splitBand(lenders: any[], globals: any[], propertyValue: any, secs: any
 // yes to a name, so both columns wore the star. See lib/recommended-option.ts.
 // `bc` arrives here only to be handed to splitBand, which needs it to know
 // whether a capitalised premium is part of the lending. 27 Oct 2026.
-function buildLenderTable(lenders: any[], isBridging: boolean, lo?: any, globals?: any[], propertyValue?: any, secs: any[] = [], bc: any = {}) {
+function buildLenderTable(lenders: any[], isBridging: boolean, lo?: any, globals?: any[], propertyValue?: any,
+                          secs: any[] = [], bc: any = {}, bcSplits: any[] = [], loanTerm: any = '') {
   const cols = lenders.length
   const pct = cols === 1 ? '100%' : cols === 2 ? '50%' : '33%'
 
@@ -308,7 +346,7 @@ function buildLenderTable(lenders: any[], isBridging: boolean, lo?: any, globals
   // Splits go directly under the lender names, before the rates: the client's
   // first question about an option is what the money looks like, not what the
   // annual fee is. Bridging keeps its own structure block instead.
-  const splits = isBridging ? '' : splitBand(lenders, globals || [], propertyValue, secs, bc)
+  const splits = isBridging ? '' : splitBand(lenders, globals || [], propertyValue, secs, bc, bcSplits, loanTerm)
   return `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px"><tr>${headers}</tr>${splits}${featureCells}</table>`
 }
 
@@ -545,7 +583,11 @@ export async function POST(req: NextRequest) {
   // The securities, read live off the borrowing capacity and the fact find
   // rather than copied - see the note on bcData at the top of this handler.
   const secs = securitiesOf(bcData || {}, ffData || {})
-  body += buildLenderTable(sortedLenders, isBridging, d, d.refinanceSplits, d.propertyValue, secs, d)
+  // THE TERM COMES OFF THE BORROWING CAPACITY, read live with everything else
+  // - see the note on bcData at the top of this handler. The LO prices the
+  // structure; it does not own how long the loan runs.
+  body += buildLenderTable(sortedLenders, isBridging, d, d.refinanceSplits, d.propertyValue, secs, d,
+                           bcData?.splits || [], bcData?.loanTerm || '')
 
   body += p('Please let us know which lender you would like to proceed with and if you have any questions regarding the numbers above.')
   // The disclaimer rides with the block and only with it. An email carrying no
