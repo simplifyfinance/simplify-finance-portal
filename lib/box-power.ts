@@ -117,8 +117,23 @@ export function liabilityLine(deal: any): string {
     // about the position and left there.
     return 'No liabilities are recorded on the fact find.'
   }
-  const going = list.filter((l: any) => /clos|consolidat|paid|refinanc/i.test(txt(l?.status)))
-  const staying = list.filter((l: any) => !going.includes(l))
+  // A DEBT THE CLIENT CLOSES IS NOT A DEBT THIS LOAN PAYS - 19 Nov 2026.
+  //
+  // These were one bucket. Everything matching "clos" or "consolidat" came out
+  // as "being cleared as part of this loan" - so a note went out saying this
+  // loan paid out two credit cards it does not touch.
+  //
+  // Katie, correcting it by hand: "Dale & Katie will close both credit cards
+  // via their own means prior to formal approval. Dale's car loan with Toyota
+  // Finance of $47,341.12 is being cleared as part of this loan to meet lender
+  // servicing requirements."
+  //
+  // The status is on every liability already - see LIABILITY_STATUSES in
+  // lib/fact-find-options.ts. Nothing new is recorded; the sentence stopped
+  // reading it.
+  const cleared = list.filter((l: any) => /consolidat|paid|refinanc/i.test(txt(l?.status)))
+  const closing = list.filter((l: any) => /clos/i.test(txt(l?.status)) && !cleared.includes(l))
+  const staying = list.filter((l: any) => !cleared.includes(l) && !closing.includes(l))
 
   const describe = (l: any) => {
     const kind = txt(l?.liabilityType).toLowerCase() || 'liability'
@@ -138,11 +153,21 @@ export function liabilityLine(deal: any): string {
   }
 
   const bits: string[] = []
+  // A sentence starts with a capital. describe() opens with "a"/"an".
+  const open = (xs: any[]) => {
+    const l = andList(xs.map(describe))
+    return `${l.charAt(0).toUpperCase()}${l.slice(1)}`
+  }
   if (staying.length) bits.push(`The clients hold ${andList(staying.map(describe))}, which will remain.`)
-  if (going.length) {
-    // A sentence starts with a capital. describe() opens with "a"/"an".
-    const list = andList(going.map(describe))
-    bits.push(`${list.charAt(0).toUpperCase()}${list.slice(1)} ${going.length === 1 ? 'is' : 'are'} being cleared as part of this loan.`)
+  if (cleared.length) {
+    bits.push(`${open(cleared)} ${cleared.length === 1 ? 'is' : 'are'} being cleared as part of `
+      + 'this loan to meet lender servicing requirements.')
+  }
+  if (closing.length) {
+    // The clients' own money, before formal approval. Not this loan's doing,
+    // and a note that says otherwise is describing a payout that never happens.
+    bits.push(`${open(closing)} will be closed by the clients by their own means before `
+      + 'formal approval.')
   }
   return bits.join(' ')
 }
@@ -170,18 +195,36 @@ function assetWords(kind: string): string {
   return /s$/.test(l) ? l : `${l}s`
 }
 
-export function assetLine(deal: any): string {
+/**
+ * WHAT THEY OWN, GROUPED, BIGGEST FIRST - and the sum of exactly those words.
+ *
+ * 19 Nov 2026. Lifted out of assetLine() so box four can read the same answer.
+ * It had its own version that totalled EVERY asset and then itemised three
+ * kinds, so $120,000 of home contents and vehicles was inside the total and in
+ * none of the words. See the note in lib/box-four.ts.
+ *
+ * The total is the sum of the named parts, deliberately: a total and a
+ * breakdown that disagree is worse than either on its own.
+ */
+export function assetBreakdown(deal: any): { total: number; named: string[] } {
   const list = (deal?.fact_find_data?.assets || []).filter((a: any) => num(a?.value) > 0)
-  if (list.length === 0) return ''
+  if (list.length === 0) return { total: 0, named: [] }
   const byKind: Record<string, number> = {}
   for (const a of list) {
     const kind = txt(a?.assetType) || 'other assets'
     byKind[kind] = (byKind[kind] || 0) + num(a.value)
   }
-  const total = Object.values(byKind).reduce((t, v) => t + v, 0)
-  const named = Object.entries(byKind)
-    .sort((a, b) => b[1] - a[1])
-    .map(([kind, v]) => `${money(v)} in ${assetWords(kind)}`)
+  return {
+    total: Object.values(byKind).reduce((t, v) => t + v, 0),
+    named: Object.entries(byKind)
+      .sort((a, b) => b[1] - a[1])
+      .map(([kind, v]) => `${money(v)} in ${assetWords(kind)}`),
+  }
+}
+
+export function assetLine(deal: any): string {
+  const { total, named } = assetBreakdown(deal)
+  if (named.length === 0) return ''
   return `The applicants hold assets of ${money(total)}, made up of ${andList(named)}.`
 }
 

@@ -42,7 +42,7 @@ export default function TablesWithoutRls({ tables }: { tables: string[] }) {
       </div>
 
       <p className="m-0 text-[13.5px] leading-relaxed text-ink">
-        {one ? 'This table has' : 'These tables have'} no row level security, so anyone
+        {one ? 'This table has' : 'These tables have'}{' '}no row level security, so anyone
         holding the portal&rsquo;s public key can read, change or delete everything in{' '}
         {one ? 'it' : 'them'}.
       </p>

@@ -196,3 +196,60 @@ unanswered. Nothing else in settlements has to change.
 - `reviewDaysAfter` in SETTLEMENT_DEFAULTS (lib/settlement-settings.ts) — the
   stored number stays so this project can use it. It is not shown on the
   settlements settings pane, because nothing in settlements reads it.
+
+---
+
+# THE PORTAL ON A PHONE
+
+Fabio, 18 Nov 2026, with a brief from the Valora portal in hand, asked for the
+whole thing: shell, gutters, every table, the board, the deal page. Then: "want
+everything, add for later." So it is written down rather than started.
+
+**The brief is in docs/mobile-from-valora.md.** It is another portal's build,
+not ours, and it is sound: one HTML page with Tailwind breakpoints deciding what
+shows, no second mobile site, no user-agent sniffing, desktop pixel-identical.
+
+## Four things that stop it being copied across as written
+
+**1. OUR SHELL IS FIXED HEIGHT AND THEIRS SCROLLS.** app/(app)/layout.tsx is
+`flex h-screen overflow-hidden` with the scrolling in `<main>`. Their Shell
+assumes the page itself scrolls (`min-h-screen`). Lift their version in as-is
+and a phone gets a page it cannot scroll at all. The sticky top bar has to live
+inside our scroll container, or the scroll container has to move.
+
+**2. WE ALREADY USE THE OPPOSITE BREAKPOINTS.** About fifty `max-[900px]:`
+rules across the portal - shrink-down from desktop. The brief is `sm:`/`lg:` -
+build-up from phone. Both work. Both in one file is how a layout stops being
+reasonable about. Pick one before a line is written, and the cheaper answer is
+almost certainly to keep ours, because ours is what fifty rules already say.
+
+**3. OUR GUTTERS ARE px-6, NOT mx-8.** 27 of them. Same sweep, different
+find-and-replace.
+
+**4. FOUR FIXED-POSITION THINGS THEY DO NOT HAVE.** Paco, TopProgress,
+StillHere and TheDoorClosed are all mounted on the layout and pinned to the
+window. Each one needs looking at on a 390px screen or it sits on the content.
+Paco especially - he opens over the page.
+
+## The size of it
+
+- **31 files with a `<table>`.** Each becomes a table above the breakpoint and
+  stacked record cards below it, with no field dropped.
+- **The board.** Fifteen columns in six groups becomes stage tabs, one at a
+  time. The fold work from 19 Nov already proved people want fewer columns at
+  once, so this is the same idea taken further.
+- **The deal page.** Two columns, and the heavier of the two jobs.
+- **The Today page.** Three stacked boxes plus the right-hand column.
+
+Days, across several ships, not an afternoon.
+
+## Where to start when it starts
+
+The Today page alone, for Fabio on a phone. It is the screen he opens first,
+it is mostly reading, and it is one ship. Everything learned there - the shell,
+the gutters, one record card - is what the other screens need anyway.
+
+**And mock it first.** Same rule as everything else: the mock goes in
+docs/approved-looks/, rendered with the stylesheet the build produced, agreed
+before a line is written. A phone layout is the easiest thing in the world to
+build twice.

@@ -25,7 +25,9 @@
 //     own estimate. Both offered, both declined.
 
 import { money, readMoney } from './money'
+import { assetBreakdown } from './box-power'
 import { article } from './article'
+import { useOf } from './deal-labels'
 import { loanAmount, lvrOf, fundsToComplete } from './funds-to-complete'
 import { drawnLoan } from './lmi'
 import { splitsOf, dealRow } from './deal-structure'
@@ -76,6 +78,11 @@ export const REPAYMENT_METHOD_WORDS: Record<string, string> = {
   'Co-applicants income': "intends to rely on the co-applicant's income",
 }
 
+/** A rate with exactly one per cent sign, however it was typed. */
+function pct(v: any): string {
+  return `${String(v ?? '').trim().replace(/%+$/, '')}%`
+}
+
 // ---------------------------------------------------------------------------
 // THE RETIREMENT STRATEGY — on every file, whatever the ages
 // ---------------------------------------------------------------------------
@@ -112,7 +119,25 @@ export function retirementStrategy(deal: any, v: 1 | 2 | 3): { parts: string[]; 
   const recorded = people.filter(p => p.retiresAt !== null)
   const quiet = recorded.length > 0 && !people.some(p => p.outlives)
   if (quiet) {
-    parts.push(FINISHES_FIRST)
+    // IT SAYS WHAT THEY WILL DO, NOT THAT NOTHING IS NEEDED - 19 Nov 2026.
+    //
+    // This printed "No exit strategy will be required as the loan will be
+    // completed prior to retirement." Katie crossed it out on both files she
+    // corrected and wrote what the file actually records: "Upon retirement,
+    // clients will downsize their property."
+    //
+    // She is right, and the fact was already on the deal - the repayment method
+    // is answered under Compliance, Risks, Exit strategy, and this branch was
+    // the one place that read it and then said nothing.
+    //
+    // GROUPED, because two applicants who gave the same answer is one sentence.
+    const byMethod = new Map<string, string[]>()
+    for (const p of recorded) {
+      const how = REPAYMENT_METHOD_WORDS[p.method] || ''
+      if (!how) continue
+      byMethod.set(how, [...(byMethod.get(how) || []), p.who])
+    }
+    for (const [how, who] of byMethod) parts.push(`${andList(who)} ${how}.`)
     for (const p of recorded) {
       if (!(REPAYMENT_METHOD_WORDS[p.method] || '')) {
         gaps.push({ what: `Repayment method for ${p.who}`, where: 'Compliance → Risks → Exit strategy' })
@@ -313,8 +338,32 @@ export function boxFour(deal: any): Box {
   // two cannot name different properties. The old line stays as the fallback
   // for a deal with nothing recorded at all.
   const named = securitiesOf(deal).map(x => plainAddress(x.address)).filter(Boolean)
+  // EVERY PURCHASE WAS AN OWNER-OCCUPIED PROPERTY - 19 Nov 2026.
+  //
+  // Those five words were typed into this line and never read anything. On the
+  // Makeham file it described vacant land bought for investment as an
+  // owner-occupied property, in the compliance note, under a product called
+  // Vacant Land Prime Alt Doc. Katie's correction: "to purchase vacant land in
+  // Oura for investment purposes".
+  //
+  // Both facts were already on the deal. useOf() answers owner-occupied,
+  // investment or SMSF off deals.property_use and falls back to the template -
+  // the same answer the chip on the card has worn for weeks. The property type
+  // is bc.propertyType, the dropdown the valuation order reads.
+  //
+  // NOTHING IS GUESSED. A deal with no property type recorded says "property",
+  // which is what this line has always said, and a use nobody has answered adds
+  // no clause at all.
+  const use = useOf(deal)
+  const kind = txt(bc.propertyType).toLowerCase()
+  const what = /land/.test(kind) ? 'vacant land' : (kind || 'property')
+  // Land is uncountable - "a vacant land" is not English.
+  const lead = what === 'vacant land' ? what
+    : `${use === 'owner_occupied' ? 'an owner-occupied' : article(what)} ${what}`
   open += isPurchase
-    ? ` to purchase an owner-occupied property${txt(bc.suburb) ? ` in ${txt(bc.suburb)}` : ''}`
+    ? ` to purchase ${lead}${txt(bc.suburb) ? ` in ${txt(bc.suburb)}` : ''}`
+      + `${use === 'investment' ? ' for investment purposes'
+         : use === 'smsf' ? ' within the self managed super fund' : ''}`
     : ` against ${named.length > 0 ? andList(named) : (txt(row.securityAddress) || 'the security recorded on this deal')}`
   if (purchase && purchase > 0) open += `, against a purchase price of ${money(purchase)}`
   if (deposit && deposit > 0) open += ` and a contribution of ${money(deposit)}`
@@ -347,8 +396,23 @@ export function boxFour(deal: any): Box {
     const occ = txt(job.occupation).toLowerCase()
     const months = monthsBetween(job.startDate, job.endDate)
     const inc = annualIncomeOfApplicant(a)
-    const bits = [`${first} is ${selfEmployed(job) ? 'self-employed' : 'employed'}${txt(job.employmentBasis) ? ` ${txt(job.employmentBasis).toLowerCase()}` : ''}`]
-    if (occ) bits.push(`as ${article(occ)} ${occ}`)
+    // "DALE IS SELF-EMPLOYED SELF-EMPLOYED AS A CARPENTER" - 19 Nov 2026.
+    //
+    // The type and the basis are two different dropdowns, and on a self-employed
+    // applicant the basis IS "Self-Employed", so the word came out twice. Katie,
+    // correcting the note by hand: "Dale is a self-employed carpenter."
+    //
+    // So a basis that repeats the word we have just printed is dropped, and a
+    // self-employed applicant with an occupation reads as one phrase rather than
+    // as a state plus a job.
+    const se = selfEmployed(job)
+    const word = se ? 'self-employed' : 'employed'
+    const basis = txt(job.employmentBasis).toLowerCase()
+    const extra = basis && !basis.includes(word) ? ` ${basis}` : ''
+    const bits = se && occ
+      ? [`${first} is ${article(`${word} ${occ}`)} ${word} ${occ}`]
+      : [`${first} is ${word}${extra}`]
+    if (!se && occ) bits.push(`as ${article(occ)} ${occ}`)
     if (months > 0) bits.push(`and has held the role for ${months} month${months === 1 ? '' : 's'}`)
     let line = bits.join(' ')
     if (inc > 0) line += `, on a gross salary of ${money(inc)} a year`
@@ -371,7 +435,11 @@ export function boxFour(deal: any): Box {
 
   const deps = txt(ff.dependants) || txt(bc.dependants)
   if (deps && deps !== '0') {
-    analysis.push(`They have ${countInWords(deps)} dependant${deps === '1' ? '' : 's'}, whose ages are not recorded.`)
+    // THEIR AGES ARE NOT THE NOTE'S BUSINESS - 19 Nov 2026. Katie cut ", whose
+    // ages are not recorded" off both files she corrected. A compliance note
+    // reporting the absence of something nobody asked for is noise, and Fabio:
+    // "everything that is repetitive to be excluded."
+    analysis.push(`They have ${countInWords(deps)} dependant${deps === '1' ? '' : 's'}.`)
   }
 
   // --- what they own ---
@@ -398,23 +466,31 @@ export function boxFour(deal: any): Box {
     lastOwners = owners
     if (selling) line += ', which the fact find records as being sold'
     if (val) line += `. It is valued at ${money(val)}`
-    if (owing > 0) line += `, with ${money(owing)} owing${lender ? ` to ${lender}` : ''}${rate ? ` on a rate of ${rate}%` : ''}`
+    // "ON A RATE OF 6.69%%" - 19 Nov 2026. The box on the fact find takes
+    // whatever somebody types, and plenty of people type the sign. pct() puts
+    // exactly one on.
+    if (owing > 0) line += `, with ${money(owing)} owing${lender ? ` to ${lender}` : ''}${rate ? ` on a rate of ${pct(rate)}` : ''}`
     analysis.push(line + '.')
   }
 
-  const assets = (ff.assets || []).reduce((t: number, a: any) => t + (readMoney(a?.value) ?? 0), 0)
-  const byType = (re: RegExp) => (ff.assets || [])
-    .filter((a: any) => re.test(txt(a?.assetType)))
-    .reduce((t: number, a: any) => t + (readMoney(a?.value) ?? 0), 0)
-  if (assets > 0) {
-    const bits: string[] = []
-    const cash = byType(/bank|savings|cash|term deposit/i)
-    const supr = byType(/super/i)
-    const shares = byType(/share|investment/i)
-    if (cash) bits.push(`${money(cash)} in bank accounts`)
-    if (supr) bits.push(`${money(supr)} in superannuation`)
-    if (shares) bits.push(`${money(shares)} in shares`)
-    analysis.push(`Recorded assets total ${money(assets)}${bits.length ? ` — ${andList(bits)}` : ''}.`)
+  // $120,000 THAT WAS IN THE TOTAL AND IN NONE OF THE WORDS - 19 Nov 2026.
+  //
+  // This totalled EVERY asset and then itemised three kinds. On the Makeham
+  // file that read "Recorded assets total $336,738.82 — $38,627.21 in bank
+  // accounts and $178,111.61 in superannuation", which is $216,738. The missing
+  // $120,000 was home contents and vehicles: counted, never named.
+  //
+  // Nobody caught it. It went through a broker and through credit, and a
+  // compliance note whose own arithmetic does not add up is the kind of thing
+  // that is noticed by exactly the wrong person.
+  //
+  // assetLine() in lib/box-power.ts has grouped them properly all along - every
+  // kind, the words for a sum of them, biggest first. The breakdown comes from
+  // there now, so the two boxes cannot disagree about what somebody owns.
+  const owned = assetBreakdown(deal)
+  if (owned.total > 0) {
+    analysis.push(`Recorded assets total ${money(owned.total)}`
+      + `${owned.named.length ? ` — ${andList(owned.named)}` : ''}.`)
   }
 
   const liabilities = (ff.liabilities || []).length
@@ -471,7 +547,7 @@ export function boxFour(deal: any): Box {
     // One rate, and a word for it only where every split agrees on the answer.
     if (found.every(f => f.fixed)) return `, on a fixed rate of ${rates[0]}%`
     if (found.every(f => !f.fixed)) return `, on a variable rate of ${rates[0]}%`
-    return `, on a rate of ${rates[0]}%`
+    return `, on a rate of ${pct(rates[0])}`
   })()
   const repay = splitsOf(deal).map(x => txt(x.repaymentType)).find(Boolean)
   // THE SPLITS, ONE AT A TIME, UNDER THE HOUSE EACH IS SECURED BY.
@@ -585,7 +661,20 @@ export function boxFour(deal: any): Box {
   // something wrong. See lib/client-agreement.ts.
   const rec = optionOnTheDeal(lo) || {}
   const fees: string[] = []
-  const fee = (label: string, val: any) => { const t = txt(val); if (t) fees.push(`${label} of ${/^\$/.test(t) ? t.replace(/\/yr$/, '') : '$' + t}`) }
+  // "A VALUATION FEE OF $AT COST" - 19 Nov 2026.
+  //
+  // A fee is not always a number. MA Money's valuation is charged at cost, and
+  // the library holds the words "At cost" - which this printed a dollar sign in
+  // front of. Katie's correction: "a valuation fee at cost".
+  //
+  // So a figure gets "of $x" and anything else gets said as it stands.
+  const fee = (label: string, val: any) => {
+    const t = txt(val)
+    if (!t) return
+    if (/^\$/.test(t)) { fees.push(`${label} of ${t.replace(/\/yr$/, '')}`); return }
+    if (/^[0-9]/.test(t)) { fees.push(`${label} of $${t.replace(/\/yr$/, '')}`); return }
+    fees.push(`${label} ${t.toLowerCase()}`)
+  }
   fee('an application fee', rec.applicationFee)
   fee('an annual fee', rec.annualFee)
   fee('a valuation fee', rec.valuationFee)

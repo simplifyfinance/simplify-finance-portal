@@ -174,10 +174,22 @@ describe('what they owe', () => {
     expect(liabilityLine(deal())).toBe('No liabilities are recorded on the fact find.')
   })
 
-  it('separates what remains from what is being cleared', () => {
+  // A DEBT THE CLIENT CLOSES IS NOT A DEBT THIS LOAN PAYS - 19 Nov 2026.
+  //
+  // LIABS[0] is "To be closed", and until today that came out as "being cleared
+  // as part of this loan" - which said this loan pays out a card it does not
+  // touch. Katie, correcting a real file: "Dale & Katie will close both credit
+  // cards via their own means prior to formal approval."
+  it('separates what remains, what this loan clears, and what they close', () => {
     const t = boxSix(ff({ liabilities: LIABS })).text
     expect(t).toContain('The clients hold a car loan with Toyota Finance of $22,000, which will remain.')
-    expect(t).toContain('A credit card with ANZ of $4,200 is being cleared as part of this loan.')
+    expect(t).toContain('A credit card with ANZ of $4,200 will be closed by the clients by their own means before formal approval.')
+    expect(t, 'this loan is not paying it out').not.toMatch(/card with ANZ[^.]*being cleared/)
+  })
+
+  it('and a consolidated debt says why it is being cleared', () => {
+    const t = liabilityLine(ff({ liabilities: [{ ...LIABS[0], status: 'To be consolidated' }] }))
+    expect(t).toContain('is being cleared as part of this loan to meet lender servicing requirements.')
   })
 
   it('starts the cleared sentence with a capital', () => {
@@ -186,8 +198,16 @@ describe('what they owe', () => {
   })
 
   it('uses the plural when more than one is being cleared', () => {
-    const two = [LIABS[0], { ...LIABS[1], status: 'To be closed' }]
+    const two = [{ ...LIABS[0], status: 'To be consolidated' },
+                 { ...LIABS[1], status: 'To be consolidated' }]
     expect(liabilityLine(ff({ liabilities: two }))).toMatch(/are being cleared/)
+  })
+
+  it('and the plural for two the clients are closing themselves', () => {
+    const two = [LIABS[0], { ...LIABS[1], status: 'To be closed' }]
+    const t = liabilityLine(ff({ liabilities: two }))
+    expect(t).toMatch(/will be closed by the clients/)
+    expect(t).not.toMatch(/being cleared/)
   })
 
   it('does not invent a balance it does not have', () => {

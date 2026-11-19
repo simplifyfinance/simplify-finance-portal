@@ -66,13 +66,25 @@ describe('the retirement strategy is on every file', () => {
   // method, and the arithmetic landing inside it - to say the one thing that
   // matters: the loan ends first. Fabio's broker cut the lot to one line, and
   // the ages come back the moment somebody's term runs past their retirement.
-  it('says the loan finishes first in one line, and drops the arithmetic', () => {
+  // IT SAYS WHAT THEY WILL DO, NOT THAT NOTHING IS NEEDED - 19 Nov 2026.
+  //
+  // This used to print "No exit strategy will be required as the loan will be
+  // completed prior to retirement." Katie crossed that out on both files she
+  // corrected and wrote the fact the deal already holds: "Upon retirement,
+  // clients will downsize their property."
+  //
+  // The arithmetic and the ages still stay out of it - that was right, and it
+  // is why this test exists. What comes back is one sentence saying how they
+  // intend to repay.
+  it('says how they intend to repay, in one line, with no arithmetic', () => {
     const d = deal()
     d.bc_data.loanTerm = '20'
     d.compliance_data.splitDetail = {}
     const t = boxFour(d).text
     expect(t).not.toMatch(/EXIT STRATEGY/)
-    expect(t).toContain(FINISHES_FIRST)
+    expect(t, 'a note that says nothing is required says nothing at all')
+      .not.toContain(FINISHES_FIRST)
+    expect(t).toMatch(/intends to repay the loan by downsizing the home/)
     expect(t, 'the arithmetic is only worth printing when it is a problem')
       .not.toMatch(/within that/)
     expect(t).not.toMatch(/has given a retirement age/)
