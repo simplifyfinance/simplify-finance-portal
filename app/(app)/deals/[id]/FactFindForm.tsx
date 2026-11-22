@@ -1,4 +1,5 @@
 'use client'
+import { sendToBeRead, readAnswer } from '@/lib/send-a-document-to-be-read'
 import RunServiceability from '@/components/RunServiceability'
 import { inDateOrder, outOfOrder } from '@/lib/employment-in-order'
 import DropZone from '@/components/DropZone'
@@ -818,23 +819,24 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   async function extractFactFindPdf(file: File) {
     setExtracting(true)
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve((reader.result as string).split(',')[1])
-        reader.onerror = () => reject(new Error('Failed to read file'))
-        reader.readAsDataURL(file)
-      })
+      // HOWEVER BIG IT IS - 22 Nov 2026. Small files go as base64 exactly as
+      // they always have; one too big for Vercel's 4.5 MB request body goes
+      // into the reading room and only its path is posted. The answer is read
+      // as text first, because a 413 is not JSON and res.json() on it is what
+      // put "Unexpected token 'R'" in front of Belle.
+      // See lib/send-a-document-to-be-read.ts.
+      const sent = await sendToBeRead(file)
       const res = await fetch('/api/extract-fact-find', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pdfBase64: base64 })
+        body: JSON.stringify(sent.body)
       })
-      const data = await res.json()
-      if (data.error) {
-        alert('Extraction failed: ' + data.error)
+      const answer = await readAnswer(res)
+      if (!answer.ok) {
+        alert('Extraction failed: ' + answer.why)
       } else {
-        setExtractedData(data.extracted)
-        setTypedAnswers(typeof data.typedAnswers === 'number' ? data.typedAnswers : null)
+        setExtractedData(answer.out.extracted)
+        setTypedAnswers(typeof answer.out.typedAnswers === 'number' ? answer.out.typedAnswers : null)
         setShowExtractReview(true)
       }
       await uploadDocument(file)

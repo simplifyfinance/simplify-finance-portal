@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>The settlements team's first week — the four visual changes</title>
+<style>
+  :root{
+    --page:#F7F4EF; --card:#FFFFFF; --line:#E8E2D8; --line-soft:#F1ECE4;
+    --card-line:#EBE5DB; --field-line:#DCD5C9;
+    --ink:#17140F; --body:#4D4841; --muted:#6F6A62; --faint:#A79F93;
+    --chase:#D32F2F; --chase-bg:#FDEDED; --chase-edge:#F5C9C9;
+    --waiting:#5B3A9E; --waiting-bg:#F4F1FC; --waiting-edge:#DACFF1;
+    --done:#137A55; --done-bg:#EAFAF4; --done-edge:#B4E7D5;
+    --info:#107EA8; --info-bg:#EAF7FE; --info-edge:#BFE4F7;
+    --brand:#4FBBEA; --on-brand:#0F1115;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--body);padding:26px 26px 60px;
+    font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  h1{font-size:17px;color:var(--ink);margin:0 0 4px}
+  .sub{font-size:12.5px;color:var(--muted);margin:0 0 26px}
+  .lab{font-size:10.5px;color:var(--faint);letter-spacing:.07em;text-transform:uppercase;
+    font-weight:800;margin:30px 0 9px}
+  .says{font-size:12px;color:var(--muted);margin:-4px 0 11px;max-width:760px;line-height:1.5}
+  .frame{max-width:840px}
+  .bubble{background:var(--card);border:1px solid var(--card-line);border-radius:14px;overflow:hidden}
+  .bhead{display:flex;align-items:center;gap:8px;padding:11px 16px;border-bottom:1px solid var(--line-soft)}
+  .bhead .t{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--done)}
+  .bhead .where{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink)}
+  .dot{width:13px;height:13px;border-radius:50%;background:var(--done-bg);border:1px solid var(--done-edge)}
+  .body{padding:16px}
+
+  /* ---- skeleton ---- */
+  @keyframes sheen{0%{opacity:.55}50%{opacity:1}100%{opacity:.55}}
+  .sk{background:var(--line-soft);border-radius:7px;animation:sheen 1.25s ease-in-out infinite}
+  .crumb{font-size:13px;color:var(--muted);margin-bottom:15px}
+  .beadrow{display:flex;align-items:center;gap:0;margin:4px 0 2px}
+  .bead{width:21px;height:21px;border-radius:50%;flex:none}
+  .rail{height:2px;flex:1;background:var(--line-soft)}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:16px}
+  .tcard{border:1px solid var(--card-line);border-radius:11px;padding:13px}
+
+  /* ---- attn ---- */
+  .attn{border:1px solid var(--info-edge);background:var(--info-bg);border-left:3px solid var(--info);
+    border-radius:11px;padding:13px 15px}
+  .attn .t{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--info);margin-bottom:9px}
+  .inp{display:flex;gap:8px}
+  .inp input{flex:1;border:1px solid var(--field-line);background:var(--card);border-radius:9px;
+    padding:8px 12px;font-size:13px;color:var(--body)}
+  .inp button{border:0;background:var(--ink);color:var(--page);border-radius:9px;padding:8px 14px;
+    font-size:12.5px;font-weight:700}
+  .trail{margin-top:13px;border-left:2px solid var(--info-edge);padding-left:12px}
+  .entry{margin-bottom:11px}
+  .entry:last-child{margin-bottom:0}
+  .erow{display:flex;align-items:flex-start;gap:10px}
+  .etext{font-size:13px;line-height:1.5;color:var(--body);flex:1}
+  .eby{font-size:11px;color:var(--faint);margin-top:1px}
+  .reply{border:0;background:transparent;color:var(--info);font-size:11.5px;font-weight:700;
+    padding:1px 2px;flex:none}
+  .under{margin:9px 0 0 16px;border-left:2px solid var(--info-edge);padding-left:11px}
+  .replybox{display:flex;gap:7px;margin-top:8px;margin-left:16px}
+  .replybox input{flex:1;border:1px solid var(--field-line);background:var(--card);border-radius:8px;
+    padding:6px 10px;font-size:12.5px}
+  .replybox button{border:0;background:var(--ink);color:var(--page);border-radius:8px;padding:6px 12px;
+    font-size:12px;font-weight:700}
+  .replybox .cx{background:transparent;color:var(--muted);font-weight:500}
+
+  /* ---- menu ---- */
+  .menu{width:420px;background:var(--card);border:1px solid var(--card-line);border-radius:13px;
+    box-shadow:0 10px 30px rgba(0,0,0,.09);overflow:hidden}
+  .mhead{font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);
+    padding:12px 16px 7px}
+  .mitem{padding:9px 16px;display:flex;gap:9px;align-items:baseline}
+  .mitem .n{font-size:13.5px;font-weight:700;color:var(--ink)}
+  .mitem .w{font-size:12px;color:var(--faint)}
+  .mitem.off .n{font-weight:500;color:var(--faint)}
+  .mfoot{border-top:1px solid var(--line-soft);background:var(--page);padding:11px 16px}
+  .mfoot p{margin:0;font-size:11.5px;line-height:1.5;color:var(--muted)}
+  .mfoot b{color:var(--body)}
+</style></head>
+<body>
+
+<h1>The settlements team's first week</h1>
+<p class="sub">Four visual changes, from Belle and Ellesse's feedback of 22 November. Nothing else on these screens moves.</p>
+
+<div class="frame">
+
+<!-- ================= 1. THE DEAL IS OPENING ================= -->
+<p class="lab">1 &mdash; A deal that is opening</p>
+<p class="says">"When I click on a deal, it doesn't open immediately. There's a bit delay before the deal loads."
+  There is no loading screen anywhere in the portal, so the browser sits on the old page.
+  This draws the moment the link is clicked, in the shape of the page that is coming.
+  The screen is never blank.</p>
+
+<div class="crumb">Deals / <span style="color:var(--ink);font-weight:600">Opening&hellip;</span></div>
+
+<div class="bubble">
+  <div class="bhead">
+    <span class="dot"></span>
+    <span class="t">The deal</span>
+    <span style="flex:1"></span>
+    <span style="font-size:11.5px;color:var(--faint)">Opening&hellip;</span>
+  </div>
+  <div class="body">
+    <div class="sk" style="width:62%;height:19px"></div>
+    <div class="sk" style="width:38%;height:19px;margin-top:7px"></div>
+    <div style="margin-top:17px">
+      <div class="sk" style="width:46%;height:12px"></div>
+      <div class="sk" style="width:40%;height:12px;margin-top:9px"></div>
+      <div class="sk" style="width:43%;height:12px;margin-top:9px"></div>
+    </div>
+  </div>
+</div>
+
+<div class="bubble" style="margin-top:11px">
+  <div class="bhead">
+    <span class="dot"></span>
+    <span class="t">Where it is</span>
+  </div>
+  <div class="body">
+    <div class="beadrow">
+      <span class="sk bead"></span><span class="rail"></span>
+      <span class="sk bead"></span><span class="rail"></span>
+      <span class="sk bead"></span><span class="rail"></span>
+      <span class="sk bead"></span><span class="rail"></span>
+      <span class="sk bead"></span><span class="rail"></span>
+      <span class="sk bead"></span><span class="rail"></span>
+      <span class="sk bead"></span>
+    </div>
+    <div class="cards">
+      <div class="tcard"><div class="sk" style="width:17px;height:17px"></div>
+        <div class="sk" style="width:72%;height:12px;margin-top:11px"></div></div>
+      <div class="tcard"><div class="sk" style="width:17px;height:17px"></div>
+        <div class="sk" style="width:64%;height:12px;margin-top:11px"></div></div>
+      <div class="tcard"><div class="sk" style="width:17px;height:17px"></div>
+        <div class="sk" style="width:80%;height:12px;margin-top:11px"></div></div>
+      <div class="tcard"><div class="sk" style="width:17px;height:17px"></div>
+        <div class="sk" style="width:58%;height:12px;margin-top:11px"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 2. WHERE IT IS SAYS THE COLUMN ================= -->
+<p class="lab">2 &mdash; Where it is, named</p>
+<p class="says">"This one shows as Contracts Returned when I open the deal, but when I go back to the main
+  pipeline, the status still shows as Formal." Both were right: the board names the step the deal has
+  <b>reached</b>, the bar highlights the step it is <b>waiting on</b>. The heading now says the column,
+  so the deal page and the board give the same answer. The beads are not touched.</p>
+
+<div class="bubble">
+  <div class="bhead">
+    <span class="dot"></span>
+    <span class="where">Where it is &nbsp;&middot;&nbsp; Formal approval</span>
+    <span style="flex:1"></span>
+    <span style="font-size:11.5px;color:var(--info);font-weight:600">With Katie</span>
+  </div>
+  <div class="body">
+    <div style="display:flex;align-items:center;gap:0">
+      <span class="bead" style="background:var(--done);flex:none"></span><span class="rail" style="background:var(--done-edge)"></span>
+      <span class="bead" style="background:var(--done);flex:none"></span><span class="rail" style="background:var(--done-edge)"></span>
+      <span class="bead" style="background:var(--done);flex:none"></span><span class="rail" style="background:var(--done-edge)"></span>
+      <span class="bead" style="background:var(--done);flex:none"></span><span class="rail" style="background:var(--line-soft)"></span>
+      <span class="bead" style="background:var(--card);border:2px solid var(--info);flex:none"></span><span class="rail"></span>
+      <span class="bead" style="background:var(--line-soft);flex:none"></span><span class="rail"></span>
+      <span class="bead" style="background:var(--line-soft);flex:none"></span>
+    </div>
+    <div style="display:flex;gap:0;margin-top:7px;font-size:10.5px;color:var(--faint);text-align:center">
+      <span style="width:14.2%">Lodged</span><span style="width:14.2%">Preapproved</span>
+      <span style="width:14.2%">Offer accepted</span><span style="width:14.2%">Formal</span>
+      <span style="width:14.2%;color:var(--info);font-weight:700">Contracts returned</span>
+      <span style="width:14.2%">Settlement booked</span><span style="width:14.2%">Settled</span>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 3. A REPLY UNDER AN ATTENTION NOTE ================= -->
+<p class="lab">3 &mdash; A reply under an attention note</p>
+<p class="says">"Can we also add an Edit option on the right side of each attention item? This would allow us
+  to easily update or add progress notes directly under each attention." It is a Reply, not an Edit:
+  the trail stays a trail, every entry dated and named, nothing typed over. The progress note lands
+  indented under the thing it is about.</p>
+
+<div class="attn" style="max-width:620px">
+  <div class="t">Attn settlements</div>
+  <div class="inp">
+    <input placeholder="Anything settlements need to know about this file" />
+    <button>Add</button>
+  </div>
+  <div class="trail">
+    <div class="entry">
+      <div class="erow">
+        <div>
+          <div class="etext">Change DD acct to Offset acct &mdash; have instructed them and checking in
+            with them again when sett is booked (just to make sure)</div>
+          <div class="eby">Belle Nunez &middot; 19 Nov, 11:58 am</div>
+        </div>
+        <button class="reply">Reply</button>
+      </div>
+      <div class="under">
+        <div class="etext">Confirmed with the bank this morning, offset is on the account.</div>
+        <div class="eby">Ellesse Cabuga &middot; 21 Nov, 9:14 am</div>
+      </div>
+    </div>
+  </div>
+  <div class="replybox">
+    <input placeholder="Add a progress note under this" />
+    <button>Add</button>
+    <button class="cx">Cancel</button>
+  </div>
+</div>
+
+<!-- ================= 4. WHERE THE OTHER SIX LIVE ================= -->
+<p class="lab">4 &mdash; Where the other six emails live</p>
+<p class="says">"I couldn't find where the six client email templates are located?" They are deliberately
+  not in this menu &mdash; each is sent from its own step, because each reads figures this menu cannot
+  fill in. The menu never said so. Now it does.</p>
+
+<div class="menu">
+  <div class="mhead">Send to the client</div>
+  <div class="mitem"><span class="n">Formal approval</span><span class="w">approved 14 Nov</span></div>
+  <div class="mitem"><span class="n">Final check-in</span><span class="w">send whenever a client has gone quiet</span></div>
+  <div class="mitem off"><span class="n">Pre-approval</span><span class="w">no pre-approval recorded</span></div>
+  <div class="mitem off"><span class="n">Pre-approval extension</span><span class="w">no pre-approval recorded</span></div>
+  <div class="mfoot">
+    <p><b>The other six are sent from their own step.</b> Offer accepted, Loan documents,
+      Settlement numbers, Settlement booked, Settled and One month in each read figures off the
+      step they belong to, so they are sent from there rather than from here.</p>
+  </div>
+</div>
+
+</div>
+</body></html>

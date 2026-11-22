@@ -43,6 +43,10 @@ const REAL_COLUMNS: string[] = [...LANE_KEYS, 'lost', ...PHASE_ORDER, ...GROUP_F
 export function useColumnFolds() {
   const [folds, setFolds] = useState<string[]>([])
   const [ready, setReady] = useState(false)
+  // True once a fold has failed to save. The board says it once, quietly, so
+  // nobody spends another week folding columns that will not be there
+  // tomorrow. See the note in toggle().
+  const [refused, setRefused] = useState(false)
   const userId = useRef<string | null>(null)
 
   useEffect(() => {
@@ -71,18 +75,38 @@ export function useColumnFolds() {
       const next = prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
       const id = userId.current
       if (id) {
-        // fire-and-forget: this is one person's view of their own board, not a
-        // record of anything. If the write is refused the column is still folded
-        // for the rest of this session and comes back open at the next login,
-        // which is the same as never having folded it. Blocking the fold on a
-        // round trip, or throwing an error banner across the board because a
-        // preference did not save, would both be worse than that.
-        createSupabaseBrowser().from('user_profiles')
-          .update({ board_folds: next }).eq('id', id).then(() => {})
+        // IT GOES THROUGH A FUNCTION NOW, NOT AT THE TABLE - 22 Nov 2026.
+        //
+        // Belle and Ellesse, after a week on the settlement process: "all
+        // columns unfold again whenever I return to the main pipeline after
+        // opening a deal." They were right, and it had never worked for
+        // either of them.
+        //
+        // user_profiles has exactly one UPDATE policy - "Admins can update
+        // profiles" - so this write was refused for everybody who is not an
+        // admin. Postgres refuses by matching zero rows and returning NO
+        // ERROR, and this line threw the result away, so the column folded on
+        // screen and the save went in the bin without a word.
+        //
+        // The row holds role and broker_key, so the fix is NOT a policy
+        // letting a person update their own row - that would let anybody make
+        // themselves an admin. save_my_board_view() writes these two columns
+        // for whoever is calling and cannot touch a third. See
+        // docs/my-own-board-is-mine.sql.
+        //
+        // STILL NOT BLOCKING THE CLICK. The fold happens now and the round
+        // trip catches up; what has changed is that a refusal is no longer
+        // invisible - it is counted, and the board says so once.
+        createSupabaseBrowser()
+          .rpc('save_my_board_view', { p_folds: next })
+          .then(({ data, error }: any) => {
+            const landed = !error && Array.isArray(data) && data.length > 0
+            if (!landed) setRefused(true)
+          })
       }
       return next
     })
   }, [])
 
-  return { folds, toggle, ready }
+  return { folds, toggle, ready, refused }
 }

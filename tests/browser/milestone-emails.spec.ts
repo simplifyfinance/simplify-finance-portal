@@ -51,11 +51,23 @@ test.describe('the client emails', () => {
     for (let i = 0; i < count; i++) console.log('   ' + (await pressable.nth(i).innerText()).replace(/\n/g, ' '))
 
     if (count === 0) {
-      // A deal that has reached no milestone yet. Nothing to open, and that is a
-      // correct state rather than a failure - but say so, so a silent pass is
-      // never mistaken for a tested one.
+      // A SILENT PASS IS NOT A PASS - 22 Nov 2026.
+      //
+      // This said so in a comment and then returned, and the run reported
+      // "1 passed" in 2.1 seconds. Fabio ran it on the day the offer accepted
+      // email went out congratulating a client on a house she already owned,
+      // and the one browser test of this screen went green without opening a
+      // single email.
+      //
+      // The deal is correct and nothing is broken - it has simply reached no
+      // milestone, so there is nothing to open. But that is a test that did
+      // not run, and it must read as one. SKIPPED, not passed.
       console.log('   (this deal has reached no milestone yet - nothing to open)')
       expect(body).toMatch(/no pre-approval recorded|not formally approved yet/)
+      test.skip(true,
+        'PORTAL_TEST_DEAL_ID points at a deal that has reached no milestone, so '
+        + 'no client email can be opened and this spec checked nothing. Point it '
+        + 'at a deal that is at least pre-approved to actually test this screen.')
       return
     }
 

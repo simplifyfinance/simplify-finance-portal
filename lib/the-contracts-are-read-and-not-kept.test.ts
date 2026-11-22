@@ -49,11 +49,31 @@ describe('the reader', () => {
 })
 
 describe('the file is read and not kept', () => {
-  it('nothing is uploaded anywhere', () => {
-    for (const never of ['storage.from(', 'upload(', 'deal_statement_uploads']) {
+  // 22 NOV 2026: A DOCUMENT MAY NOW PASS THROUGH THE READING ROOM.
+  //
+  // Belle could not upload a signed loan document pack at all - Vercel refuses
+  // a request body over 4.5 MB, which is about 3.3 MB of PDF once base64 has
+  // grown it. A big file now goes from the browser into the reading-room
+  // bucket and the reader deletes it before it answers.
+  //
+  // So "nothing is uploaded anywhere" is no longer the promise. The promise is
+  // that nothing STAYS, and lib/the-reading-room-is-emptied.test.ts is what
+  // holds it - the finally in the reader, the shape check on the path, no
+  // policy that can read the bucket, and an hourly sweep.
+  //
+  // What is still true here, and is what this test is for: this screen never
+  // FILES the document. It does not go in deal-documents, it is not recorded
+  // against the deal as a file, and there is no row saying it was uploaded.
+  it('the document is never filed against the deal', () => {
+    for (const never of ['deal-documents', 'deal_statement_uploads', 'uploadDocument(']) {
       expect(BOX, `${never} would keep the document`).not.toContain(never)
       expect(ROUTE, `${never} would keep the document`).not.toContain(never)
     }
+  })
+
+  it('and what it does send goes through the one door, which empties itself', () => {
+    expect(BOX).toContain('sendToBeRead(file)')
+    expect(ROUTE).toContain('documentFrom(')
   })
 
   it('and what it said is written onto the deal with who and when', () => {

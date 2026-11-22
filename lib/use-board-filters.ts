@@ -51,11 +51,17 @@ export function useBoardFilters() {
   // the board because a preference did not save, would both be worse than that.
   // The bar above the board always says what is on, so nothing can be hidden by
   // a filter that failed to save either way.
+  //
+  // 22 NOV 2026: THROUGH A FUNCTION, NOT AT THE TABLE. The one UPDATE policy on
+  // user_profiles is the admin one, so this write was refused for everybody
+  // else - silently, by matching zero rows. The folds beside it had the same
+  // fault and it is what Belle and Ellesse reported. See
+  // docs/my-own-board-is-mine.sql for why the fix is a narrow function rather
+  // than a policy letting a person update their own row.
   const remember = useCallback((next: BoardFilters) => {
     const id = userId.current
     if (!id) return
-    createSupabaseBrowser().from('user_profiles')
-      .update({ board_filters: next }).eq('id', id).then(() => {})
+    createSupabaseBrowser().rpc('save_my_board_view', { p_filters: next }).then(() => {})
   }, [])
 
   const change = useCallback((make: (prev: BoardFilters) => BoardFilters) => {

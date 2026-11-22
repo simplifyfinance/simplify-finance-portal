@@ -7,7 +7,8 @@ import { copyHtmlAndPlain } from '@/lib/rich-text'
 import { outstandingFromDeal } from '@/lib/documents-outstanding'
 import { type DocRow } from '@/lib/document-progress'
 import { SENT_WITH } from '@/lib/offer-accepted-email'
-import { menuFor, menuToBrowse, lastSent, templateById, type MenuItem, type TemplateId } from '@/lib/milestone-emails'
+import { menuFor, menuToBrowse, lastSent, templateById, SENT_FROM_ITS_OWN_STEP,
+  type MenuItem, type TemplateId } from '@/lib/milestone-emails'
 import { useSender } from '@/app/(app)/templates/useSender'
 import { SenderPanel, BrandPanel } from '@/app/(app)/templates/TemplateFields'
 import MissingFigures from '@/components/MissingFigures'
@@ -156,6 +157,26 @@ export default function MilestoneEmails({ deal, onUpdated }: {
             <MenuButton key={item.id} item={item}
               onOpen={() => { setListOpen(false); setOpen(item.id) }} />
           ))}
+          {/* WHERE THE OTHER SIX ARE - 22 Nov 2026.
+              Ellesse, after a week on the portal: "I couldn't find where the
+              six client email templates are located?"
+              She was looking for the six in SENT_FROM_ITS_OWN_STEP. They are
+              kept out of this menu on purpose: each reads figures off the step
+              it belongs to - the settlement date, the outstandings, the
+              lender's own answers - and sent from a menu they would quietly
+              fall back to whatever the deal happened to hold. That is how the
+              offer accepted email once quoted a product nobody had typed.
+              The reason was sound and nothing anywhere said it, so somebody
+              spent a week hunting. It is one line and it names all six. */}
+          <div className="mt-1 border-t border-line-soft bg-page rounded-b-[10px] px-2.5 py-2">
+            <p className="m-0 text-[11px] leading-relaxed text-muted">
+              <b className="text-body">The other six are sent from their own step.</b>{' '}
+              {SENT_FROM_ITS_OWN_STEP.map(id => templateById(id)?.name)
+                .filter(Boolean).join(', ')}{' '}
+              each read figures off the step they belong to, so they are sent from there
+              rather than from here.
+            </p>
+          </div>
         </div>
       )}
 

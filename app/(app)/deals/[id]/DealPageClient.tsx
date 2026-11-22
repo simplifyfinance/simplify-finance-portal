@@ -41,7 +41,7 @@ import TabLock from '@/components/TabLock'
 import { DealAlerts, FileNotes, AlertChips, useDealFile } from '@/components/DealFile'
 import { isLocked } from '@/lib/deal-lock'
 import { changeCountLine } from '@/lib/changed-since-lodgement'
-import { isWithLender } from '@/lib/deal-phase'
+import { isWithLender, phaseOf, PHASE_LABEL } from '@/lib/deal-phase'
 import { loanIdRows } from '@/lib/loan-id'
 import { whereTheWorkIs, theBankIsDecided, theRefCanBeTyped } from '@/lib/where-the-work-is'
 import TheBank from '@/components/TheBank'
@@ -782,7 +782,18 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           lib/who-did-this-stage.ts, which returns the NAME. Reading the same
           one here means the head of this box and the row inside the form can
           never disagree, and neither of them can print an ID. */}
-      <Bubble tone="done" title="Where it is"
+      {/* AND IT NAMES THE COLUMN - 22 Nov 2026.
+          Ellesse: "This one shows as Contracts Returned when I open the deal,
+          but when I go back to the main pipeline, the status still shows as
+          Formal." Both were right. The board names the furthest step the deal
+          has REACHED; the blue bead is the step it is WAITING ON. Same ladder,
+          opposite reading, and nothing on this page said which.
+          lib/deal-phase.ts was written out of the same confusion: "the ladder
+          was written as waiting-on X and the later columns are named reached
+          X. A test caught it." It came back on the deal page.
+          So the heading says the column, read from phaseOf() - the one answer
+          the board itself uses. The beads are untouched. */}
+      <Bubble tone="done" title={`Where it is \u00b7 ${PHASE_LABEL[phaseOf(dealData)]}`}
         icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                    strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="10" r="3" />

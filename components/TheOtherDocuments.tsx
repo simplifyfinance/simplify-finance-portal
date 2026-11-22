@@ -1,4 +1,5 @@
 'use client'
+import { sendToBeRead, readAnswer } from '@/lib/send-a-document-to-be-read'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite } from '@/lib/checked-write'
@@ -201,18 +202,20 @@ export default function TheOtherDocuments({ deal, me, onSaved }: {
     if (!file) return
     setBusy(key); setMsg(m => ({ ...m, [key]: '' }))
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const r = new FileReader()
-        r.onload = () => resolve((r.result as string).split(',')[1])
-        r.onerror = () => reject(new Error('That file could not be opened.'))
-        r.readAsDataURL(file)
-      })
+      // HOWEVER BIG IT IS - 22 Nov 2026. Small files go as base64 exactly as
+      // they always have; one too big for Vercel's 4.5 MB request body goes
+      // into the reading room and only its path is posted. The answer is read
+      // as text first, because a 413 is not JSON and res.json() on it is what
+      // put "Unexpected token 'R'" in front of Belle.
+      // See lib/send-a-document-to-be-read.ts.
+      const sent = await sendToBeRead(file)
       const res = await fetch('/api/read-settlement-document', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pdfBase64: base64, kind: key }),
+        body: JSON.stringify({ ...sent.body, kind: key }),
       })
-      const out = await res.json()
-      if (!res.ok) { setMsg(m => ({ ...m, [key]: out?.error || 'That could not be read.' })); return }
+      const answer = await readAnswer(res)
+      if (!answer.ok) { setMsg(m => ({ ...m, [key]: answer.why })); return }
+      const out = answer.out
       // A NEW DROP CLEARS THE ANSWERS - they were about a document that is no
       // longer on screen.
       await save(key, { at: new Date().toISOString(), by: me?.name || '', read: out.read || {}, answers: {} })

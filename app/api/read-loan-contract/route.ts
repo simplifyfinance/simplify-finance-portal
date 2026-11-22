@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { documentFrom, ReadingRoomError } from '@/lib/the-reading-room'
 import Anthropic from '@anthropic-ai/sdk'
 
 // READING A LOAN CONTRACT.
@@ -54,7 +55,13 @@ Rules:
 
 export async function POST(req: NextRequest) {
   try {
-    const { pdfBase64 } = await req.json()
+    // THE DOCUMENT, HOWEVER IT ARRIVED - 22 Nov 2026.
+    //
+    // Small files still come as base64 in the body. One too big for Vercel's
+    // 4.5 MB request body comes as a path into the reading room, and
+    // documentFrom() picks it up and DELETES it before this line returns. See
+    // lib/the-reading-room.ts and docs/the-reading-room.sql.
+    const pdfBase64 = await documentFrom(await req.json())
     if (!pdfBase64) {
       return NextResponse.json({ error: 'No document was received.' }, { status: 400 })
     }
@@ -103,6 +110,11 @@ export async function POST(req: NextRequest) {
       loans,
     })
   } catch (e: any) {
+    // A DOCUMENT THAT NEVER ARRIVED SAYS SO IN ITS OWN WORDS, and says it as a
+    // 400 rather than a 500 - it is not a failure of the reader. 22 Nov 2026.
+    if (e instanceof ReadingRoomError) {
+      return NextResponse.json({ error: e.message }, { status: 400 })
+    }
     return NextResponse.json({
       error: `The contract could not be read - ${e?.message || 'unknown error'}. Nothing has been recorded.`,
     }, { status: 500 })

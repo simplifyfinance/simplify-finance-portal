@@ -34,22 +34,38 @@ export default async function DealPage({ params, searchParams }: { params: Promi
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
+  // THE TWO QUERIES GO TOGETHER, NOT ONE AFTER THE OTHER.
+  //
+  // 22 Nov 2026. Belle and Ellesse, after a week on the settlement process:
+  // "When I click on a deal, it doesn't open immediately. There's a bit delay
+  // before the deal loads."
+  //
+  // Opening a deal was four round trips to the database in a row - the tab
+  // title, who you are, what your role is, and then the deal itself - and
+  // nothing is drawn until the last one answers. The role and the deal do not
+  // depend on each other; they were only sequential because they were written
+  // one under the other. One round trip of the four, for free.
+  //
+  // The other half of her complaint is that the browser sat on the old page
+  // for all of it with nothing to show. See loading.tsx beside this file.
+  //
+  // The database is the only judge of who may see a deal. These queries run as
+  // the signed-in user, so row level security has already applied the flags and
+  // the broker grants. There is deliberately no second copy of those rules here
+  // - a hardcoded copy is how the app and the database drift apart.
+  const [{ data: profile }, { data: deal }] = await Promise.all([
+    supabase
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single(),
+    supabase
+      .from('deals')
+      .select('*, clients(first_name, last_name, email)')
+      .eq('id', id)
+      .maybeSingle(),
+  ])
   const userRole = profile?.role || ''
-
-  // The database is the only judge of who may see a deal. This query runs as the
-  // signed-in user, so row level security has already applied the flags and the
-  // broker grants. There is deliberately no second copy of those rules here - a
-  // hardcoded copy is how the app and the database drift apart.
-  const { data: deal } = await supabase
-    .from('deals')
-    .select('*, clients(first_name, last_name, email)')
-    .eq('id', id)
-    .maybeSingle()
 
   if (!deal) {
     // Nothing came back. Either the deal does not exist, or it does and this person

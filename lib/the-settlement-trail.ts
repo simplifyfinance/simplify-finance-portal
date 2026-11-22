@@ -21,18 +21,34 @@
 const txt = (v: any) => String(v ?? '').trim()
 
 export type Entry = {
-  /** ISO, when it was written. */
+  /** ISO, when it was written. Also what a reply points at - see `to`. */
   at: string
   /** Who wrote it. A name, because a user id means nothing on a screen. */
   by: string
   text: string
+  // A PROGRESS NOTE UNDER SOMETHING ALREADY WRITTEN. 22 Nov 2026.
+  //
+  // Belle: "Can we also add an Edit option on the right side of each attention
+  // item? This would allow us to easily update or add progress notes directly
+  // under each attention."
+  //
+  // An Edit would have meant typing over what was there, and the whole point
+  // of this file is that nothing is typed over - Fabio, 17 Nov: "every entry
+  // dated and named, nothing typed over. So 'what did we tell them last week'
+  // has an answer." Her own words were "add progress notes directly under
+  // each attention", which is a reply, not an edit.
+  //
+  // So a reply is an ordinary entry, dated and named like any other, carrying
+  // the `at` of the one it is about. Nothing is lost and nothing is rewritten.
+  to?: string
 }
 
 function one(v: any): Entry | null {
   if (!v || typeof v !== 'object') return null
   const text = txt((v as any).text)
   if (!text) return null
-  return { at: txt((v as any).at), by: txt((v as any).by), text }
+  const to = txt((v as any).to)
+  return { at: txt((v as any).at), by: txt((v as any).by), text, ...(to ? { to } : {}) }
 }
 
 /**
@@ -69,6 +85,40 @@ export function trailFor(deal: any, column = 'settlement_trail'): Entry[] {
   return seedFrom(deal?.settlement_note, deal?.settlement_updated_at)
 }
 
+export type Thread = { entry: Entry; replies: Entry[] }
+
+/**
+ * THE TRAIL AS IT IS READ: each entry with its progress notes under it.
+ *
+ * Entries newest first, as they have always been. Replies OLDEST first under
+ * their own entry, because replies are a story about one thing and a story
+ * reads forwards.
+ *
+ * A REPLY WHOSE ENTRY IS GONE IS STILL SHOWN. It becomes an entry of its own
+ * rather than disappearing. Somebody's note must not vanish because the line
+ * above it was removed - that is the same kind of silent loss this whole file
+ * exists to stop.
+ */
+export function threadsOf(entries: Entry[]): Thread[] {
+  const tops = entries.filter(e => !e.to)
+  const known = new Set(tops.map(e => e.at))
+  const orphans = entries.filter(e => e.to && !known.has(e.to))
+
+  const byParent = new Map<string, Entry[]>()
+  for (const e of entries) {
+    if (!e.to || !known.has(e.to)) continue
+    byParent.set(e.to, [...(byParent.get(e.to) || []), e])
+  }
+
+  return [...tops, ...orphans]
+    .sort((a, b) => (b.at || '').localeCompare(a.at || ''))
+    .map(entry => ({
+      entry,
+      replies: (byParent.get(entry.at) || [])
+        .sort((a, b) => (a.at || '').localeCompare(b.at || '')),
+    }))
+}
+
 /**
  * WHAT WRITING ON THE TRAIL SAVES.
  *
@@ -80,11 +130,18 @@ export function trailFor(deal: any, column = 'settlement_trail'): Entry[] {
  */
 export function addPatch(
   deal: any, text: any, by: any, now: Date = new Date(), column = 'settlement_trail',
+  to: any = '',
 ): Record<string, any> | null {
   const words = txt(text)
   if (!words) return null
   const was = trailFor(deal, column)
-  const entry: Entry = { at: now.toISOString(), by: txt(by), text: words }
+  const under = txt(to)
+  // A REPLY TO SOMETHING THAT IS NOT THERE IS WRITTEN AS AN ORDINARY ENTRY.
+  // Better a note in the trail than a note pointing at nothing.
+  const real = under && was.some(e => e.at === under) ? under : ''
+  const entry: Entry = {
+    at: now.toISOString(), by: txt(by), text: words, ...(real ? { to: real } : {}),
+  }
   return { [column]: [entry, ...was] }
 }
 

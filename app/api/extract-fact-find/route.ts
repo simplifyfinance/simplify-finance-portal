@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { documentFrom, ReadingRoomError } from '@/lib/the-reading-room'
 import Anthropic from '@anthropic-ai/sdk'
 import { readPdfFormAnswers, answersAsText } from '@/lib/the-answers-are-in-the-form'
 
@@ -53,7 +54,13 @@ because you cannot make out the picture.`
 
 export async function POST(req: NextRequest) {
   try {
-    const { pdfBase64 } = await req.json()
+    // THE DOCUMENT, HOWEVER IT ARRIVED - 22 Nov 2026.
+    //
+    // Small files still come as base64 in the body. One too big for Vercel's
+    // 4.5 MB request body comes as a path into the reading room, and
+    // documentFrom() picks it up and DELETES it before this line returns. See
+    // lib/the-reading-room.ts and docs/the-reading-room.sql.
+    const pdfBase64 = await documentFrom(await req.json())
     // THE ANSWERS, READ OFF THE FORM LAYER. See lib/the-answers-are-in-the-form.ts
     // for why reading the page was never going to work on this document.
     const answers = await readPdfFormAnswers(pdfBase64)
@@ -109,6 +116,11 @@ export async function POST(req: NextRequest) {
     // so - and so a fact find that is a scan rather than a form is obvious.
     return NextResponse.json({ extracted, typedAnswers: answers.length })
   } catch (e: any) {
+    // A DOCUMENT THAT NEVER ARRIVED SAYS SO IN ITS OWN WORDS, and says it as a
+    // 400 rather than a 500 - it is not a failure of the reader. 22 Nov 2026.
+    if (e instanceof ReadingRoomError) {
+      return NextResponse.json({ error: e.message }, { status: 400 })
+    }
     return NextResponse.json({ error: e.message }, { status: 500 })
   }
 }

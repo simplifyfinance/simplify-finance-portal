@@ -1,4 +1,5 @@
 'use client'
+import { sendToBeRead, readAnswer } from '@/lib/send-a-document-to-be-read'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite } from '@/lib/checked-write'
@@ -102,18 +103,20 @@ export default function TheContracts({ deal, me, onSaved }: {
     let reference = ''
     try {
       for (const file of Array.from(files)) {
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const r = new FileReader()
-          r.onload = () => resolve((r.result as string).split(',')[1])
-          r.onerror = () => reject(new Error('That file could not be opened.'))
-          r.readAsDataURL(file)
-        })
+      // HOWEVER BIG IT IS - 22 Nov 2026. Small files go as base64 exactly as
+      // they always have; one too big for Vercel's 4.5 MB request body goes
+      // into the reading room and only its path is posted. The answer is read
+      // as text first, because a 413 is not JSON and res.json() on it is what
+      // put "Unexpected token 'R'" in front of Belle.
+      // See lib/send-a-document-to-be-read.ts.
+      const sent = await sendToBeRead(file)
         const res = await fetch('/api/read-loan-contract', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pdfBase64: base64 }),
+          body: JSON.stringify(sent.body),
         })
-        const out = await res.json()
-        if (!res.ok) { setMsg(out?.error || 'The contract could not be read.'); setBusy(false); return }
+        const answer = await readAnswer(res)
+        if (!answer.ok) { setMsg(answer.why); setBusy(false); return }
+        const out = answer.out
         lender = lender || out.lender || ''
         reference = reference || out.reference || ''
         for (const l of out.loans || []) loans.push(l)

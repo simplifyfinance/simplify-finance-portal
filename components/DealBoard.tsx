@@ -130,7 +130,7 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
 }) {
   const router = useRouter()
   // Folded columns, this person's own, remembered across logins.
-  const { folds, toggle } = useColumnFolds()
+  const { folds, toggle, refused: foldsRefused } = useColumnFolds()
 
   // WHICH SUB-TAB EACH COLUMN IS ON. Deliberately not remembered: the board
   // opens on All every morning. A remembered filter saves two clicks a day and
@@ -397,6 +397,17 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
       {msg && (
         <div className="mb-3 text-[12.5px] rounded-lg border border-waiting-edge bg-waiting-bg text-body px-3 py-2">
           {msg} <button onClick={() => setMsg('')} className="underline text-waiting ml-1">Dismiss</button>
+        </div>
+      )}
+      {/* A FOLD THAT DID NOT SAVE SAYS SO - 22 Nov 2026.
+          Belle and Ellesse folded columns for a week and found them open again
+          every time. The write was refused the whole time and nothing on the
+          board mentioned it. It is said once, here, in the words of what
+          actually happened - not "an error occurred". */}
+      {foldsRefused && (
+        <div className="mb-3 text-[12.5px] rounded-lg border border-waiting-edge bg-waiting-bg text-body px-3 py-2">
+          The columns you folded are folded for now, but the database refused to
+          remember them, so they will be open again next time. Tell Fabio.
         </div>
       )}
       {/* THE PANE. See lib/board-pane.ts. On a laptop the board is exactly as

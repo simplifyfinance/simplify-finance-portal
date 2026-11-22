@@ -1,4 +1,5 @@
 'use client'
+import { sendToBeRead, readAnswer } from '@/lib/send-a-document-to-be-read'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import DropZone from '@/components/DropZone'
 import { assess, type PayLine, type PayKind } from '@/lib/annualise-income'
@@ -127,19 +128,21 @@ export default function PayslipIncome({
     const failed: string[] = []
     for (const file of files) {
       try {
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve((reader.result as string).split(',')[1])
-          reader.onerror = () => reject(new Error('could not be opened'))
-          reader.readAsDataURL(file)
-        })
+        // HOWEVER BIG IT IS - 22 Nov 2026. Small files go as base64 exactly as
+        // they always have; one too big for Vercel's 4.5 MB request body goes
+        // into the reading room and only its path is posted. The answer is read
+        // as text first, because a 413 is not JSON and res.json() on it is what
+        // put "Unexpected token 'R'" in front of Belle.
+        // See lib/send-a-document-to-be-read.ts.
+        const sent = await sendToBeRead(file)
         const res = await fetch('/api/read-payslip', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pdfBase64: base64 }),
+          body: JSON.stringify(sent.body),
         })
-        const data = await res.json()
-        if (data?.error || !data?.payslip) failed.push(`${file.name} — ${data?.error || 'nothing came back'}`)
-        else got.push({ name: file.name, read: data.payslip })
+        const answer = await readAnswer(res)
+        if (!answer.ok) failed.push(`${file.name} — ${answer.why}`)
+        else if (!answer.out?.payslip) failed.push(`${file.name} — nothing came back`)
+        else got.push({ name: file.name, read: answer.out.payslip })
       } catch (e: any) {
         failed.push(`${file.name} — ${e?.message || 'could not be read'}`)
       }
