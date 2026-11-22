@@ -142,7 +142,7 @@ async function senderOf(supabase: any) {
 // list as the screen phrased it, so nothing a browser sends here can change a
 // number in the email - which is the rule every other field in this route
 // follows.
-const VALUATIONS = ['desktop', 'full', 'none'] as const
+const VALUATIONS = ['desktop', 'full_at_price', 'full', 'short', 'none'] as const
 
 function keysFrom(raw: any): string[] {
   try {
@@ -176,6 +176,17 @@ function offerAcceptedChoices(get: (k: string) => any, deal: any) {
     sentWith: sentWithWords(keysFrom(get('sentWith'))),
     // Digits only. "two" would read as "two business two days".
     businessDays: txt(get('businessDays')).replace(/[^0-9]/g, ''),
+    // A FIGURE, AND ONLY A FIGURE.
+    //
+    // 22 Nov 2026. This is the one number in the email a person types rather
+    // than the deal supplying it, and it lands in a sentence a client reads:
+    // "come in short at ___". So it is stripped to digits and at most one
+    // decimal point before it goes anywhere near money(), the same way
+    // businessDays and fixedTerm are. A browser cannot put words here.
+    valuationAmount: txt(get('valuationAmount'))
+      .replace(/[^0-9.]/g, '')
+      .replace(/^(\d*\.?\d*).*$/, '$1')
+      .slice(0, 12),
     // A NUMBER OF YEARS, NOT A PHRASE. It lands inside "a ___ fixed rate
     // option", so anything but digits is a browser writing part of a
     // sentence in a client email.

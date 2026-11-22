@@ -50,7 +50,17 @@ const DISCLAIMER =
 //
 // His blank template had these as two blocks of asterisks with one to delete.
 // A choice of three means the other two never reach a client.
-export type Valuation = 'desktop' | 'full' | 'none'
+// FOUR ANSWERS, NOT THREE - 22 Nov 2026.
+//
+// Camille, on a deal with a full valuation already back: "Ive got full val but
+// its saying come back at purchase price." She had to pick between a DESKTOP
+// that came back at price and a FULL that was still awaiting inspection, and
+// neither was true. She picked Full and the email told her client the opposite
+// of what had happened.
+//
+// A full valuation that has come back at price is the commonest good news on a
+// purchase and there was no way to say it.
+export type Valuation = 'desktop' | 'full_at_price' | 'full' | 'short' | 'none'
 
 export type OfferAcceptedContext = {
   brand?: Brand
@@ -64,6 +74,18 @@ export type OfferAcceptedContext = {
   sentWith: string
   /** How long until we expect to hear. Blank leaves the sentence out. */
   businessDays: string
+  // WHAT A SHORT VALUATION CAME BACK AT.
+  //
+  // 22 Nov 2026. Fabio: "a situation where a valuation, either desktop or full
+  // val, I don't want to describe, came back short, which is rare, but it
+  // could happen... Valuation came in short at, and then a box that will put
+  // the amount, which means we would have to rework your deposit as per below.
+  // And then my credit team will know what to do."
+  //
+  // ONE ANSWER, NOT TWO. Whether it was a desktop or a full one stops
+  // mattering the moment it is short: the figure is the news, and what follows
+  // from it is the same either way.
+  valuationAmount: string
 
   /** What they still owe us, in the deal's own words. */
   documents: string[]
@@ -108,6 +130,31 @@ export function valuationLine(ctx: OfferAcceptedContext): string {
   if (ctx.valuation === 'desktop') {
     return `We have now ordered a valuation through <b>${lender}</b> which has come back at purchase `
       + `price. ${together}`
+  }
+  // IT CAME BACK SHORT, AND THE NUMBERS BELOW HAVE ALREADY MOVED.
+  //
+  // Said plainly, then straight to what it means for them, because the figures
+  // table under this paragraph is where the reworked deposit is. Rare, but the
+  // one case where the email has to carry bad news, so it does not dress it up.
+  //
+  // NO FIGURE, NO INVENTED ONE. The sentence still says it came in short; it
+  // just does not name an amount nobody typed.
+  if (ctx.valuation === 'short') {
+    // money() on something unreadable comes back empty, which is what we want:
+    // "come in short at , which means" would be worse than no figure at all.
+    const at = money(ctx.valuationAmount)
+    return at
+      ? `The valuation has come in short at ${at}, which means we will need to rework your `
+        + `deposit as set out below.`
+      : `The valuation has come in short, which means we will need to rework your deposit as set `
+        + `out below.`
+  }
+
+  // A FULL VALUATION THAT IS BACK, AND BACK AT PRICE. It says "full" out loud,
+  // because a client who knows an inspection happened should see it named.
+  if (ctx.valuation === 'full_at_price') {
+    return `We have now had a full valuation completed through <b>${lender}</b> which has come back `
+      + `at purchase price. ${together}`
   }
   if (ctx.valuation === 'full') {
     return `We have now ordered a valuation through <b>${lender}</b>. Once we have an inspection date `

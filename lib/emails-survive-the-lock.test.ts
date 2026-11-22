@@ -109,10 +109,18 @@ describe('the browser posts the deal, never the email', () => {
     //     looks each one up and takes the NAME from the table, so a browser can
     //     choose which colleague is introduced and cannot invent one. An id
     //     that matches nobody is dropped rather than printed.
+    //
+    // 22 NOV 2026. valuationAmount joined them, and it is a figure, like
+    // businessDays: what a valuation came back at where it came back short. It
+    // lands inside "come in short at ___, which means we will need to rework
+    // your deposit", which is a sentence a client reads, so the route strips it
+    // to digits and at most one decimal point before money() ever sees it. A
+    // browser that posts words here gets no figure at all, not words in the
+    // email - see lib/the-email-congratulates-the-right-house.test.ts.
     const allowed = ['dealId', 'template', 'overrides', 'extra', 'expiry',
                      'insuranceAmount', 'brandId', 'brokerKey', 'calendly', 'file',
                      'valuation', 'sentWith', 'documents', 'businessDays', 'fixedTerm',
-                     'contacts']
+                     'valuationAmount', 'contacts']
     const extra = posted.filter(k => !allowed.includes(k))
     expect(extra, 'anything else on this form is something a browser could put in a client email')
       .toEqual([])

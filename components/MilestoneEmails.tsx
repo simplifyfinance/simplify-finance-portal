@@ -208,11 +208,18 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
   const [preview, setPreview] = useState<Preview | null>(null)
   const [overrides, setOverrides] = useState<Record<string, boolean>>({})
   const [extra, setExtra] = useState('')
+  // True while what is on screen was built from older answers than the ones in
+  // the form. See the note in load().
+  const [stale, setStale] = useState(false)
   const [expiry, setExpiry] = useState('')
   const [insuranceAmount, setInsuranceAmount] = useState('')
   // THE OFFER ACCEPTED EMAIL'S OWN FOUR CHOICES. Everything else on this
   // screen comes off the deal; these are the things only a person knows.
-  const [valuation, setValuation] = useState<'desktop' | 'full' | 'none'>('desktop')
+  const [valuation, setValuation] =
+    useState<'desktop' | 'full_at_price' | 'full' | 'short' | 'none'>('desktop')
+  // WHAT IT CAME BACK AT, where it came back short. Only asked for, and only
+  // sent, on that one answer - see the box below the buttons.
+  const [valuationAmount, setValuationAmount] = useState('')
   // TICKS, NOT A SENTENCE. See SENT_WITH in lib/offer-accepted-email.ts and
   // the rule in lib/emails-survive-the-lock.test.ts: a browser must not be
   // able to put words into a client email.
@@ -274,9 +281,32 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
   // KEYS ONLY, NEVER THE WORDS. The route reads the same outstanding list off
   // the deal and takes the wording from there - see the rule in
   // lib/emails-survive-the-lock.test.ts.
+  // THE TICKS, AND NOTHING THAT CARRIES THE DEAL WITH THEM.
+  //
+  // 22 Nov 2026. THIS is why the preview stopped rebuilding. Camille: "Ive got
+  // full val but its saying come back at purchase price. Ive got 4 days its
+  // still picking 2 days. And the anything else is not populating." All three
+  // were the screen's opening values, on an email she had changed three times.
+  //
+  // This line filtered the ticked keys through `outstanding`, which is memoised
+  // on the `deal` OBJECT. The deal page hands this component a fresh deal
+  // object on every one of its renders - autosave, presence, a keystroke in
+  // another box - so `outstanding` was a new array each time, so `docKeys` was,
+  // so `load` was, so the effect below cleared its 250ms timer and started a
+  // new one. Renders come faster than 250ms while anybody is typing, so the
+  // timer never reached the end and the fetch never ran.
+  //
+  // The FIRST preview landed, at mount. Nothing after it ever did. No error,
+  // no red line, nothing to see - the email just quietly stayed as it was while
+  // the form moved on without it.
+  //
+  // The filter was only dropping keys for documents no longer outstanding, and
+  // the route already does exactly that - see offerAcceptedChoices, which reads
+  // the outstanding list off the deal and keeps only the keys that match. So
+  // the ticks go up on their own and the deal stays out of this chain.
   const docKeys = useMemo(
-    () => outstanding.filter((d: DocRow) => chasing[d.key]).map((d: DocRow) => d.key),
-    [outstanding, chasing])
+    () => Object.keys(chasing).filter(k => chasing[k]),
+    [chasing])
   const sentWithKeys = useMemo(
     () => SENT_WITH.filter(x => sentWith[x.key]).map(x => x.key), [sentWith])
   const [file, setFile] = useState<File | null>(null)
@@ -347,7 +377,7 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
     const qs = new URLSearchParams({
       dealId: deal.id, template: templateId,
       overrides: JSON.stringify(overrides), extra, expiry, insuranceAmount,
-      valuation, businessDays, fixedTerm,
+      valuation, businessDays, fixedTerm, valuationAmount,
       sentWith: JSON.stringify(sentWithKeys),
       ...(contacts === null ? {} : { contacts: JSON.stringify(contacts) }),
       documents: JSON.stringify(docKeys),
@@ -357,20 +387,52 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
     try {
       const res = await fetch(`/api/send-milestone-email?${qs.toString()}`)
       const json = await res.json()
-      if (!res.ok) { setErr(json?.error || 'The preview could not be built.'); return }
+      // A PREVIEW THAT FAILED TO REBUILD IS NOT THE EMAIL - 22 Nov 2026.
+      //
+      // Camille: "Ive got full val but its saying come back at purchase price.
+      // Ive got 4 days its still picking 2 days. And the anything else is not
+      // populating." Every one of those three was the screen's OPENING state -
+      // desktop, 2 days, an empty box - so the email she was reading had been
+      // built before she touched anything and had not been rebuilt since.
+      //
+      // This used to set a small error line and return, leaving the previous
+      // email on screen looking exactly as current as it had a second ago.
+      // Nothing said it was out of date and Send still worked, so the way to
+      // send the wrong email was to have one failed refresh and not notice.
+      if (!res.ok) {
+        setErr(json?.error || 'The preview could not be built.')
+        setStale(true)
+        return
+      }
       setPreview(json)
+      setStale(false)
     } catch (e: any) {
       setErr(`The preview could not be built — ${e?.message || 'network error'}.`)
+      setStale(true)
     }
   }, [deal.id, templateId, overrides, extra, expiry, insuranceAmount, brokerKey, brandId, calendly,
-      valuation, sentWithKeys, businessDays, fixedTerm, docKeys, contacts])
+      valuation, sentWithKeys, businessDays, fixedTerm, docKeys, contacts,
+      valuationAmount])
 
   // Redrawn as you tick. Typing is debounced so the free text box does not
   // rebuild the email on every keystroke.
+  //
+  // AND IT CANNOT BE STARVED BY A RE-RENDER - 22 Nov 2026. The debounce used to
+  // restart whenever `load` changed identity, which a parent re-render could
+  // cause without a single answer changing. The timer is keyed on the ANSWERS
+  // now, so a page that re-renders twenty times while somebody types does not
+  // postpone the rebuild twenty times. See the note on docKeys above.
+  const latest = useRef(load)
+  latest.current = load
+  const answers = JSON.stringify([
+    deal.id, templateId, overrides, extra, expiry, insuranceAmount,
+    brokerKey, brandId, calendly, valuation, sentWithKeys, businessDays,
+    fixedTerm, docKeys, contacts, valuationAmount,
+  ])
   useEffect(() => {
-    const t = setTimeout(() => { load() }, 250)
+    const t = setTimeout(() => { latest.current() }, 250)
     return () => clearTimeout(t)
-  }, [load])
+  }, [answers])
 
   // ONE PASTE, AND THE CARD HAS IT.
   //
@@ -403,6 +465,7 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
       body.set('expiry', expiry)
       body.set('insuranceAmount', insuranceAmount)
       body.set('valuation', valuation)
+      body.set('valuationAmount', valuationAmount)
       body.set('sentWith', JSON.stringify(sentWithKeys))
       body.set('businessDays', businessDays)
       body.set('fixedTerm', fixedTerm)
@@ -593,8 +656,16 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
                     wrapped in asterisks. */}
                 <Shout className="mt-5">The valuation</Shout>
                 <div className="flex gap-1.5 flex-wrap">
+                  {/* FIVE, SINCE 22 Nov 2026. A full valuation already back
+                      at price had no button, so it was being recorded as a
+                      desktop one; and one that came back SHORT had no way to be
+                      said at all. "Short" does not name desktop or full, which
+                      is Fabio's call: once it is short, which kind it was stops
+                      being the news. See lib/offer-accepted-email.ts. */}
                   {([['desktop', 'Desktop — back at price'],
+                     ['full_at_price', 'Full — back at price'],
                      ['full', 'Full — awaiting inspection'],
+                     ['short', 'Came in short'],
                      ['none', 'Not ordered yet']] as const).map(([k, label]) => (
                     <button key={k} onClick={() => setValuation(k)}
                       className={`text-[11.5px] rounded-full px-3 py-[5px] border transition ${
@@ -604,6 +675,23 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
                     </button>
                   ))}
                 </div>
+
+                {/* THE FIGURE, ASKED FOR ONLY WHERE IT APPLIES. The email reads
+                    "come in short at $X, which means we will need to rework your
+                    deposit as set out below" - and the figures table under that
+                    paragraph is the "below". Left blank, the sentence still goes
+                    out, just without a number. */}
+                {valuation === 'short' && (
+                  <div className="flex gap-2 items-center mt-2">
+                    <input value={valuationAmount}
+                      onChange={e => setValuationAmount(e.target.value)}
+                      placeholder="850,000" inputMode="decimal"
+                      className="w-32 border border-[#E3E6E8] rounded-lg px-2.5 py-1.5 text-[12.5px]" />
+                    <span className="text-[11.5px] text-faint">
+                      what it came back at. Rework the deposit in the figures below.
+                    </span>
+                  </div>
+                )}
 
                 <Shout className="mt-5">What went with it</Shout>
                 <div className="flex gap-1.5 flex-wrap">
@@ -785,6 +873,18 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
             <p className="border border-chase-edge bg-chase-bg rounded-lg px-3 py-2 text-[12.5px] text-chase">{err}</p>
           </div>
         )}
+        {/* AND WHAT IT MEANS FOR THE EMAIL UNDERNEATH. The error above says
+            the rebuild failed; this says the thing you are reading is older
+            than your answers, which is the part that matters. */}
+        {stale && (
+          <div className="px-5 pt-2">
+            <p className="border-2 border-chase bg-chase-bg rounded-lg px-3 py-2.5 text-[12.5px] text-ink m-0">
+              <b className="text-chase">This is not your email.</b> It was built before your last
+              change and could not be rebuilt, so it is out of date. Sending is off until it
+              redraws — change something, or close and open it again.
+            </p>
+          </div>
+        )}
         {done && (
           <div className="px-5 pt-2">
             <p className="border border-chase-edge bg-chase-bg rounded-lg px-3 py-2 text-[12.5px] text-chase">{done}</p>
@@ -812,7 +912,7 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
         )}
 
         <div className="border-t border-[#EEF0F2] bg-[#FAFAF8] px-5 py-3 flex gap-2 items-center flex-wrap rounded-b-xl">
-          <button onClick={send} disabled={busy || sent || (wantsLetter && !file) || !preview?.to?.length}
+          <button onClick={send} disabled={busy || sent || stale || (wantsLetter && !file) || !preview?.to?.length}
             className="bg-ink text-page rounded-lg px-4 py-2 text-[12.5px] font-semibold disabled:opacity-40">
             {busy ? 'Sending…' : sent ? '\u2713 Sent' : 'Send'}
           </button>

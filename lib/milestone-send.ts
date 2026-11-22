@@ -35,7 +35,8 @@ import { milestoneRows, loanDetails, missingFigures } from './milestone-figures'
 import { loanDetailsNow } from './the-loan-now'
 import { contractsByPhrase, insuredPartyName, type LenderRule, answerTo, netbankingSteps } from './lender-rules'
 import { buildFormalApprovalEmail } from './formal-approval-email'
-import { buildOfferAcceptedEmail, loanMovedLine, depositPaidLine } from './offer-accepted-email'
+import { buildOfferAcceptedEmail, loanMovedLine, depositPaidLine,
+  type Valuation } from './offer-accepted-email'
 import { buildPreapprovalEmail } from './preapproval-email'
 import { buildFinalCheckinEmail } from './final-checkin-email'
 import { lenderOnTheDeal, optionOnTheDeal, splitsOnTheDeal } from './client-agreement'
@@ -69,9 +70,15 @@ export type AssembleInput = {
   // the things only a person knows: which valuation was ordered, what went to
   // the lender with the contract, how long they said they would take, and
   // which outstanding documents to chase in this particular email.
-  valuation?: 'desktop' | 'full' | 'none'
+  //
+  // 22 Nov 2026: 'full_at_price' and 'short' joined them. This type had drifted
+  // behind lib/offer-accepted-email.ts - it still listed three - and the cast
+  // on the way out hid it. Kept honest now by naming the type itself.
+  valuation?: Valuation
   sentWith?: string
   businessDays?: string
+  /** What it came back at, where it came back short. */
+  valuationAmount?: string
   documents?: string[]
   /** The term to offer where the fixed rate block is ticked on. */
   fixedTerm?: string
@@ -143,8 +150,30 @@ export function preapprovalExpiry(deal: any, now = new Date()): string {
   return age ? longDate(age.expiresOn.toISOString()) : ''
 }
 
+/**
+ * THE HOUSE THEY ARE BEING CONGRATULATED ON.
+ *
+ * 22 Nov 2026. Camille Jardeleza's offer accepted email opened
+ * "Congratulations — 29 Clifton St, Bourkelands NSW 2650 is yours." She was
+ * not buying 29 Clifton St. She already lives there.
+ *
+ * securityOf() takes the first property on the FACT FIND that looks like a
+ * security, and falls back to the first one with an address at all. On a
+ * purchase by somebody who already owns property - which is most purchases,
+ * and every SMSF one - that is their existing house sitting at the top of
+ * their own fact find. The email congratulated her on the home she already
+ * had, in writing, with the price of the one she was buying underneath it.
+ *
+ * THE RIGHT ANSWER WAS ALREADY RECORDED. deals.purchase_address is written at
+ * the offer accepted step - see components/OfferAccepted.tsx - which is the
+ * step immediately before this email is sent. It is the one field on the deal
+ * that means "the house being bought", and nothing read it here.
+ *
+ * The old answer stays as the fallback, for a refinance or a deal where the
+ * address has not been typed yet. It was never wrong about those.
+ */
 export function propertyAddressOf(deal: any): string {
-  return txt(securityOf(deal)?.address)
+  return txt(deal?.purchase_address) || txt(securityOf(deal)?.address)
 }
 
 // THE BLOCKS, BEFORE ANYBODY TOUCHES THEM.
@@ -302,9 +331,10 @@ export function assembleMilestoneEmail(input: AssembleInput): Assembled | null {
       clientNames,
       lenderName,
       propertyAddress: propertyAddressOf(deal),
-      valuation: (input.valuation || 'desktop') as any,
+      valuation: input.valuation || 'desktop',
       sentWith: txt(input.sentWith),
       businessDays: txt(input.businessDays),
+      valuationAmount: txt(input.valuationAmount),
       documents: (input.documents || []).map(txt).filter(Boolean),
       extra: txt(input.extra),
       rows,
