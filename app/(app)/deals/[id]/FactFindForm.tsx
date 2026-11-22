@@ -3,6 +3,7 @@ import { sendToBeRead, readAnswer } from '@/lib/send-a-document-to-be-read'
 import RunServiceability from '@/components/RunServiceability'
 import { inDateOrder, outOfOrder } from '@/lib/employment-in-order'
 import DropZone from '@/components/DropZone'
+import SelfEmployedFromReturns from '@/components/SelfEmployedFromReturns'
 import { isLowDoc } from '@/lib/low-doc'
 import WhoSharesThisDeal from '@/components/WhoSharesThisDeal'
 import SectionHeader from '@/components/SectionHeader'
@@ -94,6 +95,22 @@ type Income = {
   allowanceFrequency: string
   seBusinessName: string
   seAbn: string
+  // WHICH ROUTE THIS INCOME IS BEING DONE BY - 22 Nov 2026.
+  //
+  // 'simple'  the returns were dropped and read. See components/SelfEmployedFromReturns.tsx.
+  // 'complex' typed by hand - trusts, partnerships, more than one business,
+  //           low doc, or a director's salary. The screen below, unchanged.
+  // ''        not answered yet, which is what a new income row is.
+  //
+  // Fabio set the boundary: "SIMPLE ONLY read company and individual, doesnt
+  // read trust, multiple entities etc - so we need to GUIDE my team."
+  seRoute: string
+  /** What the reader made of each dropped document. Drawn, never calculated from. */
+  seDocuments: any[]
+  /** Which column of the comparison was pressed, and by whom. */
+  seChosenColumn: string
+  seLockedBy: string
+  seLockedAt: string
   seAssessmentMethod: string
   /**
    * WHAT WE ARE DECLARING, ON A LOW DOC ASSESSMENT.
@@ -377,7 +394,9 @@ const defaultIncome = (type: string = 'PAYG'): Income => ({
   overtimeNonEssentialAmount: '', overtimeNonEssentialFrequency: 'Annually',
   commissionAmount: '', commissionFrequency: 'Annually',
   allowanceAmount: '', allowanceFrequency: 'Annually',
-  seBusinessName: '', seAbn: '', seAssessmentMethod: '', seLowDocIncome: '',
+  seBusinessName: '', seAbn: '', seRoute: '', seDocuments: [],
+  seChosenColumn: '', seLockedBy: '', seLockedAt: '',
+  seAssessmentMethod: '', seLowDocIncome: '',
   seGrowthMethod: '', seGrowthPercentOption: '', seGrowthPercentCustom: '',
   seYear1FY: '', seYear1Salary: '', seYear1NetProfit: '',
   seYear1Depreciation: '', seYear1Interest: '', seYear1Super: '', seYear1OneOff: '', seYear1Other: '',
@@ -2044,6 +2063,29 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                       ABN: {applicant.employment.find(e => e.id === inc.employmentId)?.employerAbn || '\u2014'}
                     </div>
                   </div>
+                  {/* THE ROUTE, AND THE READER - 22 Nov 2026.
+                      ==========================================================
+                      Draws the question first, then the drop box, the
+                      documents, the comparison and the stop bands. It writes
+                      the SAME fields the dropdown below has always written, so
+                      the compliance notes, the broker notes, the handover and
+                      the document list carry on reading what they already read.
+                      Nothing below this line changed.
+                      See docs/approved-looks/self-employed-income.html and the
+                      three mocks beside it, all signed off before it was built. */}
+                  <SelfEmployedFromReturns
+                    inc={inc}
+                    me={me?.name || ''}
+                    onChange={(field, value) => updateIncome(inc.id, field as any, value)}
+                    onChangeMany={patch => updateIncomeFields(inc.id, patch as any)} />
+
+                  {/* THE DROPDOWN STAYS, AND IT IS WHAT COMPLIANCE READS.
+                      On the simple route the comparison above fills it in; on
+                      the complex route a person chooses it, exactly as before.
+                      It is hidden only while the route has not been answered,
+                      because an empty method with no context is the thing that
+                      was confusing people. */}
+                  {!!inc.seRoute && (
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Assessment method</label>
                     <select className={inp} value={inc.seAssessmentMethod} onChange={e => updateIncome(inc.id, 'seAssessmentMethod', e.target.value)}><option value="">— select —</option>
@@ -2058,6 +2100,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                       <option value="Low doc — accountant's letter">Low doc — accountant&rsquo;s letter</option>
                     </select>
                   </div>
+                  )}
 
                   {inc.seAssessmentMethod === 'Last 2 financial years' && (
                     <div className="mb-3">

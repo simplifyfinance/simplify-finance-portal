@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Self-employed income — reading the tax returns</title>
+<style>
+  :root{
+    --page:#F7F4EF; --card:#FFFFFF; --line:#E8E2D8; --line-soft:#F1ECE4;
+    --card-line:#EBE5DB; --field-line:#DCD5C9;
+    --ink:#17140F; --body:#4D4841; --muted:#6F6A62; --faint:#A79F93;
+    --chase:#D32F2F; --chase-bg:#FDEDED; --chase-edge:#F5C9C9;
+    --done:#137A55; --done-bg:#EAFAF4; --done-edge:#B4E7D5;
+    --info:#107EA8; --info-bg:#EAF7FE; --info-edge:#BFE4F7;
+    --brand:#4FBBEA; --brand-ink:#107EA8; --on-brand:#0F1115;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--body);padding:26px 26px 70px;
+    font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  h1{font-size:18px;color:var(--ink);margin:0 0 3px}
+  .sub{font-size:12.5px;color:var(--muted);margin:0 0 6px;max-width:860px;line-height:1.55}
+  .lab{font-size:10.5px;color:var(--faint);letter-spacing:.07em;text-transform:uppercase;
+    font-weight:800;margin:34px 0 8px}
+  .says{font-size:12px;color:var(--muted);margin:-2px 0 12px;max-width:860px;line-height:1.55}
+  .frame{max-width:900px}
+  .box{background:var(--card);border:1px solid var(--card-line);border-radius:14px;overflow:hidden}
+  .bhead{display:flex;align-items:center;gap:8px;padding:11px 16px;border-bottom:1px solid var(--line-soft)}
+  .bhead .t{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink)}
+  .pad{padding:16px}
+  .num{font-variant-numeric:tabular-nums}
+
+  .dz{display:flex;flex-direction:column;align-items:center;gap:4px;border:2px dashed var(--line);
+    border-radius:12px;padding:20px 16px}
+  .dz .t{font-size:13.5px;font-weight:600;color:var(--ink)}
+  .dz .h{font-size:11.5px;color:var(--faint)}
+  .dz .rule{margin-top:6px;max-width:470px;text-align:center;font-size:11.5px;line-height:1.55;color:var(--body)}
+  .dz .rule b{color:var(--ink)}
+  .dz svg{width:18px;height:18px;color:var(--faint)}
+
+  table{width:100%;border-collapse:collapse}
+  th{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);font-weight:800;
+    text-align:left;padding:0 10px 7px;border-bottom:1px solid var(--line)}
+  th.r,td.r{text-align:right}
+  td{padding:8px 10px;border-bottom:1px solid var(--line-soft);font-size:13px;vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  .who{font-weight:600;color:var(--ink)}
+  .kind{font-size:11.5px;color:var(--muted)}
+  .yr{font-size:11.5px;color:var(--body);font-weight:600}
+  .ok{color:var(--done);font-weight:700;font-size:11.5px}
+  .ask{color:var(--chase);font-weight:700;font-size:11.5px}
+  .pick{border:1px solid var(--field-line);border-radius:8px;background:var(--card);
+    font-size:12px;padding:4px 8px;color:var(--ink)}
+
+  .tick{display:inline-flex;width:17px;height:17px;border-radius:5px;align-items:center;justify-content:center;
+    font-size:11px;flex:none;margin-top:1px}
+  .on{background:var(--ink);color:var(--page);border:1px solid var(--ink)}
+  .off{background:var(--card);border:1px solid var(--field-line);color:transparent}
+  .row{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line-soft)}
+  .row:last-child{border-bottom:0}
+  .row .n{flex:1}
+  .row .n b{color:var(--ink);font-size:13px;font-weight:600;display:block}
+  .row .n span{font-size:11.5px;color:var(--muted);line-height:1.5;display:block;margin-top:1px}
+  .row .v{text-align:right;font-size:13px;color:var(--ink);font-weight:600;min-width:92px}
+  .row.muted .n b{color:var(--muted);font-weight:500}
+  .row.muted .v{color:var(--faint);text-decoration:line-through}
+
+  .tot{display:flex;align-items:baseline;gap:10px;padding:12px 16px;background:var(--page);
+    border-top:1px solid var(--line)}
+  .tot .k{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--ink)}
+  .tot .v{margin-left:auto;font-size:17px;font-weight:700;color:var(--ink)}
+
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .pol{border:1px solid var(--card-line);border-radius:12px;padding:13px 14px;background:var(--card)}
+  .pol.sel{border:2px solid var(--ink);padding:12px 13px}
+  .pol .nm{font-size:11.5px;font-weight:700;color:var(--ink);line-height:1.35;min-height:31px}
+  .pol .big{font-size:21px;font-weight:700;color:var(--ink);margin:8px 0 2px;letter-spacing:-.01em}
+  .pol .wk{font-size:11px;color:var(--muted);line-height:1.5}
+  .pol .use{margin-top:10px;width:100%;border:1px solid var(--field-line);background:var(--card);
+    border-radius:8px;padding:6px;font-size:11.5px;color:var(--body);font-weight:600}
+  .pol.sel .use{background:var(--ink);color:var(--page);border-color:var(--ink)}
+  .growth{display:flex;align-items:center;gap:6px;margin-top:7px;font-size:11px;color:var(--muted)}
+  .growth input{width:44px;border:1px solid var(--field-line);border-radius:6px;padding:3px 5px;
+    font-size:11.5px;text-align:right;font-weight:600;color:var(--ink);background:var(--card)}
+  .after{margin-top:12px;border-left:3px solid var(--info-edge);background:var(--info-bg);
+    border-radius:0 9px 9px 0;padding:11px 14px;font-size:12.5px;line-height:1.55}
+  .after b{color:var(--ink)}
+  .later{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--brand-ink);border:1px solid var(--info-edge);background:var(--card);
+    border-radius:5px;padding:2px 6px;margin-left:7px;vertical-align:1px}
+</style></head>
+<body><div class="frame">
+
+<h1>Self-employed income</h1>
+<p class="sub">Mock, 22 November 2026. Appears on the Income tab once somebody is marked self-employed.
+Invented client and company. Four screens, one after the other, as it would actually go.</p>
+
+<!-- ============ 1. DROP ============ -->
+<p class="lab">1 &mdash; what you give it</p>
+<p class="says">One box, everything at once. It does not ask what each file is &mdash; every one of these
+documents names its entity, its ABN and its year, so the portal reads that off the document rather than
+asking somebody to classify a PDF. Large files go the same way the loan contracts now do, so a full set
+of financials is not a problem.</p>
+
+<div class="box"><div class="pad">
+  <div class="dz">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
+    <span class="t">Drop the tax returns and financials here</span>
+    <span class="h">as many as you have &middot; any size</span>
+    <p class="rule"><b>Individual returns, company returns, financials and notices of assessment.</b>
+      Two years if you have them. The portal works out what each one is and which year it belongs to.</p>
+  </div>
+</div></div>
+
+<!-- ============ 2. WHAT IT READ ============ -->
+<p class="lab">2 &mdash; what it worked out</p>
+<p class="says">Shown before a single figure is used. Anything it could not place sits at the top in red
+and waits for you &mdash; it never guesses an entity or a year, because a 2024 column read as 2025 is a
+number that then gets quoted to a lender.</p>
+
+<div class="box">
+  <div class="bhead"><span class="t">The documents</span></div>
+  <div class="pad" style="padding-top:12px">
+  <table>
+    <tr><th>Whose</th><th>What</th><th>Year</th><th class="r">Read</th></tr>
+    <tr>
+      <td class="who">Dominic Ferraro</td>
+      <td class="kind">Individual tax return</td>
+      <td class="yr">2025</td>
+      <td class="r"><span class="ok">&#10003; read</span></td>
+    </tr>
+    <tr>
+      <td class="who">Dominic Ferraro</td>
+      <td class="kind">Individual tax return</td>
+      <td class="yr">2024</td>
+      <td class="r"><span class="ok">&#10003; read</span></td>
+    </tr>
+    <tr>
+      <td class="who">Ferraro Carpentry Pty Ltd<div class="kind">ABN 61 004 982 117 &middot; Dominic holds 100%</div></td>
+      <td class="kind">Company financials<div class="kind">profit and loss, two years in one document</div></td>
+      <td class="yr">2025 and 2024</td>
+      <td class="r"><span class="ok">&#10003; read</span></td>
+    </tr>
+    <tr>
+      <td class="who">Ferraro Carpentry Pty Ltd</td>
+      <td class="kind">Company tax return</td>
+      <td class="yr">2025</td>
+      <td class="r"><span class="kind">not used &mdash; the financials say more</span></td>
+    </tr>
+    <tr>
+      <td class="who">&mdash;</td>
+      <td class="kind">Could not tell what this is<div class="kind">Scan_20261118_094412.pdf</div></td>
+      <td><select class="pick"><option>Say what it is</option></select></td>
+      <td class="r"><span class="ask">needs you</span></td>
+    </tr>
+  </table>
+  </div>
+</div>
+
+<!-- ============ 3. THE FIGURES ============ -->
+<p class="lab">3 &mdash; the figures, and what gets added back</p>
+<p class="says">The portal finds every candidate add-back and <b>proposes</b> it. It never decides.
+Depreciation is on by default because it almost always is. Interest is off, because it is only added back
+where the debt is being paid out. And the director&rsquo;s wage is off with the reason showing &mdash; it is
+already counted as Dominic&rsquo;s salary above, so adding it back here would count it twice. That one is the
+whole reason this is ticks and not arithmetic.</p>
+
+<div class="box">
+  <div class="bhead"><span class="t">Year ended 30 June 2025</span></div>
+  <div class="pad" style="padding-top:6px">
+    <div class="row">
+      <span class="tick on">&#10003;</span>
+      <span class="n"><b>Salary from Ferraro Carpentry Pty Ltd</b>
+        <span>Individual return 2025, item 1</span></span>
+      <span class="v num">$92,000</span>
+    </div>
+    <div class="row">
+      <span class="tick on">&#10003;</span>
+      <span class="n"><b>Company net profit before tax</b>
+        <span>Financials 2025 &middot; 100% of it, because Dominic holds 100%</span></span>
+      <span class="v num">$88,300</span>
+    </div>
+    <div class="row">
+      <span class="tick on">&#10003;</span>
+      <span class="n"><b>Add back depreciation</b>
+        <span>Not money that left the business</span></span>
+      <span class="v num">$17,700</span>
+    </div>
+    <div class="row muted">
+      <span class="tick off">&#10003;</span>
+      <span class="n"><b>Add back interest paid</b>
+        <span>Only where the debt is being paid out at settlement. Tick it if it is.</span></span>
+      <span class="v num">$8,650</span>
+    </div>
+    <div class="row muted">
+      <span class="tick off">&#10003;</span>
+      <span class="n"><b>Add back director&rsquo;s wages</b>
+        <span>Left off on purpose &mdash; this is Dominic&rsquo;s own salary, already counted at the top.
+          Ticking it counts the same money twice.</span></span>
+      <span class="v num">$92,000</span>
+    </div>
+  </div>
+  <div class="tot"><span class="k">2025</span><span class="v num">$198,000</span></div>
+</div>
+
+<div class="box" style="margin-top:11px">
+  <div class="bhead"><span class="t">Year ended 30 June 2024</span></div>
+  <div class="pad" style="padding-top:6px">
+    <div class="row">
+      <span class="tick on">&#10003;</span>
+      <span class="n"><b>Salary from Ferraro Carpentry Pty Ltd</b><span>Individual return 2024, item 1</span></span>
+      <span class="v num">$88,000</span>
+    </div>
+    <div class="row">
+      <span class="tick on">&#10003;</span>
+      <span class="n"><b>Company net profit before tax</b><span>Financials 2024</span></span>
+      <span class="v num">$41,400</span>
+    </div>
+    <div class="row">
+      <span class="tick on">&#10003;</span>
+      <span class="n"><b>Add back depreciation</b><span>Not money that left the business</span></span>
+      <span class="v num">$12,600</span>
+    </div>
+  </div>
+  <div class="tot"><span class="k">2024</span><span class="v num">$142,000</span></div>
+</div>
+
+<!-- ============ 4. THE FOUR ============ -->
+<p class="lab">4 &mdash; the four ways to read those two years</p>
+<p class="says">All four, same size, nothing pre-chosen. You pick the figure you want to use, and then go
+and find the lender that allows it &mdash; which is the way round you actually work. The spread here is
+$56,000 of assessable income, which is the difference between a deal and no deal.</p>
+
+<div class="grid4">
+  <div class="pol">
+    <div class="nm">Latest year on its own</div>
+    <div class="big num">$198,000</div>
+    <div class="wk">2025 only. Ignores 2024 entirely.</div>
+    <button class="use">Use this</button>
+  </div>
+  <div class="pol">
+    <div class="nm">Lower of the two years</div>
+    <div class="big num">$142,000</div>
+    <div class="wk">2024, because it is the smaller. The safest read.</div>
+    <button class="use">Use this</button>
+  </div>
+  <div class="pol sel">
+    <div class="nm">Average of the two years</div>
+    <div class="big num">$170,000</div>
+    <div class="wk">2025 and 2024, halved.</div>
+    <button class="use">Using this</button>
+  </div>
+  <div class="pol">
+    <div class="nm">Previous year plus growth</div>
+    <div class="big num">$170,400</div>
+    <div class="wk">2024 grown by the allowance, because 2025 is 39% up and that is more than most will take.</div>
+    <div class="growth">plus <input value="20"> % &nbsp;per lender</div>
+    <button class="use">Use this</button>
+  </div>
+</div>
+
+<div class="after">
+  <b>Using $170,000 &mdash; the average.</b> Written to the income section and carried into the borrowing
+  capacity. The other three stay on this screen so anybody opening the deal later can see what was
+  available and what was chosen.
+  <span class="later">later</span>
+  <div style="margin-top:7px;color:var(--muted);font-size:12px">
+    Next step after this ships: the portal names which lenders allow the figure you picked, off the
+    lender rules it already holds.
+  </div>
+</div>
+
+</div></body></html>

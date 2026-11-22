@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Use this — what happens when you press it</title>
+<style>
+  :root{
+    --page:#F7F4EF; --card:#FFFFFF; --line:#E8E2D8; --line-soft:#F1ECE4;
+    --card-line:#EBE5DB; --field-line:#DCD5C9;
+    --ink:#17140F; --body:#4D4841; --muted:#6F6A62; --faint:#A79F93;
+    --chase:#D32F2F; --chase-bg:#FDEDED;
+    --done:#137A55; --done-bg:#EAFAF4; --done-edge:#B4E7D5;
+    --info:#107EA8; --info-bg:#EAF7FE; --info-edge:#BFE4F7;
+    --waiting:#5B3A9E; --waiting-bg:#F4F1FC; --waiting-edge:#DACFF1;
+    --brand-ink:#107EA8; --stone:#F3EFE8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--body);padding:28px 28px 90px;
+    font:15.5px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .frame{max-width:1200px;margin:0 auto}
+  h1{font-size:23px;color:var(--ink);margin:0 0 4px}
+  .sub{font-size:14.5px;color:var(--muted);margin:0 0 6px;line-height:1.6;max-width:940px}
+  .step{display:flex;align-items:baseline;gap:11px;margin:46px 0 8px}
+  .step .n{width:27px;height:27px;border-radius:50%;background:var(--ink);color:var(--page);
+    font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;
+    align-self:center}
+  .step h2{font-size:18px;color:var(--ink);margin:0}
+  .says{font-size:14.5px;color:var(--body);margin:0 0 16px;max-width:940px;line-height:1.62}
+  .says b{color:var(--ink)}
+  .num{font-variant-numeric:tabular-nums}
+  .box{background:var(--card);border:1px solid var(--card-line);border-radius:14px;overflow:hidden}
+
+  table{width:100%;border-collapse:collapse;table-layout:fixed}
+  col.lbl{width:236px}
+  tr.band th{padding:8px 14px;font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+    border-bottom:1px solid var(--line)}
+  th.gRead{background:var(--stone);color:var(--muted);text-align:center}
+  th.gUse{background:var(--info-bg);color:var(--info);text-align:center}
+  th.gap{background:transparent;border-bottom:1px solid var(--line)}
+  tr.cols th{padding:10px 14px 8px;font-size:12.5px;font-weight:700;color:var(--ink);text-align:right;
+    border-bottom:1px solid var(--line);line-height:1.3;vertical-align:bottom}
+  tr.cols th .yr{display:block;font-size:11px;color:var(--faint);font-weight:600;margin-top:2px}
+  tr.cols th.l{text-align:left}
+  th.read{background:var(--stone)}
+  th.use{background:#FCFBF9}
+  th.use.sel{background:var(--ink);color:var(--card);border-bottom-color:var(--ink)}
+  th.use.sel .yr{color:#C9D2D8}
+  td{padding:10px 14px;font-size:14.5px;text-align:right;border-bottom:1px solid var(--line-soft)}
+  td.l{text-align:left;color:var(--ink);font-size:14px}
+  td.l span{display:block;font-size:12px;color:var(--muted);margin-top:1px;line-height:1.4}
+  td.read{background:var(--stone);color:var(--muted)}
+  td.use{background:#FCFBF9;color:var(--body)}
+  td.use.sel{background:var(--done-bg);color:var(--ink);font-weight:600}
+  td.plus{color:var(--done);font-weight:600}
+  tr.total td{border-top:2px solid var(--ink);border-bottom:0;padding-top:13px;padding-bottom:14px;
+    font-size:19px;font-weight:700;color:var(--ink)}
+  tr.total td.l{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+  tr.total td.read{background:var(--stone)}
+  tr.total td.use{background:#FCFBF9}
+  tr.total td.use.sel{background:var(--done-bg);color:var(--done)}
+  tr.pick td{border-bottom:0;padding-top:12px;padding-bottom:16px;vertical-align:top}
+  tr.pick td.read{background:var(--stone)}
+  tr.pick td.use{background:#FCFBF9}
+  tr.pick td.use.sel{background:var(--done-bg)}
+  .use-btn{width:100%;border:1px solid var(--field-line);background:var(--card);border-radius:9px;
+    padding:9px;font-size:13.5px;color:var(--body);font-weight:700}
+  .use-btn.on{background:var(--done);color:#fff;border-color:var(--done)}
+  .use-btn.ghost{border-style:dashed;color:var(--muted);font-weight:600}
+  .why{font-size:12px;color:var(--muted);line-height:1.45;margin-top:7px;text-align:right}
+  .why b{color:var(--ink)}
+
+  .red{background:var(--chase-bg);border-radius:0;padding:13px 16px;border-top:1px solid #F5C9C9}
+  .red b{display:block;color:var(--chase);font-size:15px;margin-bottom:2px}
+  .red span{color:var(--chase);font-size:13.5px;line-height:1.5}
+  .green{background:var(--done-bg);border-top:1px solid var(--done-edge);padding:14px 16px;
+    display:flex;gap:13px;align-items:flex-start}
+  .green .tk{width:26px;height:26px;border-radius:50%;background:var(--done);color:#fff;flex:none;
+    display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700}
+  .green h3{margin:0 0 2px;font-size:15.5px;color:var(--ink)}
+  .green p{margin:0;font-size:13px;color:var(--body);line-height:1.6}
+  .green p b{color:var(--ink)}
+  .arrow{text-align:center;font-size:22px;color:var(--faint);margin:14px 0}
+  .note{margin-top:18px;border-left:3px solid var(--info-edge);background:var(--info-bg);
+    border-radius:0 10px 10px 0;padding:14px 17px;font-size:14.5px;line-height:1.62;max-width:940px}
+  .note b{color:var(--ink)}
+  .where{margin-top:16px;border:1px solid var(--card-line);border-radius:12px;overflow:hidden}
+  .where .h{background:var(--stone);padding:9px 15px;font-size:11px;font-weight:800;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--muted)}
+  .where .r{display:flex;gap:14px;padding:11px 15px;border-top:1px solid var(--line-soft);font-size:14px}
+  .where .r b{color:var(--ink);width:210px;flex:none;font-weight:600}
+  .where .r span{color:var(--body);line-height:1.5}
+</style></head>
+<body><div class="frame">
+
+<h1>Pressing Use this</h1>
+<p class="sub">Three states of the same table. Nothing is chosen for you.</p>
+
+<!-- 1 -->
+<div class="step"><span class="n">1</span><h2>Before you press anything</h2></div>
+<p class="says">All three say <b>Use this</b>. No column is highlighted, no figure has been taken.
+The red band is the one on your screen today, and it is still there because nothing has been recorded yet.</p>
+
+<div class="box">
+<table>
+  <colgroup><col class="lbl"><col><col><col><col><col></colgroup>
+  <tr class="band"><th class="gap"></th>
+    <th class="gRead" colspan="2">As read off the documents</th>
+    <th class="gUse" colspan="3">What you could use</th></tr>
+  <tr class="cols"><th class="l">&nbsp;</th>
+    <th class="read">2025<span class="yr">yr end 30 Jun</span></th>
+    <th class="read">2024<span class="yr">yr end 30 Jun</span></th>
+    <th class="use">Latest year<span class="yr">on its own</span></th>
+    <th class="use">Average<span class="yr">of the two</span></th>
+    <th class="use">2024 plus 20%<span class="yr">growth allowance</span></th></tr>
+  <tr><td class="l">Salary from the company</td>
+    <td class="read num">$92,000</td><td class="read num">$88,000</td>
+    <td class="use num">$92,000</td><td class="use num">$90,000</td><td class="use num">$105,600</td></tr>
+  <tr><td class="l">Company net profit before tax</td>
+    <td class="read num">$88,300</td><td class="read num">$41,400</td>
+    <td class="use num">$88,300</td><td class="use num">$64,850</td><td class="use num">$49,680</td></tr>
+  <tr><td class="l">Add back depreciation</td>
+    <td class="read plus num">+$17,700</td><td class="read plus num">+$12,600</td>
+    <td class="use plus num">+$17,700</td><td class="use plus num">+$15,150</td><td class="use plus num">+$15,120</td></tr>
+  <tr class="total"><td class="l">Assessable</td>
+    <td class="read num">$198,000</td><td class="read num">$142,000</td>
+    <td class="use num">$198,000</td><td class="use num">$170,000</td><td class="use num">$170,400</td></tr>
+  <tr class="pick"><td class="l"></td><td class="read"></td><td class="read"></td>
+    <td class="use"><button class="use-btn">Use this</button></td>
+    <td class="use"><button class="use-btn">Use this</button></td>
+    <td class="use"><button class="use-btn">Use this</button></td></tr>
+</table>
+<div class="red"><b>No income figures recorded yet</b>
+  <span>Pick one of the three above. Until you do, this income counts as nothing on the BC,
+    the client email and the compliance notes.</span></div>
+</div>
+
+<div class="arrow">&darr;&nbsp; you press Use this under Average</div>
+
+<!-- 2 -->
+<div class="step"><span class="n">2</span><h2>After</h2></div>
+<p class="says">That column goes green all the way up and its button reads <b>Using this</b>.
+The other two keep saying Use this, so you can change your mind with one press. The red band is replaced
+by what was taken, with your name and the time on it.</p>
+
+<div class="box">
+<table>
+  <colgroup><col class="lbl"><col><col><col><col><col></colgroup>
+  <tr class="band"><th class="gap"></th>
+    <th class="gRead" colspan="2">As read off the documents</th>
+    <th class="gUse" colspan="3">What you could use</th></tr>
+  <tr class="cols"><th class="l">&nbsp;</th>
+    <th class="read">2025<span class="yr">yr end 30 Jun</span></th>
+    <th class="read">2024<span class="yr">yr end 30 Jun</span></th>
+    <th class="use">Latest year<span class="yr">on its own</span></th>
+    <th class="use sel">Average<span class="yr">of the two</span></th>
+    <th class="use">2024 plus 20%<span class="yr">growth allowance</span></th></tr>
+  <tr><td class="l">Salary from the company</td>
+    <td class="read num">$92,000</td><td class="read num">$88,000</td>
+    <td class="use num">$92,000</td><td class="use sel num">$90,000</td><td class="use num">$105,600</td></tr>
+  <tr><td class="l">Company net profit before tax</td>
+    <td class="read num">$88,300</td><td class="read num">$41,400</td>
+    <td class="use num">$88,300</td><td class="use sel num">$64,850</td><td class="use num">$49,680</td></tr>
+  <tr><td class="l">Add back depreciation</td>
+    <td class="read plus num">+$17,700</td><td class="read plus num">+$12,600</td>
+    <td class="use plus num">+$17,700</td><td class="use sel plus num">+$15,150</td><td class="use plus num">+$15,120</td></tr>
+  <tr class="total"><td class="l">Assessable</td>
+    <td class="read num">$198,000</td><td class="read num">$142,000</td>
+    <td class="use num">$198,000</td><td class="use sel num">$170,000</td><td class="use num">$170,400</td></tr>
+  <tr class="pick"><td class="l"></td><td class="read"></td><td class="read"></td>
+    <td class="use"><button class="use-btn">Use this</button></td>
+    <td class="use sel"><button class="use-btn on">Using this</button></td>
+    <td class="use"><button class="use-btn">Use this</button></td></tr>
+</table>
+<div class="green"><span class="tk">&#10003;</span>
+  <div><h3>$170,000 is Amy&rsquo;s assessable income</h3>
+    <p>Average of the two years. <b>Katie Amos, 22 Nov 2026 at 2:14 pm.</b><br>
+      Salary <b>$90,000</b> &middot; net profit <b>$64,850</b> &middot; depreciation added back <b>$15,150</b>.
+      Interest and director&rsquo;s wages were available and were not added back.</p></div></div>
+</div>
+
+<div class="arrow">&darr;&nbsp; and once it has left the building</div>
+
+<!-- 3 -->
+<div class="step"><span class="n">3</span><h2>After the compliance pack has gone out</h2></div>
+<p class="says">Up to that point you can switch freely. Once a figure has been quoted to someone outside
+this office, the other buttons go quiet and changing it <b>asks you why</b> &mdash; because a credit note
+already in SalesTrekker says $170,000 and somebody will have to explain the difference.</p>
+
+<div class="box">
+<table>
+  <colgroup><col class="lbl"><col><col><col><col><col></colgroup>
+  <tr class="cols"><th class="l">&nbsp;</th>
+    <th class="read">2025</th><th class="read">2024</th>
+    <th class="use">Latest year</th><th class="use sel">Average</th><th class="use">2024 plus 20%</th></tr>
+  <tr class="total"><td class="l">Assessable</td>
+    <td class="read num">$198,000</td><td class="read num">$142,000</td>
+    <td class="use num">$198,000</td><td class="use sel num">$170,000</td><td class="use num">$170,400</td></tr>
+  <tr class="pick"><td class="l"></td><td class="read"></td><td class="read"></td>
+    <td class="use"><button class="use-btn ghost">Change &mdash; needs a reason</button></td>
+    <td class="use sel"><button class="use-btn on">Using this</button>
+      <p class="why">Quoted on the compliance pack, 22 Nov.</p></td>
+    <td class="use"><button class="use-btn ghost">Change &mdash; needs a reason</button></td></tr>
+</table>
+</div>
+
+<!-- where it goes -->
+<div class="where">
+  <div class="h">What the chosen figure then drives</div>
+  <div class="r"><b>Borrowing capacity</b><span>Amy&rsquo;s income line reads $170,000. Nobody retypes it.</span></div>
+  <div class="r"><b>Serviceability</b><span>The figure sent to the calculator and out to every lender.</span></div>
+  <div class="r"><b>The compliance notes</b><span>&ldquo;Income assessed on the average of the 2025 and 2024
+    financial years&rdquo; &mdash; written from the method, not retyped.</span></div>
+  <div class="r"><b>The lending options email</b><span>Whatever the client is told borrows from the same figure.</span></div>
+</div>
+
+<p class="note">
+  <b>Why switching stays easy until it does not.</b> Locking it at the first press would mean unlocking it
+  four times on a normal deal, and anything you have to unlock four times is something people learn to
+  leave alone. Nothing has left the office until compliance goes out, so until then changing your mind
+  costs one press. After that it costs a sentence, which is right, because somebody outside has the old number.
+</p>
+
+</div></body></html>
