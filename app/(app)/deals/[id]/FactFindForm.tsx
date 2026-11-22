@@ -893,10 +893,10 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     return () => { alive = false }
   }, [deal.id, uploadingDoc])
 
-  // Several at a time, one after another so a failure names the file that failed.
-  async function uploadDocuments(files: File[]) {
-    for (const f of files) await uploadDocument(f)
-  }
+  // The multi-file helper went with the second drop zone on 22 Nov 2026 - see
+  // the note on the box below. What is left files ONE document: the fact find
+  // this tab just read. That is how 230 deals have their fact find on file and
+  // it must keep happening.
 
   async function uploadDocument(file: File) {
     setUploadingDoc(true)
@@ -1360,26 +1360,58 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       )}
 
       <div className="mt-4 pt-4 border-t border-gray-100">
-          <div className="mb-4">
-            <DropZone compact multiple={false} accept="application/pdf" busy={extracting}
-              title={extracting ? 'Extracting…' : 'Drop the fact find PDF here'}
-              hint="AI will extract the client details"
-              onFiles={files => { if (files[0]) extractFactFindPdf(files[0]) }} />
-          </div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Attached documents</span>
-            <label className={`text-xs text-brand-ink border border-brand rounded-lg px-2.5 py-1 hover:bg-info-bg transition cursor-pointer ${uploadingDoc ? 'opacity-40 pointer-events-none' : ''}`}>
-              {uploadingDoc ? 'Uploading...' : '+ Add'}
-              <input type="file" multiple className="hidden"
-                onChange={e => { const fs = Array.from(e.target.files || []); if (fs.length) uploadDocuments(fs) }} />
-            </label>
-          </div>
-          <p className="text-xs text-gray-400 mb-2">Fact finds, screenshots, rate sheets.</p>
+          {/* ONE BOX ON THIS TAB, AND IT READS WHAT YOU GIVE IT.
+              ==================================================================
+              22 Nov 2026. There were two. The second one filed anything and
+              read nothing, and its own hint read "Fact finds, screenshots, rate
+              sheets" - so it invited people to drop a fact find into the box
+              that would not read it.
+
+              WHAT WAS ACTUALLY IN IT, over three months:
+
+                - Mostly the portal's own output. Every "Broker Notes - X.pdf"
+                  and "Actual purchase handover - X.pdf" has uploaded_by null.
+                  Nobody dropped those; components/DealDocuments.tsx files them
+                  when somebody downloads one. They are untouched by this.
+                - The files a PERSON dropped were almost all PAYSLIPS. Ria,
+                  Mellissa, Kylie and Fabio, on real deals, up to 20 Nov.
+                - Three stray emails and one screenshot, in three months.
+
+              THE PAYSLIPS ARE THE FAULT. components/PayslipIncome.tsx files
+              NOTHING - it reads a payslip and keeps the figures. So a payslip
+              dropped here was stored, read by nothing, and the income section
+              stayed empty with nothing on screen to say why. Four people were
+              doing it. The box taught them to.
+
+              Fabio, 22 Nov 2026: "They're using the portal incorrectly. The
+              payslips should just be going into the payslips section because it
+              doesn't save... make it super obvious, because I don't want the
+              payslips there."
+
+              SO THE BOX IS GONE AND THE RULE IS WRITTEN WHERE THE MISTAKE WAS
+              BEING MADE. Not in a note somewhere, not in training - on the box
+              itself, naming the two tabs that do read those documents.
+
+              WHAT THIS COSTS. There is now no way to put an arbitrary file on a
+              deal by hand; the list above the tabs only lists. That is three
+              files in three months and Fabio's call - those belong in OneDrive,
+              which every deal links to. See docs/approved-looks/one-box-fact-finds-only.html. */}
           <div className="mb-2">
-            <DropZone compact busy={uploadingDoc}
-              title="Drop documents here"
-              hint="as many at once as you like"
-              onFiles={files => uploadDocuments(files)} />
+            <DropZone multiple={false} accept="application/pdf" busy={extracting}
+              title={extracting ? 'Extracting…' : 'Drop the fact find PDF here'}
+              hint="The form below fills itself in from it"
+              onFiles={files => { if (files[0]) extractFactFindPdf(files[0]) }}>
+              {/* THE RULE, ON THE BOX. Said in the order somebody needs it:
+                  what belongs here, where the other two go, and what happens if
+                  you ignore both - because "is not read by anything" is the
+                  part that was invisible and cost the time. */}
+              <p className="mt-1.5 mb-0 max-w-[430px] text-center text-[11.5px] leading-relaxed text-body">
+                <b className="text-ink">Fact finds only.</b> Payslips go on the{' '}
+                <span className="text-brand-ink font-semibold">Income tab</span> and bank statements go on
+                the <span className="text-brand-ink font-semibold">Statements tab</span>, where they are
+                read. Anything dropped here that is not a fact find is not read by anything.
+              </p>
+            </DropZone>
           </div>
           {/* THE LIST LIVES ON THE DEAL NOW, above the tabs.
               

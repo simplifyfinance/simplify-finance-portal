@@ -248,9 +248,38 @@ describe('the deal has one document list', () => {
     expect(factFind).not.toContain('deleteDocument')
   })
 
-  it('but still adds them, because adding is an edit and belongs inside the lock', () => {
-    expect(factFind).toContain('uploadDocuments')
-    expect(factFind).toContain('Drop documents here')
+  // AND SINCE 22 NOV 2026 IT DOES NOT ADD THEM EITHER.
+  //
+  // The general "Drop documents here" box went. It filed anything and read
+  // nothing, and what people actually put in it was PAYSLIPS - Ria, Mellissa,
+  // Kylie and Fabio, on real deals, right up to 20 Nov. The payslip tab files
+  // nothing, so each one was stored, read by nothing, and the income section
+  // stayed empty with nothing on screen to say why.
+  //
+  // Fabio: "They're using the portal incorrectly. The payslips should just be
+  // going into the payslips section because it doesn't save."
+  //
+  // So this tab now has exactly one box, it takes one PDF, and it reads it.
+  it('and no longer takes anything that is not a fact find', () => {
+    expect(factFind, 'the general drop box is back').not.toContain('Drop documents here')
+    expect(factFind, 'the multi-file upload is back').not.toContain('uploadDocuments(')
+    expect(factFind, 'the + Add button is back').not.toContain("'+ Add'")
+  })
+
+  it('the one box it has says what belongs in it, and where the rest goes', () => {
+    expect(factFind).toContain('Drop the fact find PDF here')
+    expect(factFind).toContain('Fact finds only.')
+    expect(factFind).toContain('Income tab')
+    expect(factFind).toContain('Statements tab')
+    // THE PART THAT WAS INVISIBLE. A payslip dropped here was kept and never
+    // read, and nothing said so. Now the box says so before it happens.
+    expect(factFind).toContain('is not read by anything')
+  })
+
+  // IT STILL FILES THE FACT FIND IT READ. 230 deals have theirs on file that
+  // way. Removing the second box must not quietly stop that.
+  it('and it still files the fact find it read', () => {
+    expect(factFind).toContain('uploadDocument(file)')
   })
 
   it('and tells the list above the tabs when it has', () => {

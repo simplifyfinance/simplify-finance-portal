@@ -6,7 +6,7 @@ import { useState, useRef } from 'react'
 // rather than every caller reimplementing multi-select.
 export default function DropZone({
   onFiles, accept, multiple = true, disabled = false, busy = false,
-  title, hint, compact = false,
+  title, hint, compact = false, children,
 }: {
   onFiles: (files: File[]) => void
   accept?: string
@@ -16,6 +16,16 @@ export default function DropZone({
   title: string
   hint?: string
   compact?: boolean
+  // A RULE UNDER THE HINT. 22 Nov 2026.
+  //
+  // The fact find tab needs to say more than a hint fits: which documents
+  // belong here, which tab the other two belong on, and what happens if you
+  // ignore both. A second hint prop would have been a third line of grey text
+  // saying nothing louder. This takes whatever the caller wants to say.
+  //
+  // It is not drawn while the zone is busy - a rule about where things go is
+  // not what anybody needs to read while a document is being read.
+  children?: React.ReactNode
 }) {
   const [over, setOver] = useState(false)
   const input = useRef<HTMLInputElement>(null)
@@ -48,6 +58,7 @@ export default function DropZone({
         {busy ? 'Working…' : over ? 'Drop them here' : title}
       </span>
       {hint && <span className="text-[11.5px] text-faint text-center">{hint}</span>}
+      {!busy && children}
       <input ref={input} type="file" accept={accept} multiple={multiple} className="hidden"
         disabled={disabled || busy} onChange={e => take(e.target.files)} />
     </label>

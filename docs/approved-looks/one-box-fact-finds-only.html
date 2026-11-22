@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Fact find tab — one box, fact finds only</title>
+<style>
+  :root{
+    --page:#F7F4EF; --card:#FFFFFF; --line:#E8E2D8; --line-soft:#F1ECE4;
+    --card-line:#EBE5DB; --ink:#17140F; --body:#4D4841; --muted:#6F6A62; --faint:#A79F93;
+    --info:#107EA8; --info-bg:#EAF7FE; --info-edge:#BFE4F7; --brand:#4FBBEA; --brand-ink:#107EA8;
+    --chase:#D32F2F;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--body);padding:28px 28px 70px;
+    font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  h1{font-size:17px;color:var(--ink);margin:0 0 3px}
+  .sub{font-size:12.5px;color:var(--muted);margin:0 0 6px;max-width:740px;line-height:1.55}
+  .lab{font-size:10.5px;color:var(--faint);letter-spacing:.07em;text-transform:uppercase;
+    font-weight:800;margin:34px 0 8px}
+  .says{font-size:12px;color:var(--muted);margin:-2px 0 11px;max-width:720px;line-height:1.55}
+  .holder{max-width:720px;background:var(--card);border:1px solid var(--card-line);
+    border-radius:14px;padding:18px 20px}
+  .gone{opacity:.42}
+  .strike{position:relative}
+  .strike:after{content:"";position:absolute;inset:0;background:
+    repeating-linear-gradient(135deg,transparent 0 9px,rgba(211,47,47,.10) 9px 18px);
+    border-radius:12px;pointer-events:none}
+  .tag{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--chase);margin-left:8px}
+
+  .dz{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    border:2px dashed var(--line);border-radius:12px;padding:16px;cursor:pointer}
+  .dz.big{padding:22px 16px}
+  .dz .t{font-size:12px;font-weight:600;color:var(--ink)}
+  .dz .t.big{font-size:13.5px}
+  .dz .h{font-size:11.5px;color:var(--faint);text-align:center}
+  .dz svg{width:16px;height:16px;color:var(--faint)}
+  .rule{margin-top:7px;font-size:11.5px;line-height:1.55;color:var(--body);text-align:center;max-width:430px}
+  .rule b{color:var(--ink)}
+  .rule .where{color:var(--brand-ink);font-weight:600}
+
+  .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .head .k{font-size:12px;font-weight:500;color:#6B7280;letter-spacing:.05em;text-transform:uppercase}
+  .add{font-size:12px;color:var(--brand-ink);border:1px solid var(--brand);border-radius:8px;
+    padding:4px 10px;background:transparent}
+  .note{font-size:12px;color:#9CA3AF;margin:0 0 8px}
+  .ptr{font-size:12px;color:var(--muted);margin:10px 0 0}
+  .ptr b{color:var(--brand-ink);font-weight:600}
+  .facts{max-width:720px;font-size:12px;color:var(--muted);line-height:1.6;margin:10px 0 0}
+  .facts b{color:var(--ink)}
+</style></head>
+<body>
+
+<h1>Fact find tab &mdash; one box, fact finds only</h1>
+<p class="sub">22 November 2026. Fabio: &ldquo;They&rsquo;re using the portal incorrectly. The payslips should just be
+going into the payslips section because it doesn&rsquo;t save.&rdquo;</p>
+
+<!-- ============ TODAY ============ -->
+<p class="lab">Today &mdash; two boxes</p>
+<p class="says">The second box files whatever you give it and reads nothing. What people actually put in it:
+payslips. The file is kept, the income section stays empty, and nothing says so.</p>
+
+<div class="holder gone">
+  <label class="dz" style="margin-bottom:16px">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
+    <span class="t">Drop the fact find PDF here</span>
+    <span class="h">AI will extract the client details</span>
+  </label>
+
+  <div class="head">
+    <span class="k">Attached documents <span class="tag">goes</span></span>
+    <button class="add">+ Add</button>
+  </div>
+  <p class="note">Fact finds, screenshots, rate sheets.</p>
+  <label class="dz strike">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
+    <span class="t">Drop documents here</span>
+    <span class="h">as many at once as you like</span>
+  </label>
+  <p class="ptr">2 documents on this deal &mdash; <b>see them at the top of the page &uarr;</b></p>
+</div>
+
+<!-- ============ AFTER ============ -->
+<p class="lab">After &mdash; one box, and it says the rule</p>
+<p class="says">The second box, the heading, the hint and the + Add button all come off this tab. What is
+left is one box that reads a fact find, with the rule written on it in words nobody has to interpret.
+The pointer to the documents list stays, so broker notes, handover and compliance packs are still one click away.</p>
+
+<div class="holder">
+  <label class="dz big">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
+    <span class="t big">Drop the fact find PDF here</span>
+    <span class="h">The form below fills itself in from it</span>
+    <p class="rule">
+      <b>Fact finds only.</b> Payslips go on the <span class="where">Income tab</span> and
+      bank statements go on the <span class="where">Statements tab</span>, where they are read.
+      Anything dropped here that is not a fact find is not read by anything.
+    </p>
+  </label>
+  <p class="ptr">2 documents on this deal &mdash; <b>see them at the top of the page &uarr;</b></p>
+</div>
+
+<p class="facts">
+  <b>Why.</b> Over three months, 60 files went into that second box. Most were the portal filing its own
+  broker notes and handover packs &mdash; nobody dropped those. The ones a person did drop were almost all
+  <b>payslips</b>, from four different people. The payslip tab files nothing, so a payslip dropped on this
+  tab is kept and never read. Three stray emails and a screenshot were the only other thing in three months.
+</p>
+
+</body></html>
