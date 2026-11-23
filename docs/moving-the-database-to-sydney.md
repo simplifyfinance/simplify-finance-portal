@@ -360,6 +360,49 @@ true, and it is the question anybody actually asks.
 
 ---
 
+# A NEW PROJECT IS BORN OPEN — 23 Nov 2026
+
+**This is a required step in Sydney, not a nice-to-have, and it is easy to
+forget because nothing fails when you skip it.**
+
+The audit of 23 November found four ways into this database from the open
+internet. Every one of them existed because Postgres and Supabase open things by
+default: a new function is callable by everybody the moment it exists, and a new
+table is reachable by the not-logged-in role. Nobody did anything wrong. The
+holes appeared on their own.
+
+Production now has settings that close those defaults. **Those settings do not
+travel.** They live in the project, so a brand new Sydney project starts with
+Supabase's defaults — wide open — whatever the restore brings across.
+
+So on the new Sydney project, before the restore:
+
+```sql
+alter default privileges in schema public
+  revoke execute on functions from public, anon;
+alter default privileges in schema public
+  revoke all on tables from anon;
+alter default privileges in schema public
+  revoke all on sequences from anon;
+alter default privileges for role postgres in schema public
+  revoke execute on functions from public, anon;
+alter default privileges for role postgres in schema public
+  revoke all on tables from anon;
+```
+
+And after the restore, before anybody uses it:
+
+```sql
+revoke all on all tables in schema public from anon;
+revoke all on all sequences in schema public from anon;
+```
+
+Then run `docs/weekly-audit.sql` against Sydney. **Check 1 must read 0 and check
+15 must read 3.** If check 1 reads anything else, the new project is reachable
+without a login and nothing else about the migration matters until it is not.
+
+Full background in `docs/the-security-audit.md`.
+
 # Every integration, and whether it is affected
 
 | Thing | Affected? | Why |

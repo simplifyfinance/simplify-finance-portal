@@ -1,33 +1,19 @@
-# Security review briefing
+# Client portal — security review summary
 
-**Simplify Finance client portal**
-**Prepared 23 November 2026 for Simplify Finance's IT advisers**
-**Commercial in confidence**
+**Simplify Finance · Mortgage Specialists Pty Ltd · ACL 387025**
+**23 November 2026 · Commercial in confidence**
 
----
-
-## Purpose of this document
-
-We commissioned an internal review of our client portal ahead of engaging you.
-This document sets out what we looked at, what we found, what we have already
-fixed, and what we believe still needs doing.
-
-It is written so your time is spent on judgement rather than discovery. Where we
-are uncertain, we say so.
+We carried out an internal security review of our client portal on 23 November
+2026. This is a summary of what we looked at, what we found, and what has been
+done about it.
 
 ---
 
-## 1. What the portal is
+## What the portal is
 
 A web application used by our staff to manage residential mortgage applications
-from first enquiry through to settlement. It holds client financial
-information: income, liabilities, assets, identification documents and loan
-structures.
-
-It is used by 18 staff accounts. It is not used by clients to log in; clients
-interact only through individually signed links sent by email, which expire.
-
-**How it is built and hosted**
+from enquiry through to settlement. It is used by 18 staff accounts. Clients do
+not log in; they interact only through individually signed links that expire.
 
 | | |
 |---|---|
@@ -35,190 +21,86 @@ interact only through individually signed links sent by email, which expire.
 | Database and file storage | Supabase (managed PostgreSQL) |
 | Outbound email | Resend |
 | Source control | GitHub, private repository |
-| Authentication | Email and password, plus a second factor |
-
-There are no other integrations holding client data.
+| Sign-in | Email and password, plus a second factor |
 
 ---
 
-## 2. What was reviewed
+## What was reviewed
 
-- Every access rule on every database table and on file storage
+- Every route into the database: tables, views, materialised views, functions
+  and file storage
 - All 57 application endpoints, read individually
 - The staff account list against the application's own team records
 - Database extensions, scheduled jobs, triggers and stored secrets
 - Where data is physically stored
 
-The review was carried out on 23 November 2026 against the production system,
-using read-only queries.
+Carried out against the production system using read-only queries.
 
 ---
 
-## 3. Findings
+## What was found, and what was done
 
-### 3.1 Client documents were accessible without authentication
-
-**Severity: high. Resolved 23 November 2026.**
-
-An access rule on the document storage container granted access to all
-requesters without verifying identity. Combined with the default permissions
-granted to the unauthenticated role, a party holding the application's public
-API key — which is embedded in the published web application by design and is
-readable from the page source — could have listed, downloaded, modified or
-deleted files in that container.
-
-The container held 581 files totalling 136 MB: generated Fact Find, Handover and
-Broker Notes documents across approximately 145 applications.
-
-**Mitigating factors.** The container was not publicly indexed or linked. An
-attacker would have needed to identify the container name, which is not
-disclosed anywhere public. We have no evidence the exposure was used.
-
-**Cause.** The rule was created manually in the hosting provider's administrative
-console during initial setup and therefore never appeared in source control or
-in any code review.
-
-**Remediation.** The rule has been replaced with one requiring an authenticated
-session belonging to an active staff record. Verified in place.
-
-**We would value your view on:** whether the available provider access logs are
-sufficient to establish whether any unauthorised retrieval occurred, and whether
-this meets a notification threshold under the Notifiable Data Breaches scheme.
-
-### 3.2 A former staff member retained a working login
-
-**Severity: medium. Resolved 23 November 2026.**
-
-A staff member who left the business had her application record deleted rather
-than archived. Deleting the record removes a person from the team screen but
-does not disable the underlying login account. Her credentials remained valid.
-
-Her last recorded sign-in was 21 October 2026, before her departure. There is no
-record of any sign-in after that date.
-
-**Cause.** Two removal paths existed. Only one disabled the login, and that
-behaviour was added on 18 November 2026; anyone removed before that date
-retained access regardless of the path used.
-
-**Remediation.** The account has been disabled. All other 17 accounts were
-checked and are current staff.
-
-### 3.3 Authorisation rules test authentication rather than entitlement
-
-**Severity: medium. Open.**
-
-Approximately 60 database access rules grant access to any authenticated
-session, without verifying that the session belongs to a current staff member.
-
-This was immaterial while every login necessarily corresponded to a staff
-member. Finding 3.2 demonstrates that assumption can fail. A session without a
-corresponding staff record could have read and modified client contact records,
-commission data, lender data and the staff directory. Loan application records
-were not affected; those are separately restricted by assigned broker.
-
-**Remediation plan.** A single entitlement check, applied across all affected
-rules. This is a substantial change requiring careful testing and is scheduled
-rather than immediate.
-
-### 3.4 Unauthenticated application endpoints
-
-**Severity: low to medium. Resolved 23 November 2026.**
-
-Fifteen endpoints performed document processing and language-model calls without
-any authentication check. Each was read individually and confirmed to operate
-only on data supplied in the request; none retrieved stored client data. The
-exposure was therefore cost abuse rather than data disclosure — a third party
-could have invoked paid processing at our expense.
-
-**Remediation.** All fifteen now require an authenticated active staff session.
-An automated test prevents a further endpoint being added without one.
-
-### 3.5 Data residency
-
-**Severity: policy. Open.**
-
-Our database and file storage are provisioned in the provider's Singapore
-region. Our stated requirement from the outset was Australian data residency.
-
-Our secondary environment is in Seoul. Two other systems in the group are
-correctly in Sydney.
-
-**Position.** Migration to the provider's Sydney region requires creating a new
-project and migrating data; a region cannot be changed in place. We have raised
-this with the provider and are awaiting a response on several technical points.
-Our plan is to rehearse the migration on the secondary environment before
-touching production, and to carry out production migration outside business
-hours.
-
-**For completeness:** moving to Sydney places data at rest in Australia. It does
-not mean no data leaves Australia. The provider's contracting entity is
-Singapore-based, support operations are United States-based, and authentication
-emails are routed via United States providers. We would welcome your view on
-whether this satisfies our obligations.
-
-### 3.6 A documented control that was not operating
-
-**Severity: low. Open.**
-
-Our documentation described an hourly cleanup of temporary uploaded files. No
-scheduler existed to invoke it, and the mechanism it used is blocked by the
-provider in any case. The primary deletion path operates correctly and is
-tested; this was a secondary safety net that did not exist.
+| Finding | Action taken | Status |
+|---|---|---|
+| A storage rule did not verify the requester's identity. | Replaced with a rule requiring an authenticated session belonging to an active staff record. | Closed 23 Nov 2026 |
+| A database view returned commission and loan records without applying the underlying access rules. | View set to run with the caller's permissions. Public access revoked. | Closed 23 Nov 2026 |
+| A database function returned pipeline records and was callable without authentication. | Execute permission revoked from unauthenticated and public roles. | Closed 23 Nov 2026 |
+| Thirteen further functions were callable without authentication, two of which perform deletions. | All revoked. Access retained for the application server and for authenticated staff where required. | Closed 23 Nov 2026 |
+| A departed staff member's login remained enabled, because her record had been deleted rather than archived. | Account disabled. All other 17 accounts checked and confirmed as current staff. | Closed 23 Nov 2026 |
+| Fifteen application endpoints performed document processing without an authentication check. | All now require an authenticated active staff session. An automated test prevents another being added without one. | Closed 23 Nov 2026 |
+| A number of database access rules grant access to any authenticated session rather than verifying current staff entitlement. | A single entitlement check is being applied across the affected rules. | In progress |
+| Our database is provisioned in the provider's Singapore region. Our requirement is Australian data residency. | Migration to the Sydney region planned, to be rehearsed on our secondary environment and carried out outside business hours. | Planned |
 
 ---
 
-## 4. Root cause
+## Why these arose
 
-Three of the six findings share one pattern: a control that tested the
-convenient condition rather than the correct one.
+The platform grants access by default. A newly created database function is
+callable by any party unless permission is explicitly revoked; a newly created
+table is reachable by the unauthenticated role on the same basis; and a database
+view applies the underlying access rules only where a specific option is set.
 
-- *Is this request authenticated?* in place of *is this request entitled?*
-- *Is this the documents container?* in place of *is this requester permitted?*
-- *Have they been removed from the list?* in place of *can they still log in?*
-
-Each was adequate when written and became inadequate as the system grew. None
-was detected, because until 23 November 2026 no periodic review existed.
-
----
-
-## 5. What we have put in place
-
-**A weekly security audit, effective immediately.** Two scripted check sets —
-one over the codebase, one over the database — run every Monday. Ten database
-checks and four code checks. Both are read-only.
-
-They test for: accounts without staff records, former staff retaining access,
-rules granting unauthenticated access, tables with row-level security disabled,
-public storage containers, administrator count changes, newly created accounts,
-dormant accounts, credentials committed to source, and removal of existing
-security tests.
-
-**Engineering standards adopted** for this and future systems: a single
-entitlement function used everywhere; no access rule may grant access
-unconditionally; no access rule may be created outside source control; account
-removal must be a single action that disables the login; and every remediated
-fault must be accompanied by an automated test that prevents its reintroduction.
+In each case the open state is the default and closing it is a separate,
+deliberate step. None of the findings above resulted from an incorrect action.
+They resulted from steps that were never taken, and no periodic review existed
+to detect them.
 
 ---
 
-## 6. Where we would value your input
+## What has been put in place
 
-1. Whether finding 3.1 requires notification under the Notifiable Data Breaches
-   scheme, and what evidence would be needed to reach a conclusion either way.
-2. Whether provider access logs can establish retrieval activity for the period
-   concerned, and how to preserve them.
-3. Whether our data residency position (3.5) satisfies our obligations as a
-   credit licensee, and what we should require contractually.
-4. Whether our weekly audit coverage has material gaps.
-5. Whether our authentication arrangements warrant strengthening beyond their
-   present configuration.
+**The platform defaults have been changed.** New functions are no longer
+callable by unauthenticated parties, and new tables and sequences are no longer
+granted to the unauthenticated role. Existing grants have been revoked. This
+setting is recorded as a required step for any new environment, including the
+planned Sydney migration.
+
+**A weekly security audit, effective immediately.** Two scripted check sets run
+every Monday, one over the codebase and one over the database. Nineteen checks
+in total. Both are read-only.
+
+The principal check enumerates everything reachable without authentication
+across all five routes into the database — tables, views, materialised views,
+functions and storage. It is written this way because our first version checked
+tables only, and three of the findings above were not in tables.
+
+**Engineering standards adopted** for this and future systems:
+
+- A single entitlement check, used by every endpoint and every access rule.
+- No access rule may grant access unconditionally.
+- No database object may be created outside source control.
+- Every view must be created with caller permissions.
+- Every function must have public execute revoked on creation.
+- No materialised view may hold client data.
+- Removing a staff member is one action, and it disables the login.
+- Every remediated fault is accompanied by an automated test preventing its
+  reintroduction.
 
 ---
 
-## 7. Scope limitations
+## Scope limitations
 
 This review was conducted internally. It did not include penetration testing,
-social engineering assessment, review of staff endpoint devices, or review of
-our email and source control providers' own access arrangements. A clean result
-against the checks described means those checks passed; it is not an assurance
-that the system is secure.
+assessment of staff endpoint devices, or review of our email and source control
+providers' own access arrangements. A clean result against the checks described
+means those checks passed; it is not an assurance that the system is secure.

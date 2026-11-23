@@ -3,6 +3,7 @@ import {
   tidyLink, whyNotALink, isOurOwnSide, kindFromLink, nameFromLink, siteOf,
   pageToText, tooThinToRead, splitIntoTopics, LINK_MAX_BYTES, LINK_TIMEOUT_MS,
 } from '@/lib/dropped-links'
+import { onlyStaff } from '@/lib/only-staff'
 
 export const maxDuration = 120
 
@@ -21,6 +22,10 @@ export const maxDuration = 120
 // here acts on the content; it is stored and quoted, exactly like an upload.
 
 export async function POST(req: Request) {
+  // ONLY AN ACTIVE STAFF MEMBER. This one fetches a web address the caller
+  // hands it, so an open one is somebody else's errand boy. 23 Nov 2026.
+  const { refusal } = await onlyStaff()
+  if (refusal) return refusal
   let body: any
   try { body = await req.json() } catch { body = {} }
 

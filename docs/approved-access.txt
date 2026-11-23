@@ -1,0 +1,27 @@
+# WHO IS APPROVED TO REACH THIS PORTAL FROM OUTSIDE IT
+#
+# 23 Nov 2026. The weekly audit tests the portal's own rules. None of them
+# apply to somebody signing in to Supabase, Vercel, GitHub, Resend or OneDrive
+# directly - an administrator on the Supabase account can read every borrower's
+# file and no portal rule stops them.
+#
+# scripts/weekly-audit.sh reads this file. The github: lines are checked
+# automatically every Monday. The rest are printed as a by-hand checklist on
+# the first run of each month, and by ./scripts/weekly-audit.sh --monthly.
+#
+# CHANGING THIS FILE IS A SECURITY DECISION. Say who and why in the commit
+# message, so the change is dated and reviewable.
+#
+# One line per person per service. github: takes the GitHub login.
+# The others take the email address the account is held under.
+
+github: simplifyfinance
+
+supabase: fabio@simplifyfinance.com.au
+
+vercel: fabio@simplifyfinance.com.au
+
+resend: fabio@simplifyfinance.com.au
+
+# onedrive: the shared deal folders. Add the people who should have access,
+# and check there is no "Anyone with the link" sharing on them.
