@@ -7,6 +7,7 @@ import { stepMonth } from '@/lib/commission-schedule'
 import RowLimit, { STEPS } from '@/components/RowLimit'
 import { downloadCsv, stamp } from '@/lib/csv'
 import { nameMatches } from '@/lib/settlement-match'
+import { everyRow } from '@/lib/the-whole-book'
 
 // Trail is a book, not a payment. Two questions matter: is it growing or
 // leaking, and which loans have actually left.
@@ -74,18 +75,35 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
 
   useEffect(() => {
     (async () => {
-      const [m, l, s, u] = await Promise.all([
+      // THE SILENT LOANS ARE PAGED, THE REST ARE NOT. 23 Nov 2026.
+      //
+      // commission_trail_loan_state holds 2,748 rows and Supabase sends at most
+      // 1,000 of any read, saying nothing about the rest. This asked for 2,000
+      // and believed it. The filter cuts it down, but the filter is not the
+      // cap - a quiet month and this list goes short with no sign on screen.
+      //
+      // annual_trail is not unique, so paging by it alone can skip a loan and
+      // repeat another. broker_key and loan_ref together are.
+      //
+      // See lib/the-whole-book.ts and lib/no-silent-thousand.test.ts.
+      const [m, silent, s, u] = await Promise.all([
         supabase.from('commission_trail_months').select('*').order('period_month'),
-        supabase.from('commission_trail_loan_state').select('*')
-          .gte('months_absent', GONE_AFTER).order('annual_trail', { ascending: false }).limit(2000),
+        everyRow<any>((f, t) => supabase.from('commission_trail_loan_state').select('*')
+          .gte('months_absent', GONE_AFTER)
+          .order('broker_key').order('loan_ref').range(f, t)),
         supabase.from('commission_statements').select('kind, period_month, gross_ex_gst'),
         // Every upfront we have been paid: proof that a loan actually started.
+        // 880 of them on 23 Nov 2026. Check 16 of the Monday audit says so when
+        // that number starts approaching the cap.
         supabase.from('commission_lines')
           .select('client_name, loan_ref, lender_raw, settlement_date, period_month')
-          .eq('kind', 'upfront').limit(5000),
+          .eq('kind', 'upfront').limit(1000),
       ])
       setMonths((m.data || []) as MonthRow[])
-      setSilent((l.data || []) as LoanState[])
+      // ORDERED HERE, not by the database, because paging needed a different
+      // order from the one this screen reads in.
+      setSilent(([...silent.rows] as LoanState[])
+        .sort((a: any, b: any) => Number(b.annual_trail || 0) - Number(a.annual_trail || 0)))
       setNewLoans(((u.data || []) as any[]).map(x => ({
         client: x.client_name || '',
         loanRef: x.loan_ref || '',

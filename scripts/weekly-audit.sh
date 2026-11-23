@@ -205,3 +205,15 @@ else
   echo "Code side clean."
 fi
 echo
+
+echo
+echo "AND THE NUMBERS"
+echo "---------------"
+echo "A locked portal can still show a wrong figure. Paste these two into the"
+echo "Supabase SQL editor on LIVE as well. Both read-only."
+echo
+echo "  docs/the-accuracy-check.sql     the six ways a number goes wrong"
+echo "  docs/do-the-numbers-match.sql   what the database holds behind each screen"
+echo
+echo "Why those six: docs/the-six-ways-a-number-goes-wrong.md"
+echo

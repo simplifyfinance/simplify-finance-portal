@@ -243,6 +243,30 @@ user id, which is the most they can do. `version` returns a build number.
 signed in. A login with no staff record could change which templates are
 archived for everybody. Small damage, same fault as the big job above.
 
+### The portal runs on Vercel's Hobby plan
+
+23 Nov 2026. Found while checking who can reach the data from outside the
+portal.
+
+Hobby is Vercel's **personal, non-commercial** tier. This is a financial
+services portal used by 18 staff, holding client financial positions and
+identification.
+
+**What it costs in practice:** no team access controls, no audit log, no SSO,
+and a single personal account as the only thing standing between an attacker and
+the environment variables - which include the database service role key.
+
+**And the terms.** Vercel reserve Hobby for non-commercial use. An IT reviewer
+will ask about it, and the honest answer today is that the plan does not match
+the use.
+
+Not urgent and not a migration blocker. But it is the one remaining place where
+a single personal account holds everything, and it should be a deliberate
+decision rather than an accident of how the project started.
+
+`docs/who-has-the-keys.md` now checks the plan name every month as well as the
+member list.
+
 ## Standing rules
 
 - Nothing from this project leaves the private repo or the conversation.

@@ -76,8 +76,8 @@ export default function ReportsPage() {
       const [h, r] = await Promise.all([
         supabase.from('portfolio_review_properties')
           .select('review_id, address, investor, original_value, original_loan, current_balance, balance_as_at, estimated_current_value, valuation_date')
-          .limit(20000),
-        supabase.from('portfolio_review_list').select('review_id, first_name, last_name').limit(5000),
+          .limit(1000),
+        supabase.from('portfolio_review_list').select('review_id, first_name, last_name').limit(1000),
       ])
       if (gone) return
       // A MISSING TABLE IS SOMETHING NOBODY HAS SET UP, NOT AN EMPTY REPORT.

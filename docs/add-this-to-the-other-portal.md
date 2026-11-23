@@ -256,6 +256,64 @@ kept for days, not months.
 
 ---
 
+## Part 8 — The other audit: are the numbers right
+
+A portal can be perfectly locked and still show the wrong figure. Parts 1 to 7
+are about who can reach the data. This is about whether what they see is true.
+
+**The framing is the same one that made the security audit work.** Do not check
+the faults you know about. Ask one question of every way it can happen: *how can
+a number on screen be wrong while everything looks fine?*
+
+There are six answers. Every one has happened in the Simplify portal.
+
+**1. Truncation.** Supabase sends at most **1,000 rows** per read and reports no
+error for the rest. A screen asking for a whole table is correct until that
+table passes a thousand, and then it is quietly wrong. This has happened twice -
+once hiding 149 deal cards, once building a client-facing plan from 1,000 of
+8,700 trail lines. **This is the big one. Check it today.**
+
+**2. A write refused in silence.** Postgres returns zero rows and no error when
+a rule blocks a save. The screen says "Saved". Nothing anywhere says otherwise.
+
+**3. A join that quietly drops rows.** Joining on a column that is null for some
+records. The row does not come back short - it does not come back at all.
+
+**4. A join that quietly doubles rows.** One row left, two right, every sum
+doubles. The answer stays plausible, which makes this the worst of the six.
+
+**5. A missing value summed as zero.** "We do not know" and "nothing" are
+different answers and a sum cannot tell them apart. Never write
+`coalesce(figure, 0)` for something a person reads. A blank is honest; a zero is
+a claim.
+
+**6. A date in the wrong month.** The database is UTC, the business is Sydney,
+eleven hours apart. A settlement at 9am on the 1st is the previous month if you
+ask UTC. Month-end figures move depending on which clock the query used.
+
+### What to copy
+
+| File | Portable? |
+|---|---|
+| `lib/the-whole-book.ts` | **Yes, as is.** The pager. Copy it first |
+| `lib/no-silent-thousand.test.ts` | **Yes, as is.** Fails the build on any read over 1,000 |
+| `docs/the-six-ways-a-number-goes-wrong.md` | **Yes.** The reasoning |
+| `docs/the-accuracy-check.sql` | **No - adapt it.** The six categories are universal; the table names are not. Rewrite it against ONE's own tables |
+| `docs/do-the-numbers-match.sql` | **No - adapt it.** Same reason |
+
+### The two rules worth having from day one
+
+**Every list read pages.** Not "asks for a big number" - pages, until a page
+comes back empty. Build it before the first list screen, not after somebody
+cannot find a record.
+
+**A screen that cannot get the whole answer says so and shows nothing.** Showing
+part of an answer, with no sign that it is partial, is worse than showing an
+error. In Simplify, Portfolio Review's plan now refuses to build if it cannot
+read every trail line.
+
+---
+
 ## One paragraph for whoever has no time
 
 Everything in a Supabase project is open until closed, and closing it is a

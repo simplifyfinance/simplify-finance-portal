@@ -13,6 +13,7 @@ import {
 } from '@/lib/portfolio-review'
 import { readMoney } from '@/lib/money'
 import { securitiesOf, bookTotals, type Security } from '@/lib/one-security-many-loans'
+import { everyRow } from '@/lib/the-whole-book'
 import {
   planFor, writeFor, monthName, asAtShort,
   type Holding, type TrailLine, type Plan, type Change,
@@ -731,7 +732,7 @@ export default function PortfolioReview() {
 
   useEffect(() => {
     const supabase = createSupabaseBrowser()
-    supabase.from('portfolio_review_list').select('*').limit(5000)
+    supabase.from('portfolio_review_list').select('*').limit(1000)
       .then(({ data, error }) => {
         // A MISSING VIEW IS A THING NOBODY HAS SET UP YET, NOT A FAULT - but it
         // is said out loud rather than shown as an empty list, because "nothing
@@ -746,7 +747,7 @@ export default function PortfolioReview() {
     // and the chases are still the work.
     supabase.from('portfolio_review_properties')
       .select('id, review_id, ordinal, address, investor, original_value, original_loan, current_balance, balance_as_at, loan_ref, estimated_current_value, usable_equity, lender_raw')
-      .limit(20000)
+      .limit(1000)
       .then(({ data }) => {
         const by = new Map<string, Prop[]>()
         for (const p of (data || []) as Prop[]) {
@@ -863,17 +864,47 @@ export default function PortfolioReview() {
       from.setMonth(from.getMonth() - 3)
       const since = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, '0')}-01`
 
-      const { data: lines, error: linesErr } = await supabase.from('commission_lines')
+      // FOUR MONTHS OF TRAIL IS EIGHT THOUSAND LINES, AND THE SERVER SENDS A
+      // THOUSAND. 23 Nov 2026.
+      //
+      // This asked for 50,000 and believed the answer. Supabase caps a response
+      // at 1,000 rows - the Data API's "max rows" setting - and says nothing
+      // about the ones it did not send. Trail runs at about 2,180 lines a
+      // month, so this plan was built from roughly one month in eight: most
+      // loans found no line at all and came back with no current balance, on a
+      // page whose figures go to clients.
+      //
+      // IT IS THE SAME FAULT AS 2 NOV 2026, in a second place. That day Fabio
+      // could not find two deal cards; the deals screen had asked for every
+      // deal and been handed the newest thousand. lib/the-whole-book.ts was
+      // written to page through properly - and then applied only to the screen
+      // where the bug had been found, rather than everywhere the shape existed.
+      //
+      // lib/no-silent-thousand.test.ts now fails the ship on a third place.
+      //
+      // THE ORDER IS TOTAL on purpose. Paging walks an ordered list by
+      // position, so two rows the database considers equal can swap between
+      // pages - which skips one and repeats another. period_month alone is not
+      // unique; id is.
+      const book = await everyRow<any>((f, t) => supabase.from('commission_lines')
         .select('loan_ref, balance, period_month, lender_raw')
-        .eq('kind', 'trail').gte('period_month', since).limit(50000)
-      if (linesErr) { setPlanWhy(linesErr.message); return }
+        .eq('kind', 'trail').gte('period_month', since)
+        .order('period_month').order('id').range(f, t))
+      const lines = book.rows
+      if (book.error) { setPlanWhy(book.error.message || 'The trail lines could not be read.'); return }
+      // TRUNCATED IS NOT "DONE". A short book makes every balance below it a
+      // guess, and a guess on this page reaches a client.
+      if (book.truncated) {
+        setPlanWhy('Only part of the trail could be read, so the balances would be wrong. Nothing has been built.')
+        return
+      }
 
       // The properties are already on screen. Read them again anyway: the list
       // was loaded when the page opened and somebody may have edited a review
       // in another tab since.
       const { data: holdings, error: hErr } = await supabase.from('portfolio_review_properties')
         .select('id, review_id, loan_ref, original_loan, current_balance, balance_as_at, investor')
-        .limit(20000)
+        .limit(1000)
       if (hErr) { setPlanWhy(hErr.message); return }
 
       setPlan(planFor((holdings || []) as Holding[], (lines || []) as TrailLine[]))

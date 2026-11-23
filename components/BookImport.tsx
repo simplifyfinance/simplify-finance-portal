@@ -79,7 +79,7 @@ export default function BookImport({ onFinished }: { onFinished?: () => void }) 
     // has to think about.
     supabase.from('portfolio_reviews')
       .select('id, book_row_key, book_first_name, book_last_name')
-      .not('book_row_key', 'is', null).limit(10000)
+      .not('book_row_key', 'is', null).limit(1000)
       .then(({ data, error }) => {
         setBusy(false)
         if (error) { setWhy(error.message); return }

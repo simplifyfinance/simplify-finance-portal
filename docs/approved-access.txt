@@ -15,6 +15,14 @@
 # One line per person per service. github: takes the GitHub login.
 # The others take the email address the account is held under.
 
+# BASELINE SET 23 Nov 2026 from the live dashboards.
+#
+# CHANGE LOG. Every removal and addition goes here with a date and a reason.
+#   23 Nov 2026 - REMOVED meg@simplifyfinance.com.au from Supabase. She held
+#   Administrator, which reads every record and every file and is bound by none
+#   of the portal's rules. She had no portal login. Fabio: "she was supposed to
+#   help me, but she hasn't."
+
 github: simplifyfinance
 
 supabase: fabio@simplifyfinance.com.au

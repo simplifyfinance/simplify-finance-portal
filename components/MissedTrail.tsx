@@ -123,7 +123,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
 
   useEffect(() => {
     supabase.from('commission_trail_gaps').select('*')
-      .order('trail_missed', { ascending: false }).limit(2000)
+      .order('trail_missed', { ascending: false }).limit(1000)
       .then(({ data }) => setGaps((data || []) as Gap[]))
     loadResolved()
     // eslint-disable-next-line react-hooks/exhaustive-deps

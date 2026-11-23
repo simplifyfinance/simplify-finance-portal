@@ -56,7 +56,7 @@ export default function DealsPage() {
   // deal. An empty result is normal and the board just draws no chips.
   const [alerts, setAlerts] = useState<Record<string, Alert[]>>({})
   useEffect(() => {
-    browser.from('deal_alerts').select('*').is('resolved_at', null).limit(2000)
+    browser.from('deal_alerts').select('*').is('resolved_at', null).limit(1000)
       .then(({ data }) => {
         const m: Record<string, Alert[]> = {}
         for (const a of ((data as any[]) || [])) (m[a.deal_id] ||= []).push(a as Alert)

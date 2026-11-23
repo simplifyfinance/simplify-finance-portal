@@ -59,7 +59,7 @@ export default function SettlementReconcile({ brokers }: {
           .order('settled_at', { ascending: false }).order('id').range(from, to)),
         supabase.from('commission_rates').select('*'),
         supabase.from('lenders').select('id, name'),
-        supabase.from('commission_lines').select('*').eq('kind', 'upfront').limit(5000),
+        supabase.from('commission_lines').select('*').eq('kind', 'upfront').limit(1000),
         supabase.from('commission_statements').select('broker_key, kind, period_month').eq('kind', 'upfront'),
       ])
       // Which upfront statements we actually hold. Without the statement that

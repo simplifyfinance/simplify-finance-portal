@@ -24,13 +24,34 @@ Run on the **1st of each month**. About two minutes.
 | Where | Exactly where to click | What they could do |
 |---|---|---|
 | **Supabase** | Organization → Team | **Read and change every record and every file.** This one matters most. |
-| **Vercel** | Team → Members | Change the live portal, and read its secret keys |
+| **Vercel** | Team → Members, **and the plan name at the top left** | Change the live portal, and read its secret keys |
 | **GitHub** | `simplify-finance-portal` → Settings → Collaborators | Change the code |
 | **Resend** | Team | Send email as Simplify Finance |
 | **OneDrive** | The shared deal folders | Read the archived documents |
 
 Open each one. Compare the names against the list below. **If a name is there
 that is not below, remove it, then tell Claude who it was and when they left.**
+
+---
+
+## What the first check found — 23 November 2026
+
+**Supabase had two members.** Fabio as Owner, and
+`meg@simplifyfinance.com.au` as **Administrator**. Administrator reads every
+record and every file from the dashboard, and no rule in the portal applies,
+because she was not coming through the portal. She had no portal login at all.
+
+**Removed the same day.** Recorded in `docs/approved-access.txt`.
+
+Removing her ends her dashboard access. It does not invalidate the service role
+key, which belongs to the project rather than to the person - but the Sydney
+move creates a new project with new keys, which closes that by itself.
+
+**Vercel is on the Hobby plan.** That is a personal, non-commercial account, so
+there is no team list to check - it is Fabio only. It also means no team access
+controls, no audit log and no SSO on the system that serves the portal and holds
+its secret keys. **Check the plan name every month as well as the member list**,
+because moving to a team plan changes who can be added without anyone saying so.
 
 ---
 

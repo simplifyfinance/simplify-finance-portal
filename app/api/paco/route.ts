@@ -192,7 +192,7 @@ async function readPolicy(supabase: any): Promise<PolicyRule[]> {
   const { data, error } = await supabase.from('lender_policy_rules')
     .select('id, lender_id, document_id, says, quote, section, heading, tags, tier, status, effective_from, effective_to, row_headers, row_cells, depends_on, excludes, max_lvr, lenders(name)')
     .in('status', USABLE as unknown as string[])
-    .limit(5000)
+    .limit(1000)
   if (error || !data) return []
   return (data as any[]).map(r => ({
     id: String(r.id), documentId: String(r.document_id || ''), lenderId: String(r.lender_id || ''),
@@ -236,7 +236,7 @@ async function readNotes(supabase: any): Promise<Claim[]> {
     .select('id, lender, said, tags, tier, source, said_by_name, created_at, retired_at, retired_by_name')
     .is('retired_at', null)
     .order('created_at', { ascending: false })
-    .limit(2000)
+    .limit(1000)
   if (error || !data) return []
   return (data as any[]).map(r => ({
     id: String(r.id),

@@ -46,9 +46,9 @@ export default function ClawbackWatch({ brokers }: { brokers: { key: string; nam
         // The settled book. Every upfront the group has ever paid us.
         supabase.from('commission_lines')
           .select('id, loan_ref, client_name, broker_key, lender_id, lender_raw, settlement_date, settlement_amount, gross_ex_gst')
-          .eq('kind', 'upfront').limit(20000),
+          .eq('kind', 'upfront').limit(1000),
         // Loans already clawed back are not at risk of it happening again.
-        supabase.from('commission_lines').select('loan_ref').eq('kind', 'clawback').limit(20000),
+        supabase.from('commission_lines').select('loan_ref').eq('kind', 'clawback').limit(1000),
         supabase.from('commission_rates').select('lender_id, clawback_months'),
         supabase.from('lenders').select('id, name'),
       ])

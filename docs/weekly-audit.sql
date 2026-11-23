@@ -10,6 +10,15 @@
 -- press run. It writes nothing. It returns one table. Every line says PASS or
 -- FAIL, and the FAILs sort to the top. Send Claude the FAIL lines.
 --
+-- AND THERE IS A SECOND HALF, because a portal can be perfectly locked and
+-- still show the wrong number. Run these two beside this file:
+--
+--   docs/the-accuracy-check.sql    the six ways a figure goes wrong
+--   docs/do-the-numbers-match.sql  what the database holds behind each screen
+--
+-- Why those six and not others: docs/the-six-ways-a-number-goes-wrong.md
+-- Fabio, 23 Nov 2026: 'we rely on data to run the business.'
+--
 -- ---------------------------------------------------------------------------
 -- WHY THIS FILE IS WRITTEN THE WAY IT IS
 -- ---------------------------------------------------------------------------
@@ -256,6 +265,45 @@ select 15,
            and pg_get_userbyid(d.defaclrole) = 'postgres'
            and (d.defaclacl::text like '%anon=%'
                 or d.defaclacl::text ~ '[{,]=[a-zA-Z]'))::text,
+       '0'
+
+union all
+-- 16. IS ANY SCREEN ABOUT TO GO SHORT WITHOUT SAYING SO.
+--
+--     23 Nov 2026. Supabase sends at most 1,000 rows per read and says nothing
+--     about the rest. A screen asking for a whole table is correct until the
+--     day that table passes a thousand, and then it is quietly wrong - no
+--     error, no empty state, just fewer rows and worse figures.
+--
+--     It has happened twice. 2 Nov: two deal cards could not be found because
+--     the deals screen had been handed the newest thousand of 1,165. 23 Nov:
+--     Portfolio Review's plan was built from 1,000 of about 8,700 trail lines,
+--     on a page whose figures reach clients.
+--
+--     Both are fixed and paged. These are the ones still read in one go,
+--     because they fit today. THIS CHECK IS THE WARNING BEFORE THEY DO NOT.
+--     It counts them at 800 - a fifth of headroom - so the fix happens on a
+--     Monday rather than after somebody notices a number looks wrong.
+--
+--     WHEN THIS FAILS: page that read with everyRow() from
+--     lib/the-whole-book.ts, the way TrailBook and PortfolioReview do. Do not
+--     raise the cap; that moves the cliff and sends a huge payload to a
+--     browser.
+select 16,
+       'Lists a screen reads in one go that are nearing the 1,000 row cap',
+       (select count(*) from (
+          select 1 from commission_lines where kind = 'upfront' having count(*) > 800
+          union all
+          select 1 from commission_lines where kind = 'clawback' having count(*) > 800
+          union all
+          select 1 from public.portfolio_review_properties having count(*) > 800
+          union all
+          select 1 from public.portfolio_reviews having count(*) > 800
+          union all
+          select 1 from public.commission_trail_gaps having count(*) > 800
+          union all
+          select 1 from public.deal_alerts where resolved_at is null having count(*) > 800
+       ) nearly)::text,
        '0'
 
 ) checks
