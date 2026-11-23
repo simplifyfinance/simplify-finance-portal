@@ -67,10 +67,10 @@ tests, commit, push. About eight minutes.
 | | |
 |---|---|
 | Database | 146 MB |
-| Largest table | `deal_history`, 79 MB, 20,250 rows |
+| Largest table | `deal_history`, 79 MB, **21,479 rows** |
 | Next largest | `deal_statement_transactions` 18 MB, `commission_lines` 13 MB |
-| Deals | 304 |
-| Clients | ~1,900 |
+| Deals | **306** (296 not test) |
+| Clients | **1,911** |
 | Storage | 585 objects, 137 MB across 3 buckets |
 
 ### Structure
@@ -122,6 +122,22 @@ every table.
 | Timezone | UTC — the application converts to Sydney time in code, so the move shifts no displayed date |
 | Statement timeout | 120 s — comes from the compute size |
 | Max connections | 60 — comes from the compute size |
+
+
+### Four risks closed by measurement, 23 Nov 2026
+
+Raised in external review, settled by counting rather than by argument.
+
+| Raised | Measured | Consequence |
+|---|---|---|
+| The `supabase_vault` root key is unrecoverable and must be copied in Phase 0 | `vault.secrets` = **0 rows** | Nothing is in the vault. The step disappears |
+| `pg_graphql` may be a sixth unaudited route into the database | **Not installed** | Closed |
+| Policies or functions branching on the key's role claim change behaviour silently on the new keys | **0 policies, 0 functions** - checked for `auth.role()`, `auth.jwt()`, `request.jwt.claims` and `current_setting` | The key change is a credential swap and nothing more |
+| `pg_stat_statements` may expose query text containing client names | **No grants to `anon` or `authenticated`** | Closed |
+
+**Residual risk on the key change is one thing:** the two Realtime
+subscriptions and the 24-hour connection limit. Both are on `deals`, both
+inside the signed-in area. The rehearsal settles it.
 
 ### Nothing stored points at the current project
 

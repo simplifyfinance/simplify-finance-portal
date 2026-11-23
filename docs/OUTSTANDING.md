@@ -267,6 +267,110 @@ decision rather than an accident of how the project started.
 `docs/who-has-the-keys.md` now checks the plan name every month as well as the
 member list.
 
+### Two steps across two systems, with no way to roll back
+
+23 Nov 2026. Raised in external review after the archive/delete fault, and it
+is the class rather than the instance.
+
+The fault that let a departed staff member keep a working login was a two-step
+operation across two systems: delete the row in Postgres, then delete the login
+in the auth service. Postgres cannot roll back a call to the auth service, so a
+failure between the steps leaves exactly what was found - a login with no staff
+record, invisible on every screen and perfectly able to sign in.
+
+**The same shape exists everywhere this portal writes to both Postgres and
+Storage**, and it fails silently in both directions:
+
+**Forward.** A document uploads to Storage, then a row is inserted into
+`deal_documents`. If the insert fails, the file exists and the portal does not
+know about it. A client's document, filed, invisible, counted by nothing. No
+error anywhere - it looks identical to a document never uploaded.
+
+**Reverse.** A row is deleted from `deal_documents` and the object is not, or
+the object goes and the row stays. The portal then offers a document that
+storage cannot serve, and a client gets a broken link.
+
+**And we already have one documented without having connected it:**
+`sweep_the_reading_room()` cannot delete storage rows from SQL - see above - so
+the reverse orphan is possible there by design.
+
+**The likely fix**, pending the reviewer's answer on whether anything lighter is
+proportionate: a periodic reconciliation between `storage.objects` and
+`deal_documents`, run weekly alongside the audit, reporting objects with no row
+and rows with no object. Not an outbox and a reconciler, which is more machinery
+than a system this size should carry.
+
+**Audit every two-step write and delete across that boundary** before deciding.
+
+---
+
+### The portal asks "who is this user" about eight times a second
+
+23 Nov 2026. Measured from the auth log: **961 calls in two minutes.**
+
+`middleware.ts` runs on every request and calls `auth.getUser()`, which is a
+network round trip rather than a local check. **97 further places** in the
+codebase ask the same question independently. A single page load is ten or more
+sequential round trips.
+
+Until 23 Nov each of those crossed the Pacific twice - Sydney to Virginia to
+Singapore and back - because there was no `vercel.json`. **That is why the
+portal is slow to load.**
+
+**Two of the three fixes are done or in progress:**
+
+1. `vercel.json` pins the server code to Sydney. Removes the American leg.
+2. The middleware no longer asks before waving through the four client-facing
+   pages, which never used the answer.
+3. **Still open:** the 97 places each asking separately. The right fix is to ask
+   once per request and pass the answer down. Deliberately left until the first
+   two can be measured against it - once a round trip is 10ms rather than
+   300ms, the saving may not be worth touching the code that decides who sees
+   what, a day after hardening it.
+
+---
+
+### Anthropic: the terms, and sending less than a whole document
+
+23 Nov 2026. Raised in external review, and it is a gap the Sydney migration
+does not close.
+
+**Nine API routes send document content to the Anthropic API** - loan
+contracts, settlement documents, tax returns, payslips, fact finds, and
+drafting client correspondence. Confirmed as the commercial API with a server
+-held key, not a consumer or team subscription, which is the better of the two
+outcomes raised.
+
+**To establish this week:** whether the training prohibition is contractual
+rather than policy, whether a data processing agreement is signed rather than
+merely available, and what the retention period is.
+
+**The mitigation stands regardless of those answers.** When the portal needs two
+figures off a payslip, the provider does not need the client's name, address and
+tax file number in the same payload. Stripping identifying pages before
+transmission turns a difficult characterisation question into a straightforward
+one, and it is days of work rather than a project.
+
+**And the consequence has to be said out loud:** moving the database to Sydney
+while every document continues to transit to a United States provider does not
+deliver the residency outcome a board would assume. The honest framing is
+**storage in Australia, processing under contract**.
+
+---
+
+### The deletion block does not hold during a restore
+
+23 Nov 2026. The `nobody_is_deleted` trigger on `user_profiles` stops any delete
+at runtime. Two things it cannot stop, both raised in external review:
+
+**`TRUNCATE` does not fire row triggers.** Closed on 23 Nov:
+`revoke truncate on public.user_profiles from public, anon, authenticated;`
+
+**`session_replication_role = replica` disables triggers by design, and
+Supabase's own restore procedure sets it.** So the trigger protects normal use
+and does **not** protect the migration window. Not fixable, and written down
+here so nobody relies on it during exactly the window where it is not true.
+
 ## Standing rules
 
 - Nothing from this project leaves the private repo or the conversation.

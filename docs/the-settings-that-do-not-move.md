@@ -9,8 +9,14 @@ restores it. If it is not written here, it is gone when we move to Sydney.
 Each section says what LIVE reads today. On the night, open the same screen on
 the Sydney project and make it match.
 
-**Status: capture in progress.** Sections marked NOT YET CAPTURED still need a
-pass through the dashboard.
+**Status: capture complete, 23 November 2026.** Every screen walked through and
+recorded. Three settings were changed on the way rather than merely noted, and
+each says so where it appears: minimum password length 6 to 10, leaked password
+protection off to on, and "automatically expose new tables" on to off.
+
+**Two things on this page are irreversible and must be checked BEFORE the
+restore, not after:** the Postgres version and the database collation. Neither
+can be changed once a project exists.
 
 ---
 
@@ -213,14 +219,101 @@ the team grows.
 
 ---
 
-## 9. Settings → API
+## 9. Settings → Data API
 
-NOT YET CAPTURED. Exposed schemas, max rows returned.
+**It is called Data API, under INTEGRATIONS in the settings sidebar - not
+"API".**
+
+| Setting | Live, 23 Nov 2026 |
+|---|---|
+| Exposed schemas | 2 of 2 |
+| Exposed tables | reads "0 of 58" - see below |
+| Exposed functions | reads "0 of 34" - see below |
+| Automatically expose new tables | On → **turned Off, 23 Nov** |
+| Extra search path | `public`, `extensions` |
+| **Max rows** | **1,000** |
+| Pool size | configured automatically from the compute size |
+
+**"0 of 58 tables exposed" is not what it sounds like.** It counts tables
+somebody has toggled by hand, and nobody ever has. Access comes from the
+automatic setting below it, not from that list. Worth knowing before somebody
+reads it as "nothing is exposed".
+
+**"Automatically expose new tables" was On.** Supabase's own text under it
+recommends turning it off. It is the same born-open default that produced four
+holes on 23 Nov: any table created from then on becomes reachable through the
+API without anyone deciding it should be. Turned off; existing tables
+unaffected.
+
+**MAX ROWS IS 1,000 AND IT IS A PER-PROJECT SETTING.** Every screen in this
+portal behaves differently if Sydney is created with a different value. It is
+also the cause of the Portfolio Review defect found the same day - a read of
+~8,700 trail lines was handed 1,000 with no error. **Set Sydney to 1,000 to
+match, then re-run the accuracy checks there**, because matching row counts
+between two projects proves nothing when both truncate identically. See
+`docs/the-six-ways-a-number-goes-wrong.md`.
 
 ## 10. Settings → General
 
-Postgres **17.6**. Sydney must be 17.6 or newer - a restore goes into the same
-version or a newer one, never an older one.
+| | Live, 23 Nov 2026 |
+|---|---|
+| Project name | `simplify-finance-portal-claude` |
+| Project ID | `brjytbuirbupatjtauhx` |
+| Region | `ap-southeast-1` — Southeast Asia (Singapore) |
+| Postgres | **17.6** |
+
+Sydney must be 17.6 or newer - a restore goes into the same version or a newer
+one, never an older one.
+
+---
+
+## 10a. Settings → API Keys — THE FORMAT IS CHANGING
+
+| | Live, 23 Nov 2026 |
+|---|---|
+| Legacy keys (`eyJ…` JWTs) | in use by the portal |
+| Publishable key (`sb_publishable_…`) | exists, unused |
+| Secret key (`sb_secret_…`) | exists, unused |
+| Dashboard notice | **"Legacy API keys will be retired in early 2027"** |
+
+**A Supabase project created today does not issue legacy keys at all.** Since
+1 November 2025, new and restored projects get the publishable and secret keys
+only. So the Sydney key change is **not a swap - it is a format change.**
+
+**What was checked, and came back clean:**
+
+| | |
+|---|---|
+| Hand-built `Authorization: Bearer <supabase key>` headers | **none** - all ten matches are the Resend key |
+| Policies or functions reading the token's role | **zero**, by `auth.role()`, `auth.jwt()`, `request.jwt.claims` or `current_setting` |
+| Anything storing a storage object ID | **none** - documents are referenced by path |
+
+**So the change is a credential swap and nothing more**, with one residual: two
+Realtime subscriptions on `deals`, and new-key Realtime connections expire after
+24 hours without a signed-in user. Both are inside the signed-in area, so this
+is expected to be fine and is a rehearsal gate rather than a worry.
+
+---
+
+## 10b. Vercel — and this one is not a Supabase setting at all
+
+**There was no `vercel.json` until 23 Nov 2026**, which means Vercel ran every
+server-side operation in **Washington DC**. Every loan contract, tax return and
+payslip the portal reads was read by code executing in the United States.
+
+Now pinned:
+
+```json
+{ "regions": ["syd1"] }
+```
+
+`lib/the-portal-runs-in-australia.test.ts` fails the build if it is removed,
+because deleting it breaks nothing visible.
+
+**Plan: Hobby.** Vercel's non-commercial tier - no team access control, no
+SSO, and no data processing agreement with the company holding the database
+service role key. Tracked in `docs/OUTSTANDING.md`. Upgrading is a billing
+change and it is ahead of the migration, not behind it.
 
 ---
 

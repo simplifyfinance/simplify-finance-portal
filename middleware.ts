@@ -26,8 +26,6 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
-
   const { pathname } = request.nextUrl
 
   // Public routes - no auth needed.
@@ -48,6 +46,24 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/proceed') || pathname.startsWith('/ready') || pathname.startsWith('/opportunity') || pathname.startsWith('/answers') || pathname.startsWith('/login') || pathname.startsWith('/reset-password')) {
     return supabaseResponse
   }
+
+  // ASK WHO THIS IS ONLY WHEN IT MATTERS. 23 Nov 2026.
+  //
+  // This call used to sit at the top of the file, before the four client pages
+  // were waved through. It is not a local check - it is a round trip to
+  // Supabase, which is in Singapore, from a server which is currently in
+  // Virginia. Every client opening a link from an email paid for that trip in
+  // order to be told something the next six lines never used.
+  //
+  // THE CLIENT PAGES HAVE NO SESSION BY DEFINITION. /ready, /answers,
+  // /proceed and /opportunity are opened by people who have never signed in
+  // and never will. Asking who they are, across two oceans, to then not look
+  // at the answer, is the kind of cost that never shows up as an error.
+  //
+  // Nothing else moves. The order of the checks below is unchanged, and
+  // lib/the-client-pages-work-logged-out.test.ts still fails the ship if any
+  // of those four stops being public.
+  const { data: { user } } = await supabase.auth.getUser()
 
   // All other routes require auth
   if (!user) {
