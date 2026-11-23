@@ -63,3 +63,30 @@ describe('archiving stops the login', () => {
     expect(used).not.toContain('/api/delete-user')
   })
 })
+
+// 23 Nov 2026. THE BUTTON WAS GONE AND THE DOOR WAS NOT.
+//
+// This test took the delete button off the team screen on 18 Nov and stopped
+// there. app/api/delete-user still answered anybody who called it, and it
+// deleted the staff record BEFORE the login - so a failure between the two
+// steps left a login nobody could see and anybody could use. That is exactly
+// the state the audit found on 23 Nov.
+//
+// The route now refuses. The database refuses too, through the
+// nobody_is_deleted trigger on user_profiles. This checks the route half;
+// check 4 of docs/weekly-audit.sql checks the result.
+describe('and the route itself is closed, not just the button', () => {
+  const ROUTE_FILE = readFileSync('app/api/delete-user/route.ts', 'utf8')
+
+  it('no longer deletes anything', () => {
+    expect(ROUTE_FILE, 'this route must not touch user_profiles')
+      .not.toContain("from('user_profiles')")
+    expect(ROUTE_FILE, 'this route must not delete a login')
+      .not.toContain('auth.admin.deleteUser')
+  })
+
+  it('refuses and says why', () => {
+    expect(ROUTE_FILE).toContain('410')
+    expect(ROUTE_FILE).toContain('archived, never deleted')
+  })
+})
