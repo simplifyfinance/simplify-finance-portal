@@ -53,6 +53,7 @@ import { groupsOf, undrawnNoteFor, originalPurposeLine, aboutThisStructure,
          openingLine as refinanceOpening, securedByMany, securedHeading, releaseTotal,
          ACCOUNTANT_NOTE as REFINANCE_ACCOUNTANT_NOTE, securityWorth, STAND_ALONE_NOTE } from '@/lib/complex-refinance'
 import { siteUrl } from '@/lib/site-url'
+import { onlyStaff } from '@/lib/only-staff'
 
 
 const DEFAULT_BRAND = {
@@ -739,6 +740,10 @@ function buildChecklist(d: any) {
 }
 
 export async function POST(req: NextRequest) {
+  // ONLY AN ACTIVE STAFF MEMBER. See lib/only-staff.ts and
+  // docs/the-security-audit.md - 23 Nov 2026.
+  const { refusal } = await onlyStaff()
+  if (refusal) return refusal
   const { prompt, broker, brand, dealId, formData } = await req.json()
   const d = formData || {}
 

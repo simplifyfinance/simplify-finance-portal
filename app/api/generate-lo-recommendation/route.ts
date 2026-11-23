@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { onlyStaff } from '@/lib/only-staff'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export async function POST(req: NextRequest) {
+  // ONLY AN ACTIVE STAFF MEMBER. See lib/only-staff.ts and
+  // docs/the-security-audit.md - 23 Nov 2026.
+  const { refusal } = await onlyStaff()
+  if (refusal) return refusal
   try {
     const { prompt, styleNotes } = await req.json()
     // Corrections the team has flagged before, promoted in Settings. Same idea as

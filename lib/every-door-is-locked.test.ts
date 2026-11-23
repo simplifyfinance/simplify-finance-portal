@@ -58,7 +58,12 @@ const dangerous   = (s: string) => sendsMail(s) || usesMasterKey(s) || buildsADo
 //
 // Either a signed-in user, or a signed link - the ones a client clicks in an
 // email carry a signature this portal made, and a made-up one is refused.
-const checksTheUser  = (s: string) => /auth\.getUser\(\)/.test(s)
+//
+// 23 Nov 2026. onlyStaff() counts and is the better answer: it calls getUser()
+// itself and then goes on to require an ACTIVE STAFF RECORD, which a bare
+// getUser() does not. A login can outlive the staff record behind it - that is
+// the fault the audit found that morning. See lib/only-staff.ts.
+const checksTheUser  = (s: string) => /auth\.getUser\(\)/.test(s) || /onlyStaff\(\)/.test(s)
 const checksAToken   = (s: string) => /verifyReady\(|verifyOpportunity\(|verifyToken\(/.test(s)
 const asksWhoIsCalling = (s: string) => checksTheUser(s) || checksAToken(s)
 
@@ -111,7 +116,10 @@ describe('every route that can do damage asks who is calling', () => {
   // A test that cannot tell a definition from a call teaches people to ignore
   // it, which is worse than not having it.
   function guardMarkers(src: string): string[] {
-    const markers = ['auth.getUser()']
+    // onlyStaff() is imported, not defined here, so the loop below cannot find
+    // it the way it finds a local helper. It is a guard by definition - see
+    // lib/only-staff.ts - so it is named outright. 23 Nov 2026.
+    const markers = ['auth.getUser()', 'onlyStaff()']
     for (const m of src.matchAll(/(?:async\s+)?function\s+(\w+)\s*\(/g)) {
       const name = m[1]
       const body = src.slice(m.index || 0, (m.index || 0) + 900)

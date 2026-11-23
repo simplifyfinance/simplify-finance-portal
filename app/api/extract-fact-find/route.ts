@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { documentFrom, ReadingRoomError } from '@/lib/the-reading-room'
 import Anthropic from '@anthropic-ai/sdk'
 import { readPdfFormAnswers, answersAsText } from '@/lib/the-answers-are-in-the-form'
+import { onlyStaff } from '@/lib/only-staff'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -53,6 +54,10 @@ An answer that is in the list is in the document. Do not leave a field empty
 because you cannot make out the picture.`
 
 export async function POST(req: NextRequest) {
+  // ONLY AN ACTIVE STAFF MEMBER. See lib/only-staff.ts and
+  // docs/the-security-audit.md - 23 Nov 2026.
+  const { refusal } = await onlyStaff()
+  if (refusal) return refusal
   try {
     // THE DOCUMENT, HOWEVER IT ARRIVED - 22 Nov 2026.
     //

@@ -3,6 +3,7 @@ import { documentFrom, ReadingRoomError } from '@/lib/the-reading-room'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import Anthropic from '@anthropic-ai/sdk'
 import { classify, isTotal, type ReadPayslip } from '@/lib/payslip-lines'
+import { onlyStaff } from '@/lib/only-staff'
 
 // READING A PAYSLIP. NOTHING ELSE.
 //
@@ -118,6 +119,10 @@ const date = (v: any): string => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? 
 const BASIS = ['annual', 'monthly', 'fortnightly', 'weekly', 'hourly'] as const
 
 export async function POST(req: NextRequest) {
+  // ONLY AN ACTIVE STAFF MEMBER. See lib/only-staff.ts and
+  // docs/the-security-audit.md - 23 Nov 2026.
+  const { refusal } = await onlyStaff()
+  if (refusal) return refusal
   const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 })

@@ -1,6 +1,6 @@
 # Outstanding — Simplify Finance Portal
 
-Last updated: 16 Sep 2026 (end of day)
+Last updated: 23 Nov 2026
 
 This is the running list. Fabio: say "check the outstanding list" in any future
 session and it gets read first, before anything else.
@@ -140,6 +140,108 @@ now blocks - see scripts/check-browser.sh.
 Covered on Fact Find, BC, Lending Options, Compliance and the Internal notes box.
 Boxes with their own Save button do not have a draft and do not need one: the
 text stays on screen until the person presses Save and sees it fail.
+
+### The reading room sweep is written down but never runs
+
+23 Nov 2026. Found while listing the live extensions for the Sydney move.
+
+`docs/the-reading-room.sql` creates `sweep_the_reading_room()` and the comment
+above it says it is the third of three things that keep the bucket empty. It
+also says "call it from the same place sweep_expired_auth() is called."
+
+**There is no such place.** `sweep_expired_auth()` does not exist anywhere in
+this repo - Claude wrote that line as if it did. `pg_cron` is not installed on
+live (checked 23 Nov: only pg_stat_statements, pgcrypto, plpgsql,
+supabase_vault and uuid-ossp). There is no `vercel.json`, so no Vercel cron
+either. Nothing in this system runs anything on a schedule.
+
+**What still works.** The reader deletes what it read, in a `finally`, and
+`lib/the-reading-room-is-emptied.test.ts` refuses a reader that uploads without
+a delete beside it. That is the path every normal read takes.
+
+**What does not.** A request that dies between the upload and the read - a
+browser closed mid-upload, a function that times out, a deploy mid-request -
+leaves its PDF in the bucket for good. Nobody can read it: the bucket is
+private and has no select policy on purpose. But it is not removed, and the
+file says it is.
+
+**AND IT COULD NOT WORK ANYWAY.** Confirmed on live, 23 Nov. Supabase has a
+`BEFORE DELETE` statement trigger `protect_objects_delete` on `storage.objects`
+running `storage.protect_delete()`, which raises:
+
+    Direct deletion from storage tables is not allowed. Use the Storage API
+    instead.
+
+unless `storage.allow_delete_query` is set to true. `sweep_the_reading_room()`
+does `delete from storage.objects`. So it is not merely unscheduled - scheduling
+it would only produce an error every hour.
+
+The protection is right. Deleting the row never deleted the file; it orphaned
+it. The reader was always correct: `admin.storage.from('reading-room').remove()`
+is the Storage API and does remove the file.
+
+**So the fix is not a cron on this function.** Drop
+`sweep_the_reading_room()` and replace it with a scheduled route that lists the
+reading-room bucket and removes anything over an hour old through the Storage
+API. That needs a `vercel.json` cron, which this project does not have yet.
+
+**Fix it as part of the Sydney move**, not before - that is the next time the
+database is touched, and this is a scheduler, not a code change. Either enable
+`pg_cron` and schedule the sweep hourly, or correct the comment in
+`the-reading-room.sql` so it stops promising something that is not happening.
+Do not leave both.
+
+### Sixty rules say "anyone signed in" where they mean "any staff member"
+
+23 Nov 2026. The biggest open security item. Full write-up in
+`docs/the-security-audit.md`.
+
+About sixty policies in the database have `using (true)` for the
+`authenticated` role. That checks you hold a login. It does not check you are on
+the team. Harmless while every login was a staff member; not harmless the moment
+one exists without a staff record, which is what happened in October.
+
+What such a login could reach: the client book (portfolio reviews, contacts,
+properties), commissions, lenders and lender policy, the Paco knowledge, daily
+plans and the team list. Deals were safe - they are locked by broker.
+
+**The fix** is one named check - "is this caller an active staff member" - used
+by every rule and every API route, replacing `true`. It is a large, careful job:
+each rule needs changing and testing, and getting one wrong locks the team out
+of something.
+
+`docs/weekly-audit.sql` check 10 counts them. The number should fall every week
+and never rise.
+
+### Fourteen AI routes have no sign-in check
+
+23 Nov 2026. Found by `scripts/weekly-audit.sh` on its first run, then read one
+by one.
+
+`read-loan-contract`, `read-tax-document`, `read-settlement-document`,
+`extract-fact-find`, `extract-lender`, `extract-policy`, `generate-email`,
+`generate-lo-email`, `generate-lo-recommendation`, `generate-compliance`,
+`expand-drop`, `document-text`, `book-import`, `abn-lookup`.
+
+**No client data is exposed by any of them.** Each one works only on what the
+caller posts to it, and none reads a deal out of the database. Checked line by
+line, not assumed. `read-link` already refuses addresses on our own network, so
+it cannot be pointed at anything internal.
+
+**The cost is money, not data.** Every one of these calls a paid model. Anyone
+on the internet who finds the address can run them, and the bill is Fabio's.
+
+**The fix** is one shared check used by all fourteen - signed in, and an active
+staff member. One line each, no change to what they do.
+
+**Not faults, checked and cleared:** `statement-analysis` checks who is signing
+in and reads the deal through the caller's own access, so the database rules
+apply. `2fa/send` and `2fa/verify` run before sign-in is complete and check the
+user id, which is the most they can do. `version` returns a build number.
+
+**One real one:** `template-archive` uses the master key and only checks you are
+signed in. A login with no staff record could change which templates are
+archived for everybody. Small damage, same fault as the big job above.
 
 ## Standing rules
 

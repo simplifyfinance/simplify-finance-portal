@@ -5,6 +5,7 @@ import {
   kindOf, canBeRead, planZip, sheetToMarkdown, emailParts, emailStamp, safeMemberName,
   type DropKind,
 } from '@/lib/dropped-files'
+import { onlyStaff } from '@/lib/only-staff'
 
 export const maxDuration = 300
 
@@ -57,6 +58,10 @@ function emailPartsToParts(raw: string, name: string): Part[] {
 }
 
 export async function POST(req: Request) {
+  // ONLY AN ACTIVE STAFF MEMBER. See lib/only-staff.ts and
+  // docs/the-security-audit.md - 23 Nov 2026.
+  const { refusal } = await onlyStaff()
+  if (refusal) return refusal
   try {
     const form = await req.formData()
     const file = form.get('file') as File | null

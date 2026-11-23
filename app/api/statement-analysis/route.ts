@@ -4,6 +4,7 @@ import { createSupabaseAdmin } from '@/lib/supabase-admin'
 import { parseCashDeck, StatementParseError, type ParsedStatements } from '@/lib/statement-parse'
 import { analyse, ANALYSIS_VERSION } from '@/lib/statement-analysis'
 import { normaliseRules } from '@/lib/statement-rules'
+import { onlyStaff } from '@/lib/only-staff'
 
 export const maxDuration = 60
 
@@ -63,6 +64,10 @@ function metaOf(p: ParsedStatements) {
 }
 
 export async function POST(req: NextRequest) {
+  // ONLY AN ACTIVE STAFF MEMBER. See lib/only-staff.ts and
+  // docs/the-security-audit.md - 23 Nov 2026.
+  const { refusal } = await onlyStaff()
+  if (refusal) return refusal
   const form = await req.formData()
   const dealId = String(form.get('dealId') || '')
   const got = await dealFor(dealId)
@@ -152,6 +157,10 @@ export async function POST(req: NextRequest) {
 // they are now. No file, no second copy of the client's banking data, and the
 // transactions themselves are never touched - they are what the bank said.
 export async function PUT(req: NextRequest) {
+  // ONLY AN ACTIVE STAFF MEMBER. See lib/only-staff.ts and
+  // docs/the-security-audit.md - 23 Nov 2026.
+  const { refusal } = await onlyStaff()
+  if (refusal) return refusal
   const body = await req.json().catch(() => ({}))
   const dealId = String(body.dealId || '')
   const uploadId = String(body.uploadId || '')
@@ -224,6 +233,10 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  // ONLY AN ACTIVE STAFF MEMBER. See lib/only-staff.ts and
+  // docs/the-security-audit.md - 23 Nov 2026.
+  const { refusal } = await onlyStaff()
+  if (refusal) return refusal
   const { searchParams } = new URL(req.url)
   const uploadId = searchParams.get('uploadId') || ''
   const dealId = searchParams.get('dealId') || ''

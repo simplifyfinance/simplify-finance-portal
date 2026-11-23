@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import ExcelJS from 'exceljs'
+import { onlyStaff } from '@/lib/only-staff'
 
 export const maxDuration = 300
 
@@ -43,6 +44,10 @@ function flat(v: any): Cell {
 }
 
 export async function POST(req: Request) {
+  // ONLY AN ACTIVE STAFF MEMBER. See lib/only-staff.ts and
+  // docs/the-security-audit.md - 23 Nov 2026.
+  const { refusal } = await onlyStaff()
+  if (refusal) return refusal
   try {
     const body = await req.json().catch(() => ({}))
     const base64 = String(body?.base64 || '').replace(/^data:[^,]+,/, '')

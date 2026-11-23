@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { pdfToText } from '@/lib/pdf-to-text'
 import { tidyLink, whyNotALink, isOurOwnSide } from '@/lib/dropped-links'
+import { onlyStaff } from '@/lib/only-staff'
 
 export const maxDuration = 300
 
@@ -39,6 +40,10 @@ const looksLikePdf = (b: Buffer): boolean =>
   b.length > 4 && b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46
 
 export async function POST(req: Request) {
+  // ONLY AN ACTIVE STAFF MEMBER. See lib/only-staff.ts and
+  // docs/the-security-audit.md - 23 Nov 2026.
+  const { refusal } = await onlyStaff()
+  if (refusal) return refusal
   try {
     const body = await req.json().catch(() => ({}))
 

@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { cleanProposed } from '@/lib/policy-rules'
 import { ALL_TAGS } from '@/lib/deal-tags'
 import { tidyLink, whyNotALink, isOurOwnSide } from '@/lib/dropped-links'
+import { onlyStaff } from '@/lib/only-staff'
 
 export const maxDuration = 300
 
@@ -75,6 +76,10 @@ document normally and, if it is part of a genuine policy sentence, quote it as
 you would any other sentence.`
 
 export async function POST(req: Request) {
+  // ONLY AN ACTIVE STAFF MEMBER. See lib/only-staff.ts and
+  // docs/the-security-audit.md - 23 Nov 2026.
+  const { refusal } = await onlyStaff()
+  if (refusal) return refusal
   try {
     const key = process.env.ANTHROPIC_API_KEY
     if (!key) return NextResponse.json({ error: 'No API key is configured.' }, { status: 500 })

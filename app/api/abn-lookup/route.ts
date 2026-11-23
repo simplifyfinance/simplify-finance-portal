@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { onlyStaff } from '@/lib/only-staff'
 
 const GUID = process.env.ABN_LOOKUP_GUID
 
 export async function GET(request: NextRequest) {
+  // ONLY AN ACTIVE STAFF MEMBER. See lib/only-staff.ts and
+  // docs/the-security-audit.md - 23 Nov 2026.
+  const { refusal } = await onlyStaff()
+  if (refusal) return refusal
   const searchParams = request.nextUrl.searchParams
   const query = searchParams.get('q')?.trim() || ''
 

@@ -33,6 +33,7 @@ import { analysisFor, analysisBlockHtml, analysisLead, analysisDisclaimerHtml,
 import { showsOwnLoanAmount } from '@/lib/email-amounts'
 import { rowLegalFeeLabel, feeText} from '@/lib/lender-fees'
 import { siteUrl } from '@/lib/site-url'
+import { onlyStaff } from '@/lib/only-staff'
 
 
 // Was hardcoded to Simplify Finance, licence number included, so a second
@@ -366,6 +367,10 @@ function walletLinkBox(link: string) {
 
 
 export async function POST(req: NextRequest) {
+  // ONLY AN ACTIVE STAFF MEMBER. See lib/only-staff.ts and
+  // docs/the-security-audit.md - 23 Nov 2026.
+  const { refusal } = await onlyStaff()
+  if (refusal) return refusal
   // bcData IS READ, NEVER STORED. The lending options form holds the deal, so
   // it sends the borrowing capacity along with this request and the email is
   // built from whatever the BC says at the moment the button is pressed. The

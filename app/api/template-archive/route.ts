@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServer } from '@/lib/supabase-server'
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
+import { onlyStaff } from '@/lib/only-staff'
 
 // Which templates are archived, shared by the whole team. A template Kylie puts
 // away should be away for everyone, not just her browser — so it lives in
@@ -9,14 +9,16 @@ import { createSupabaseAdmin } from '@/lib/supabase-admin'
 // Written through the admin client so a staff member can archive one without
 // needing write access to the settings row generally.
 
-async function requireUser() {
-  const supabase = await createSupabaseServer()
-  const { data } = await supabase.auth.getUser()
-  return data?.user || null
-}
+// 23 Nov 2026. THIS USED TO ASK "ARE YOU SIGNED IN?" and then write with the
+// admin client, which ignores every rule in the database. A login with no staff
+// record behind it - which is what a deleted staff member leaves - could change
+// which templates are hidden for the whole team. See lib/only-staff.ts.
 
 export async function GET() {
-  if (!await requireUser()) return NextResponse.json({ archived: [] })
+  const { refusal } = await onlyStaff()
+  // A LIST, NOT A REFUSAL. The screen asks for this on load; an empty list is
+  // the honest answer and does not throw a red box at somebody mid-sign-in.
+  if (refusal) return NextResponse.json({ archived: [] })
   const admin = createSupabaseAdmin()
   const { data } = await admin.from('settings')
     .select('archived_templates').eq('id', 'singleton').maybeSingle()
@@ -24,7 +26,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  if (!await requireUser()) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
+  const { refusal } = await onlyStaff()
+  if (refusal) return refusal
 
   const { id, archived } = await req.json().catch(() => ({}))
   if (!id || typeof archived !== 'boolean') {

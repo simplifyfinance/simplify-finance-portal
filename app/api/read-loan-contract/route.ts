@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { documentFrom, ReadingRoomError } from '@/lib/the-reading-room'
 import Anthropic from '@anthropic-ai/sdk'
+import { onlyStaff } from '@/lib/only-staff'
 
 // READING A LOAN CONTRACT.
 //
@@ -54,6 +55,10 @@ Rules:
 - Return ONLY the JSON object.`
 
 export async function POST(req: NextRequest) {
+  // ONLY AN ACTIVE STAFF MEMBER. See lib/only-staff.ts and
+  // docs/the-security-audit.md - 23 Nov 2026.
+  const { refusal } = await onlyStaff()
+  if (refusal) return refusal
   try {
     // THE DOCUMENT, HOWEVER IT ARRIVED - 22 Nov 2026.
     //

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { onlyStaff } from '@/lib/only-staff'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -24,6 +25,10 @@ Extract ALL products you find. For each product return a JSON object with exactl
 Return ONLY a valid JSON array starting with [ and ending with ]. No markdown, no backticks, no explanation.`
 
 export async function POST(req: NextRequest) {
+  // ONLY AN ACTIVE STAFF MEMBER. See lib/only-staff.ts and
+  // docs/the-security-audit.md - 23 Nov 2026.
+  const { refusal } = await onlyStaff()
+  if (refusal) return refusal
   try {
     const formData = await req.formData()
     const file = formData.get('file') as File | null

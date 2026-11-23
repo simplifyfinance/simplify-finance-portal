@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { onlyStaff } from '@/lib/only-staff'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -52,6 +53,10 @@ options / Broker notes. If you had to say something was not recorded, say so her
 too.]`
 
 export async function POST(req: NextRequest) {
+  // ONLY AN ACTIVE STAFF MEMBER. See lib/only-staff.ts and
+  // docs/the-security-audit.md - 23 Nov 2026.
+  const { refusal } = await onlyStaff()
+  if (refusal) return refusal
   try {
     const { prompt, styleNotes, facts } = await req.json()
     const styleBlock = (styleNotes && styleNotes.length > 0)
