@@ -51,8 +51,16 @@ describe('which lane a deal is in', () => {
       bc_sent_at: '2026-11-02T01:00:00Z' })).toBe('bc_client')
   })
 
-  it('lending options being written are with credit', () => {
-    expect(laneOf(loDone)).toBe('lo_us')
+  // CHANGED 24 NOV 2026. Pressing Proceed on the BC lands in Awaiting docs,
+  // always, and "Docs received" is the one press that moves it on. Fabio: "we
+  // start with the BC and then we go to the lending options, but now we're
+  // going to collect the documentation."
+  it('lending options are awaiting docs until the documents are in', () => {
+    expect(laneOf(loDone)).toBe('lo_docs')
+  })
+
+  it('and with credit once they are', () => {
+    expect(laneOf({ ...loDone, docs_received_at: '2026-11-03T00:00:00Z' })).toBe('lo_us')
   })
 
   it('and sent, they are with the client', () => {
@@ -141,8 +149,18 @@ describe('lending options is three columns', () => {
     expect(laneOf({ ...asked, docs_received_at: '2026-11-05T00:00:00Z' })).toBe('lo_us')
   })
 
-  it('with credit when nothing was ever asked for', () => {
-    expect(laneOf(agreedBc)).toBe('lo_us')
+  // CHANGED 24 NOV 2026, and this is the case that changed.
+  //
+  // It used to read "with credit when nothing was ever asked for", on the
+  // reasoning that no request means no wait. In practice the request is made a
+  // moment AFTER the client presses the button, so a deal sat in With credit
+  // and jumped to Awaiting docs seconds later - and a deal whose request
+  // failed sat in With credit with no documents ever coming.
+  //
+  // Fabio: "BC pressed internally or through the email, always lending options
+  // awaiting docs."
+  it('awaiting docs even before the request has been made', () => {
+    expect(laneOf(agreedBc)).toBe('lo_docs')
   })
 
   it('with client once the options have gone out, whatever is outstanding', () => {

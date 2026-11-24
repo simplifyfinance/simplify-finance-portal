@@ -82,7 +82,7 @@ const txt = (v: any) => String(v ?? '').trim()
 import { buysNothing } from './buying'
 import { STRATA_SUBTYPES } from './which-insurance-certificate'
 
-const REFINANCE_TEMPLATES = ['refinance_only', 'refinance_equity', 'investment_equity']
+export const REFINANCE_TEMPLATES = ['refinance_only', 'refinance_equity', 'investment_equity']
 
 export function isRefinance(deal: any): boolean {
   if (REFINANCE_TEMPLATES.includes(txt(deal?.bc_data?.template))) return true

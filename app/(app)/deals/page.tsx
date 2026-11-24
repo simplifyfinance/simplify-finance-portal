@@ -248,7 +248,23 @@ export default function DealsPage() {
     const { data: docs } = await browser.from('deal_documents').select('id, file_path').eq('deal_id', id)
     if (docs && docs.length > 0) {
       const paths = docs.map((d: any) => d.file_path)
-      await browser.storage.from('deal-documents').remove(paths)
+      // The files go before the records, and the result is CHECKED. It used to be
+      // discarded. When the storage call failed or half-succeeded, the records
+      // were deleted anyway and the files stayed behind - a client document with
+      // nothing left pointing at it, which nobody would ever find again. Two of
+      // those were discovered in the November audit, both October fact finds.
+      // A partial removal returns fewer objects than it was given, with no error,
+      // so the count is checked as well as the error. See docs/sixth-reply.md.
+      const { data: removed, error: rmErr } = await browser.storage
+        .from('deal-documents').remove(paths)
+      if (rmErr || !removed || removed.length !== paths.length) {
+        setDeleteBusy(false)
+        alert('The deal was NOT deleted - its documents could not be removed'
+          + (rmErr ? ': ' + rmErr.message : '.')
+          + ' Nothing has been changed. Please try again, and tell Fabio if it'
+          + ' keeps happening.')
+        return
+      }
       const { data: gone, error: docErr } = await browser.from('deal_documents')
         .delete().eq('deal_id', id).select('id')
       if (docErr || !gone || gone.length === 0) {

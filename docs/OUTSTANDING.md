@@ -294,13 +294,50 @@ storage cannot serve, and a client gets a broken link.
 `sweep_the_reading_room()` cannot delete storage rows from SQL - see above - so
 the reverse orphan is possible there by design.
 
-**The likely fix**, pending the reviewer's answer on whether anything lighter is
-proportionate: a periodic reconciliation between `storage.objects` and
-`deal_documents`, run weekly alongside the audit, reporting objects with no row
-and rows with no object. Not an outbox and a reconciler, which is more machinery
-than a system this size should carry.
+**FOUND IN PRODUCTION, 23 Nov 2026.** Two client fact finds were sitting in the
+`deal-documents` bucket with no row pointing at them, from deals deleted in
+October.
 
-**Audit every two-step write and delete across that boundary** before deciding.
+> **CHECK 17 READS 1, DELIBERATELY, AND NOT 0.**
+>
+> One of the two was deleted on 23 Nov. The other was kept on Fabio's
+> instruction:
+>
+>     deal-documents / 0cca5f69-0e9c-46bd-9758-e4aed5b7c9e7
+>         1791953429519_Cockburn - Fact Find.pdf
+>         315 kB, uploaded 14 October 2026
+>
+> Its deal no longer exists, so nothing in the portal can reach it and nothing
+> will unless somebody goes looking in the bucket.
+>
+> **So check 17 is expected to read 1 until that file is either filed against a
+> deal or removed.** If it ever reads 2 or more, that is a NEW orphan and the
+> ordering fault has happened again. Do not raise the expected number to 1 -
+> that would hide the next one.
+>
+> It also travels to Sydney with the other 584 objects unless it is dealt with
+> first. Deleting a deal removes its `deal_documents` rows by cascade and leaves
+the files in storage untouched. They were also the only surviving trace of those
+two deals. Removed on Fabio's instruction the same day.
+
+**The fix is the ORDER, not reconciliation.** The reviewer's answer, and it is
+better than what we proposed:
+
+> Upload-then-insert fails invisibly - the object exists, no row references it,
+> nothing can see it. Insert-then-upload fails visibly: write the row with
+> `status = 'pending'`, upload, then mark it `complete`. If the upload fails you
+> have a row that says pending, and a pending row can be listed, counted,
+> alerted on and retried. Same failure rate, completely different
+> observability. An ordering change plus one column, not a project.
+
+The same in reverse on delete: mark the row `deleting`, remove the object, then
+remove the row. A failure leaves a visible tombstone rather than a broken link
+in front of a client.
+
+**Check 17 of `docs/weekly-audit.sql` is the backstop**, not the fix. It catches
+it in a week. The ordering change stops it happening.
+
+**Audit every two-step write and delete across that boundary** when building it.
 
 ---
 

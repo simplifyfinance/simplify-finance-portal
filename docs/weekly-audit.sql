@@ -306,6 +306,47 @@ select 16,
        ) nearly)::text,
        '0'
 
+union all
+-- 17. A FILE NOBODY HAS A RECORD OF, OR A RECORD POINTING AT NOTHING.
+--
+--     23 Nov 2026. Two steps, two systems, no way to roll back between them.
+--     The portal uploads a document to storage and then writes a row in
+--     deal_documents. Postgres cannot undo the upload if the write fails.
+--
+--     BOTH DIRECTIONS FAIL IN SILENCE.
+--
+--     A record with no file: the portal offers a document that storage cannot
+--     serve, and a client gets a broken link.
+--
+--     A file with no record: the document exists, the portal cannot see it,
+--     nobody is managing it, and nothing counts it. It looks exactly like a
+--     document that was never uploaded.
+--
+--     THE SECOND ONE WAS FOUND IN PRODUCTION THE DAY THIS CHECK WAS WRITTEN.
+--     Deleting a deal removes its deal_documents rows by cascade and leaves
+--     the files in storage untouched, so two client fact finds from deals
+--     deleted in October were sitting in the bucket with nothing pointing at
+--     them. They were also the only surviving trace of those deals.
+--
+--     THE REAL FIX IS THE ORDER, not this check. Writing the row first with a
+--     pending status, uploading second, then marking it complete, turns an
+--     invisible failure into a visible one. See docs/OUTSTANDING.md. Until
+--     that is built, this is how it gets noticed in a week rather than a month.
+select 17,
+       'Documents and their records out of step',
+       (select count(*) from (
+          select 1 from public.deal_documents d
+           where not exists (select 1 from storage.objects o
+                              where o.bucket_id = 'deal-documents'
+                                and o.name = d.file_path)
+          union all
+          select 1 from storage.objects o
+           where o.bucket_id = 'deal-documents'
+             and not exists (select 1 from public.deal_documents d
+                              where d.file_path = o.name)
+       ) adrift)::text,
+       '0'
+
 ) checks
 cross join lateral (
   select case when expected = found then 'PASS' else 'FAIL' end as result

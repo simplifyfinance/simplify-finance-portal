@@ -157,18 +157,77 @@ export function laneOf(deal: any): string | null {
 
   const w = whoHasIt(deal)
   const theirs = w?.holder === 'client'
-  if (p === 'bc') return theirs ? 'bc_client' : 'bc_us'
+  // "WITH CLIENT" HERE MEANS ONE THING: THE BC HAS GONE OUT AND THEY HAVE NOT
+  // ANSWERED. 24 Nov 2026.
+  //
+  // It used to ask whoHasIt(), which answers a different and wider question -
+  // and answers "client" for an open document request as well (see the
+  // documents override in lib/who-has-it.ts). That override is right about the
+  // deal and wrong about this column: a borrowing capacity nobody has written
+  // yet was sitting in With client because a document request from some earlier
+  // round had never been ticked off.
+  //
+  // Fabio, 24 Nov 2026, on Rachel Welton: "BC never completed but sitting in
+  // 'with client'". Nothing had been sent to that client. Nobody was waiting on
+  // them.
+  //
+  // The chip on the deal still says "With client - documents", because that is
+  // true. This is the column, and the column has a label to live up to.
+  //
+  // LENDING OPTIONS IS NOT CHANGED, and deliberately: that group has a lane for
+  // exactly this wait - Awaiting docs - built on 19 Nov for exactly this
+  // reason. Borrowing capacity and Compliance have no such lane, so the wait
+  // had nowhere to go and landed in the only other one.
+  if (p === 'bc') return deal?.bc_sent_at ? 'bc_client' : 'bc_us'
   // THE THREE-WAY SPLIT, AND THE ORDER OF THE QUESTIONS MATTERS.
   //
   // Once the options have gone out the client is choosing a bank, whatever is
   // or is not outstanding behind it - so that is asked first. Only then does
   // an outstanding document mean "credit cannot start".
+  // PRESSING PROCEED ON THE BC ALWAYS LANDS IN AWAITING DOCS. 24 Nov 2026.
+  //
+  // Fabio: "we start with the BC and then we go to the lending options, but now
+  // we're going to collect the documentation. So BC pressed internally or
+  // through the email, always lending options awaiting docs."
+  //
+  // It used to ask whoHasIt() first, and whoHasIt only says "client" once a
+  // document request actually exists on the record. The request is made in the
+  // background a moment after the client presses the button, so a deal could
+  // land in With credit and move to Awaiting docs seconds later - and a deal
+  // where the request failed, or where nobody asked for anything, stayed in
+  // With credit with no documents coming.
+  //
+  // The three lanes are now three facts in order, and none of them is a guess:
+  //
+  //   lo_client  the options have gone out; they are choosing a bank
+  //   lo_docs    they have not; the documents are not in yet
+  //   lo_us      the documents are in; credit is building the options
+  //
+  // "Docs received" is the one press that moves it from the second to the
+  // third, which is what makes the middle lane the real pile rather than a
+  // guess about one. Fabio, 19 Nov 2026, on why the lane exists at all: "it
+  // sounds like we're waiting on credit and then credit gets in trouble for
+  // not doing the deal."
   if (p === 'lo') {
-    if (!theirs) return 'lo_us'
     if (deal?.lo_sent_at) return 'lo_client'
-    return waitingOnDocuments(deal) ? 'lo_docs' : 'lo_client'
+    return deal?.docs_received_at ? 'lo_us' : 'lo_docs'
   }
-  if (p === 'compliance') return theirs ? 'comp_client' : 'comp_us'
+  // COMP_CLIENT IS LABELLED "Sent - signing", AND THAT IS EXACTLY WHAT IT MEANS.
+  //
+  // 24 Nov 2026. Fabio, on Leeanne Jordan: "client pressed LO to proceed and
+  // went to Compliance Sent and not With Credit". She had, and it had.
+  //
+  // The same documents override as above. She agreed to her lender, the card
+  // moved to Compliance correctly, and then an unticked document request from
+  // her BC flipped the holder to the client - which this line read as "sent for
+  // signing". Nobody had written her compliance, let alone sent it. The card
+  // was green and in a column saying the opposite at the same time.
+  //
+  // There is already a phase that means sent for signature, it is called
+  // compliance_sent, it is set by compliance_sent_at and nothing else, and it
+  // is the line below. So this one is always With credit: if it has not been
+  // sent, it is ours.
+  if (p === 'compliance') return 'comp_us'
   if (p === 'compliance_sent') return 'comp_client'
   return null
 }

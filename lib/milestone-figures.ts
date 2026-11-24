@@ -19,11 +19,155 @@ import { purchaseRows, dutyLabelFor, type PurchaseRow } from './purchase-rows'
 import { contractPrice, contractStampDuty } from './contract-figures'
 import { loanAmount } from './funds-to-complete'
 import { depositAsAssessed } from './contract-funding'
-import { isRefinance } from './document-rules'
+import { isRefinance as factFindSaysRefinance } from './document-rules'
+import { typeOf } from './deal-labels'
+import { splitsOf, suggestFunds } from './deal-structure'
 import { amountOf } from './deal-phase'
 import { balanceTotal } from './complex-refinance'
 import { releaseOnDeal } from './a-rounding-is-not-an-equity-release'
 import { money } from './money'
+
+// WHAT THE EMAIL ASKS, AND WHO IT ASKS.
+//
+// 24 NOV 2026. TOAN LE-VO'S FORMAL APPROVAL WENT OUT AS A REFINANCE.
+//
+// It is a straight purchase. The email was headed "formally approved - 2/285
+// Riding Road", and the money block under it read:
+//
+//     Loan amount                $845,000
+//     Balance being refinanced   $389,000
+//
+// and stopped. No purchase price, no stamp duty, no total cost, and no
+// contribution - which on a purchase is the line telling a buyer how much cash
+// to bring to settlement.
+//
+// THE FIGURES WERE NEVER THE PROBLEM. THE QUESTION WAS.
+//
+// This file asked isRefinance() in lib/document-rules.ts, which scans the FACT
+// FIND and answers yes if any property carries a loan marked to be refinanced,
+// paid out or consolidated. Toan is buying and selling. The fact find holds the
+// property he is SELLING and the loan that goes when it sells. A true answer to
+// the wrong question - and true of every buy-and-sell, every upgrader, and
+// every purchase with a debt being consolidated.
+//
+// Fabio, 24 Nov 2026: "when you start in lending options, which is the last
+// piece of the puzzle, and you go compliance, you can see clearly as day that
+// this is just a purchase... it's one split, 845,000, and then that figure can
+// change on offer accepted... Whatever the lending options, compliance, that's
+// the figure." And: "if offer accepted is going to look at Fact Find, it's
+// never going to work, is it?"
+//
+// He is right, and the portal already had the answer. typeOf() in
+// lib/deal-labels.ts is what every chip, card colour, filter and the
+// settlements board already use. It reads the deal's transaction type first -
+// set at lodgement, later and more certain than anything chosen at BC - then
+// the template, which maps buy_sell to 'purchase' and has done since October.
+// Nothing in this portal thought Toan was a refinance except this one line.
+//
+// SO THE EMAIL ASKS THE DEAL WHAT IT IS. One question, one answer, the same one
+// the rest of the screen is already showing.
+//
+// 'unknown' is the only case that still asks the fact find, because a deal that
+// records no type, no template and no words in its name has nothing else to be
+// asked - and sending a genuine refinance through the purchase branch is the
+// Mellissa Sedin fault of 28 October, where a refinance was asked for a
+// purchase price, could not have one, and lost its whole money block.
+//
+// document-rules keeps its own version and should. A sold property's mortgage
+// IS discharged, so asking for the discharge form off the fact find is the
+// right question THERE. Two questions that sound alike: what documents does
+// this deal need, and what IS this deal. Only the second belongs in a client's
+// email.
+// WHAT THE LOAN ITSELF SAYS IT IS.
+//
+// Fabio, 24 Nov 2026: "If you look on the compliance and the lending options
+// tab, there is literally a breakdown of what the deal is for. So we don't even
+// need to rely on a tag, just in case the tag is wrong."
+//
+// He is right, and this is the stronger evidence of the two. A tag is something
+// somebody picked. The splits are the loan: what it is made of, what each part
+// is called, and - on a deal that both buys and refinances - what each part's
+// money actually does, answered on the lending options tab and carried into
+// compliance.
+//
+// Toan's deal is one split called "End Debt" for $845,000. Nothing about that
+// is a refinance, and no tag had to be right for this to see it.
+//
+// A recorded answer wins over the label. The label is only read where nobody
+// has answered, which is most purchases - the funds question is only ASKED on
+// deals that do both (see needsFundsRole), because everywhere else it is
+// obvious. suggestFunds() is the portal's own reading of a label and is used
+// here exactly as the lending options tab uses it.
+export type DealShape = 'purchase' | 'refinance' | 'both' | 'unknown'
+
+export function whatTheStructureSays(deal: any): DealShape {
+  let buys = false
+  let pays = false
+  for (const sp of splitsOf(deal)) {
+    const role = String((sp as any)?.funds || (sp as any)?.fundsUsedFor || '').trim()
+      || suggestFunds(sp?.label)
+    if (role === 'purchase') buys = true
+    // Equity release is money taken against a loan that is being rewritten, so
+    // it belongs on the refinance side of this question - which is also how
+    // typeOf() files it.
+    if (role === 'payout' || role === 'equity') pays = true
+  }
+  if (buys && pays) return 'both'
+  if (buys) return 'purchase'
+  if (pays) return 'refinance'
+  return 'unknown'
+}
+
+// WHAT THE EMAIL ASKS, IN ORDER, AND WHY THAT ORDER.
+//
+// 1. THE SPLITS, because they are the loan rather than a label on it.
+//    'both' is deliberately NOT decided here: a deal that releases equity AND
+//    buys is a real shape this portal already handles, and the tag below
+//    already files it correctly as an equity release. Guessing here would
+//    change deals that work today.
+// 2. THE DEAL'S OWN TYPE - typeOf() in lib/deal-labels.ts, which every chip,
+//    card colour, filter and the settlements board already use. It reads the
+//    transaction type set at lodgement, then the template, where buy_sell has
+//    mapped to 'purchase' since October.
+// 3. THE FACT FIND, and ONLY where the first two know nothing at all. A deal
+//    with no splits, no type and no template has nothing else to be asked, and
+//    sending a genuine refinance down the purchase branch is the Mellissa Sedin
+//    fault of 28 October, where a refinance was asked for a purchase price it
+//    could not have and lost its entire money block.
+//
+// THE FACT FIND IS NEVER ASKED ABOVE STEP 3 AGAIN. It is where a deal started.
+// By the time any of these emails go out it is the oldest thing on the record,
+// and on a buy-and-sell it describes a transaction that is not the one being
+// approved. That one line is what put "Balance being refinanced" on Toan
+// Le-Vo's purchase.
+export function emailIsRefinance(deal: any): boolean {
+  const shape = whatTheStructureSays(deal)
+  if (shape === 'purchase') return false
+  if (shape === 'refinance') return true
+
+  const type = typeOf(deal)
+  if (type === 'refinance' || type === 'equity_release') return true
+  if (type !== 'unknown') return false
+  return factFindSaysRefinance(deal)
+}
+
+// AND WHERE THE TWO DISAGREE, SOMEBODY IS TOLD.
+//
+// The structure and the tag should say the same thing. When they do not, one of
+// them is wrong and this file cannot know which - so it prints the loan's own
+// answer and says so on the send screen, rather than picking quietly. The email
+// is not blocked: a warning nobody can act on is worse than one they can.
+export function shapeDisagreement(deal: any): string | null {
+  const shape = whatTheStructureSays(deal)
+  if (shape !== 'purchase' && shape !== 'refinance') return null
+  const type = typeOf(deal)
+  if (type === 'unknown') return null
+  const tagSaysRefinance = type === 'refinance' || type === 'equity_release'
+  if (tagSaysRefinance === (shape === 'refinance')) return null
+  return `CHECK THIS BEFORE SENDING. The loan is built as a ${shape === 'purchase' ? 'purchase' : 'refinance'} ` +
+    `on the lending options, but the deal is tagged ${type.replace(/_/g, ' ')}. ` +
+    `The figures below follow the loan, not the tag. If the tag is the right one, fix it on the deal and reopen this screen.`
+}
 
 const num = (v: any): number => {
   const n = Number(String(v ?? '').replace(/[^0-9.]/g, ''))
@@ -60,7 +204,7 @@ export function milestoneRows(deal: any): PurchaseRow[] {
   //
   // Each line appears only where there is a figure. A refinance with no equity
   // release prints two lines, not a "Cash out $0" that reads as a decision.
-  if (isRefinance(deal)) {
+  if (emailIsRefinance(deal)) {
     const rows: PurchaseRow[] = []
     const add = (label: string, n: number) => { if (n > 0) rows.push({ label, value: money(n) }) }
     add('Loan amount', loanForEmail(deal))
@@ -241,7 +385,7 @@ export function figuresToFill(deal: any): MissingFigure[] {
 
   // A refinance owes the loan amount and nothing else: there is no price and no
   // duty to ask for, and asking produced an answer of "missing" every time.
-  if (isRefinance(deal)) {
+  if (emailIsRefinance(deal)) {
     if (loanForEmail(deal) <= 0) out.push(loan)
     return out
   }

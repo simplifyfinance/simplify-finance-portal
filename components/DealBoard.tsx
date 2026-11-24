@@ -22,7 +22,7 @@ import {
 } from '@/lib/board-subtabs'
 import { isOverdue } from '@/lib/the-seven-steps'
 import { useSettlementSettings } from '@/lib/use-settlement-settings'
-import { OFFICE } from '@/lib/same-date-everywhere'
+import { OFFICE, dayMonth } from '@/lib/same-date-everywhere'
 
 // The whole book, in columns.
 //
@@ -852,6 +852,33 @@ export default function DealBoard({ deals: dealsIn, allDeals, nameFor, colours, 
                           <span title={urgentChipLabel(d)}
                             className="max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border text-chase bg-chase-bg border-chase-edge">
                             {urgentChipLabel(d)}
+                          </span>
+                        )}
+                        {/* THE CLIENT ASKED TO TALK IT THROUGH. 24 Nov 2026.
+                            The second button on the Lending Options email. It
+                            moves no deal anywhere, deliberately - a web page
+                            does not choose a bank - so until today a client who
+                            pressed it looked exactly like one who never opened
+                            the email. Both sat in With client, and the one who
+                            asked for a call is the one to ring today.
+                            Fabio: "if the client asks for a call, I don't mind.
+                            Let's put that little icon."
+                            IT CLEARS ITSELF. markProceeded sets lo_wants_call
+                            back to false the moment the proceed is recorded,
+                            by the client or by us - see lib/proceed-flow.ts.
+                            AND THE DATE IS SYDNEY'S DAY, not the machine's -
+                            dayMonth, never toLocaleDateString. The clock guard
+                            on ship.sh caught this one before it left the
+                            laptop. See lib/same-date-everywhere.ts. */}
+                        {d.lo_wants_call && !d.lo_client_proceeded && (
+                          <span title={`The client asked to talk it through first${
+                            d.lo_wants_call_at ? ` \u2014 ${dayMonth(d.lo_wants_call_at, false)}` : ''}`}
+                            className="shrink-0 max-w-full truncate inline-flex items-center gap-[3px] text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border text-waiting bg-waiting-bg border-waiting-edge">
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                              <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.8 2.1z"/>
+                            </svg>
+                            Wants a call
                           </span>
                         )}
                         {age.days !== null && (

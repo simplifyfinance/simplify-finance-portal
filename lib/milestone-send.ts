@@ -31,7 +31,7 @@ import { isPurchase, isRefinance, settlementDate } from './settlement'
 import { templateById, type TemplateId, type MilestoneTemplate } from './milestone-emails'
 import { formalApprovalBlocks, preapprovalBlocks, withOverrides, on,
          securityState, waitingOnLender, type Block, type Overrides, offerAcceptedBlocks} from './milestone-blocks'
-import { milestoneRows, loanDetails, missingFigures } from './milestone-figures'
+import { milestoneRows, loanDetails, missingFigures, shapeDisagreement } from './milestone-figures'
 import { loanDetailsNow } from './the-loan-now'
 import { contractsByPhrase, insuredPartyName, type LenderRule, answerTo, netbankingSteps } from './lender-rules'
 import { buildFormalApprovalEmail } from './formal-approval-email'
@@ -257,6 +257,14 @@ export function assembleMilestoneEmail(input: AssembleInput): Assembled | null {
     // Said as one sentence rather than three, because it is one job.
     problems.push(`The money block is left out — ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} not on the deal.`)
   }
+  // THE LOAN AND THE TAG DISAGREE ABOUT WHAT THIS DEAL IS.
+  //
+  // 24 Nov 2026. The money block now reads the splits rather than the tag, so
+  // it is right either way - but a deal whose two answers differ has something
+  // wrong somewhere, and the person about to email a client is the right person
+  // to know. See shapeDisagreement in lib/milestone-figures.ts.
+  const shapeWarning = template.id === 'final_checkin' ? null : shapeDisagreement(deal)
+  if (shapeWarning) problems.push(shapeWarning)
   for (const line of waitingOnLender(blocks)) problems.push(line)
 
   // SAID IN WORDS, NOT LEFT AS AN ABSENCE. A missing condition on a formal
