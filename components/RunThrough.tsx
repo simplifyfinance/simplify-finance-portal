@@ -46,6 +46,7 @@ export default function RunThrough({
   team = [], stuckPushes = [], weekDone = {},
   meName = '',
   todayWords = '', now,
+  openOn = null, remember = true,
 }: {
   deals: any[]
   brokerNames: Record<string, string>
@@ -80,11 +81,52 @@ export default function RunThrough({
    * he has not pressed it, which is the whole thing the mark exists to say.
    */
   weekDone?: Record<string, { week_done_at?: string | null }>
+  /**
+   * WHICH TAB TO OPEN ON - this person's last one, off their login.
+   *
+   * 25 Nov 2026. This used to be hard-coded to 'nobody' and reset on every
+   * load, for everybody. Two admins looking at the same shared list from
+   * different tabs is how "my screen and Alan's screen are different" happens
+   * on data that is identical. See the note in app/(app)/dashboard/page.tsx.
+   *
+   * Null is a real answer and means "never chosen one" - first tab, as before.
+   * An unrecognised value is treated the same way rather than trusted, because
+   * it arrives from a database column that nothing else validates.
+   */
+  openOn?: string | null
+  /**
+   * WHETHER CLICKING A TAB SAVES IT. False while looking at somebody else's
+   * Today, so a check does not rewrite what they left open.
+   */
+  remember?: boolean
   now?: Date
 }) {
   const when = now || new Date()
   const supabase = createSupabaseBrowser()
-  const [seat, setSeat] = useState<Seat>('nobody')
+  // THEIR LAST TAB, OR THE FIRST ONE. Checked against SEATS rather than cast -
+  // this comes out of a database column, and a tab name that is not a tab would
+  // draw an empty meeting with every count still showing at the top, which is
+  // the worst of both.
+  const [seat, setSeat] = useState<Seat>(
+    () => (SEATS.includes(openOn as Seat) ? (openOn as Seat) : 'nobody'))
+
+  // REMEMBERED AGAINST THE LOGIN, AND FIRE AND FORGET.
+  //
+  // Through save_my_board_view rather than at the table, for the same reason
+  // the board folds go that way: user_profiles has exactly one UPDATE policy
+  // and it is the admin one, so a direct write is refused for everybody else -
+  // silently, by matching zero rows. The row also holds role and broker_key, so
+  // widening that policy would let any login make itself an admin.
+  // docs/my-own-board-is-mine.sql has the whole argument.
+  //
+  // A refused write leaves the tab where it is for this session and gone at the
+  // next login, which is no worse than never having remembered it. Nothing here
+  // may interrupt a meeting because a preference did not save.
+  const chooseSeat = (s: Seat) => {
+    setSeat(s)
+    if (!remember) return
+    supabase.rpc('save_my_board_view', { p_today_seat: s }).then(() => {})
+  }
   const [look, setLook] = useState<Record<string, string>>({})
   const [showAll, setShowAll] = useState<Record<string, boolean>>({})
   const { say, busy, problem, setProblem, withAnswers } = useSayTheWeek(when)
@@ -462,7 +504,7 @@ export default function RunThrough({
 
         <div className="flex gap-1.5 flex-wrap mb-3">
           {SEATS.map(s => (
-            <button key={s} onClick={() => { setSeat(s); setProblem('') }}
+            <button key={s} onClick={() => { chooseSeat(s); setProblem('') }}
               className={`text-[12px] font-semibold rounded-lg px-3 py-[5px] border ${
                 seat === s ? 'bg-ink border-ink text-page' : 'border-line bg-card text-muted'}`}>
               {SEAT_LABEL[s]}

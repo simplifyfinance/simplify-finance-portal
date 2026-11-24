@@ -46,7 +46,27 @@ export default async function Dashboard(
 
   const { data: profile } = await supabase
     .from('user_profiles')
-    .select('role, broker_key, full_name, no_today')
+    // today_seat is WHICH TAB OF THE RUN-THROUGH THIS PERSON LEFT OPEN, and it
+    // is read for whoseId rather than for the signed-in user on purpose.
+    //
+    // 25 Nov 2026. Fabio, with his screen and Alan's side by side: "his laptop,
+    // his view, and what I'm pressing on my view that says Alan Hemmings is
+    // different." They were. The run-through opened on "Nobody has said" every
+    // load for everybody, so Alan - who had clicked This week - and Fabio, who
+    // had just loaded the page, were standing in different places looking at
+    // the same shared list and each concluding the other had different data.
+    //
+    // The data was never different. The counts on both screens were identical:
+    // 17, 10, 6, 24, 3. The answers - this week, next week, with the client -
+    // live on the DEAL and always have, which is what makes this one screen for
+    // the whole admin team rather than five copies of it.
+    //
+    // "it's their fucking last tab. If I want the ability to view something as
+    // someone, I need their fucking last tab." Which is why it is stored
+    // against the login rather than in a browser: Fabio's browser cannot read
+    // what Alan's remembered. Same reasoning, same place, same function as the
+    // board folds - docs/my-own-board-is-mine.sql.
+    .select('role, broker_key, full_name, no_today, today_seat')
     .eq('id', whoseId)
     .single()
 
@@ -457,6 +477,14 @@ export default async function Dashboard(
           team={creditToday}
           stuckPushes={stuckPushes}
           weekDone={weekDone}
+          openOn={(profile as any)?.today_seat || null}
+          // LOOKING AT SOMEBODY IS READ-ONLY. Fabio: "the only reason I created
+          // this view as Alan... is because I've been building all these things
+          // and I'm saying it works. When they log in, it shows nothing like we
+          // discussed." It is a check that the portal works for them - so
+          // clicking through their screen must not rewrite what they left open,
+          // or the check changes the thing it is checking.
+          remember={!viewingId}
         />
         {/* THE CREDIT QUEUE, UNDER THE RUN-THROUGH.
           * 18 Nov 2026. Fabio: "the whole point of today for admin which is me

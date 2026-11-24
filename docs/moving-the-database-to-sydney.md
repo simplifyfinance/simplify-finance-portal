@@ -17,15 +17,31 @@ acted on it for two months.
 
 ---
 
-## Status, 23 November 2026
+## Status, 25 November 2026
 
-**Nothing is being done yet.** Seven questions are with Supabase and a further
-six about the parts staging cannot rehearse. Their answers change some of the
-steps below, in particular whether the API keys stay the same. Wait for them.
+**Phase 1 has started.** The 23 November version of this section said to wait
+for Supabase. We are no longer waiting, because two of the three things we
+were waiting on we can answer ourselves - see 1.3 and 1.4b below - and the
+third (whether the API keys come out byte-identical) only changes how easy
+Phase 4 is, not whether any of this is safe.
 
-Two things can be done this week regardless, and both are in Phase 4 under
-"Before the weekend": set `READY_LINK_SECRET` in Vercel, and run the
-information-gathering queries on production.
+Done:
+
+- `READY_LINK_SECRET` is set in Vercel, Production, 22 Nov. Tested end to end
+  on 25 Nov by generating a fresh link from the refinance template and opening
+  it. Nothing further needed.
+- The Sydney staging project exists: `ap-southeast-2`, Micro, Data API on,
+  "grant API access to new tables automatically" OFF, "enable RLS on new tables
+  automatically" OFF. Both deliberate - see 1.4a.
+- Seoul's extensions listed: `pg_stat_statements`, `pgcrypto`, `plpgsql`,
+  `supabase_vault`, `uuid-ossp`. All Supabase defaults.
+- Tooling checked on the laptop: Supabase CLI 2.117.0, psql 18.6. The CLI was
+  deliberately NOT upgraded to 3.x - we rehearse with the version we will use
+  on the day.
+
+**Still genuinely open with Supabase:** whether the new project's keys are
+identical if the JWT secret is reused, and where logs, analytics and
+point-in-time recovery data sit. Neither blocks Phase 1, 2 or 3.
 
 ---
 
@@ -79,23 +95,145 @@ extension fails.
 select extname, extversion from pg_extension order by extname;
 ```
 
-**1.3** Supabase say the target's default privileges can change the effective
-permissions, and to revoke them before restoring if the existing permissions
-matter. The exact statements have been asked for. **Do not start 1.4 until
-that answer is in.**
+**1.3** ~~Do not start 1.4 until Supabase answer.~~ **ANSWERED, 25 Nov 2026 -
+and we answered it ourselves.**
 
-**1.4** Dump Seoul. Three files. Use the direct connection, not the pooler —
-the pooler breaks the bulk copy.
+Supabase say the target's default privileges can change the effective
+permissions, and to revoke them before restoring if the existing permissions
+matter. We asked them for the exact statements and sat waiting.
+
+The statements are already in this document. They are in "A NEW PROJECT IS
+BORN OPEN", worked out in the 23 November security audit against this very
+problem - a brand new project starts open, and nothing fails when you forget
+to close it.
+
+So there is nothing to wait for. The revokes have been lifted into the
+sequence as **1.4a**, which is where they actually have to run, and the
+section below is kept as the background.
+
+**The dump in 1.4 writes nothing to any database.** It reads Seoul and writes
+three files to the laptop. It was never the risky step; the restore in 1.5 is.
+
+**1.4** Dump Seoul. Three files.
+
+**DOCKER IS REQUIRED, AND THERE IS NO DOCUMENTED WAY AROUND IT - 25 Nov 2026.**
+
+`supabase db dump` does not dump anything itself: it runs `pg_dump` inside a
+Docker container. On a laptop without Docker it stops with
+`docker: command not found`. Supabase's backup-and-restore page lists
+"Install Docker Desktop" as step 2 for exactly this reason.
+
+The laptop HAS `pg_dump` and `pg_dumpall` 18.6 from Homebrew, so running them
+directly is tempting. **Do not.** Supabase document no pg_dump equivalent of
+these three commands, which means the flags would be ours rather than theirs -
+and the one thing we cannot afford to get subtly wrong is what the dump
+leaves out. Install Docker and use the documented path.
+
+**ON THE CONNECTION STRING.** Direct connection, not the pooler - the pooler
+breaks the bulk copy. Supabase's page says the same, with one exception they
+document: if the network has no IPv6 and the IPv4 add-on is off, use the
+**Session pooler** string instead. Not the transaction pooler.
+
+**ON THE FLAG, AGAIN.** Supabase's page writes these as `--remote=`. The CLI
+installed on this laptop is 2.117.0 and has **no `--remote` flag at all** -
+`supabase db dump --help` lists `--db-url`. Their docs are written against a
+newer CLI. We use `--db-url` because that is what the installed binary takes,
+and we are deliberately not upgrading mid-rehearsal. Re-check the help after
+any CLI upgrade.
+
+**THE FLAG IS `--db-url`, NOT `--remote`.** Checked against the installed CLI
+on 24 Nov 2026 (v2.117.0) with `supabase db dump --help`. There is no
+`--remote` flag and the first command would have failed on it. Check the help
+again on the day rather than trusting this block, because the flags have
+changed between releases before and that is how this one got written wrong.
+
+**The URL must be percent-encoded.** The CLI says so itself. If the database
+password contains any of `@ : / ? # [ ] %` the URL has to carry the encoded
+form or the connection fails with something unhelpful about the host.
 
 ```
-supabase db dump --remote=<SEOUL_CONNECTION_STRING> -f roles.sql  --role-only
-supabase db dump --remote=<SEOUL_CONNECTION_STRING> -f schema.sql
-supabase db dump --remote=<SEOUL_CONNECTION_STRING> -f data.sql \
+supabase db dump --db-url "<SEOUL_CONNECTION_STRING>" -f roles.sql  --role-only
+supabase db dump --db-url "<SEOUL_CONNECTION_STRING>" -f schema.sql
+supabase db dump --db-url "<SEOUL_CONNECTION_STRING>" -f data.sql \
   --use-copy --data-only \
   -x "storage.buckets_vectors" -x "storage.vector_indexes"
 ```
 
+**1.4a** **LOCK THE NEW SYDNEY PROJECT DOWN BEFORE ANYTHING IS RESTORED INTO
+IT.** Added to the sequence 25 Nov 2026, because Phase 1 did not have it and
+the step it refers to sits 200 lines further down this document under a
+heading nobody reads mid-restore.
+
+A new Supabase project is born open: a new function is callable by everybody
+the moment it exists, and a new table is reachable by the not-logged-in role.
+Production has settings that close those defaults and **those settings do not
+travel with a restore.** Nothing fails when you skip this, which is exactly
+why it gets skipped.
+
+Run these on the NEW Sydney project, before 1.5:
+
+```sql
+alter default privileges in schema public
+  revoke execute on functions from public, anon;
+alter default privileges in schema public
+  revoke all on tables from anon;
+alter default privileges in schema public
+  revoke all on sequences from anon;
+alter default privileges for role postgres in schema public
+  revoke execute on functions from public, anon;
+alter default privileges for role postgres in schema public
+  revoke all on tables from anon;
+```
+
+And after 1.5, before anybody uses it:
+
+```sql
+revoke all on all tables in schema public from anon;
+revoke all on all sequences in schema public from anon;
+```
+
+Full background in "A NEW PROJECT IS BORN OPEN" below, and in
+`docs/the-security-audit.md`.
+
+**1.4b** **ANSWER THE BIGGEST OPEN QUESTION OFF THE DUMP, INSTEAD OF WAITING
+FOR SUPABASE TO ANSWER IT.** Added 25 Nov 2026.
+
+Open question 2 asks whether `supabase db dump` emits `CREATE POLICY` and the
+row-level-security switches. That is the single largest risk in this entire
+project: a restore that silently drops policies leaves a database where every
+row is present, every screen works, and anyone holding the public key can read
+everything.
+
+We do not need Supabase to answer it. `schema.sql` is sitting on the laptop.
+Look:
+
+```
+grep -c "CREATE POLICY"                 schema.sql
+grep -c "ENABLE ROW LEVEL SECURITY"     schema.sql
+grep -c "GRANT "                        schema.sql
+```
+
+The first two must both be greater than zero, and `CREATE POLICY` should be in
+the same ballpark as the policy count on Seoul:
+
+```sql
+select count(*) from pg_policies where schemaname = 'public';
+```
+
+**If `CREATE POLICY` comes back 0, stop.** The dump is not carrying the
+security rules, every later phase is built on sand, and the whole method has
+to change before anything is restored anywhere.
+
 **1.5** Load all three into Sydney, in order, in one transaction.
+
+**VERIFIED 25 Nov 2026.** Checked against Supabase's own backup-and-restore
+page: this is their documented restore command, character for character,
+including the `--command` sitting between the two files. Their stated reason
+for it is that it "disables triggers during the migration, preventing columns
+from being double encrypted", and its position matters - it applies to the
+data load only.
+
+The documented error list below is also theirs, and matches ours exactly.
 
 ```
 psql --single-transaction --variable ON_ERROR_STOP=1 \
@@ -125,8 +263,23 @@ this phase produces, because the same errors appear on the real day.
 `supabase db dump` **excludes the managed `auth`, `storage` and extension
 schemas by default.**
 
+**NOT YET VERIFIED - 25 Nov 2026.** `supabase db diff` normally compares a
+database against the local migration files, and **this repository has no
+migrations folder** - `supabase/` contains only an empty `.temp`. So what this
+command would actually produce here is unknown.
+
+Check what it expects before running it:
+
 ```
-supabase db diff --remote=<SEOUL_CONNECTION_STRING> > changes.sql
+supabase db diff --help
+```
+
+If it needs migrations we do not have, the fallback is a schema-only dump of
+the `storage` and `auth` schemas and reading that instead. Decide before the
+real day, not during it.
+
+```
+supabase db diff --db-url "<SEOUL_CONNECTION_STRING>" > changes.sql
 ```
 
 Read `changes.sql` before running it. It should contain the rules on
@@ -146,6 +299,21 @@ path.
 
 # PHASE 2 — Bring Sydney staging up to date
 
+> **WHY THIS IS AFTER PHASE 1 AND NOT BEFORE IT.** Asked directly, 24 Nov 2026:
+> "the staging is really behind the current portal, and we need to bring the
+> staging up to date to then move it across. Otherwise, we're testing things
+> that are not exactly the same."
+>
+> Right concern, and this is where it is answered. Phase 1 is not the test - it
+> is practising the mechanics of moving a database that has data, roles, auth
+> users and files in it, and for that the shape does not matter. Phase 2 is
+> where the shape is fixed, by copying production's own schema rather than by
+> running the September catch-up script, which never knew about the sixteen
+> tables that exist live and are described nowhere in this repository.
+>
+> Nothing is tested against a three-month-old database. 2.4 is the gate: the
+> structures must match exactly, or we stop.
+
 Staging has never matched production. Sixteen tables exist live that no file
 in this repository describes, which is why it was parked.
 
@@ -156,8 +324,8 @@ copied — and it goes to Sydney, never to Korea.
 anywhere near staging.**
 
 ```
-supabase db dump --remote=<SINGAPORE_CONNECTION_STRING> -f prod-roles.sql  --role-only
-supabase db dump --remote=<SINGAPORE_CONNECTION_STRING> -f prod-schema.sql
+supabase db dump --db-url "<SINGAPORE_CONNECTION_STRING>" -f prod-roles.sql  --role-only
+supabase db dump --db-url "<SINGAPORE_CONNECTION_STRING>" -f prod-schema.sql
 ```
 
 **2.2** Load it into Sydney staging.
@@ -174,7 +342,7 @@ Same errors as 1.5, same fixes.
 **2.3** Run the diff against production for the auth and storage rules.
 
 ```
-supabase db diff --remote=<SINGAPORE_CONNECTION_STRING> > prod-changes.sql
+supabase db diff --db-url "<SINGAPORE_CONNECTION_STRING>" > prod-changes.sql
 ```
 
 **2.4** Prove Sydney staging now matches production. Run
@@ -183,11 +351,22 @@ compare.
 
 Ignore the row counts — staging has different data. Everything else must match:
 
-- 58 tables
-- 114 policies
+- The table count
+- The policy count
 - **Tables with row level security OFF: 0 on both**
 - The grants for `anon`, `authenticated` and `service_role`
 - The policy text, word for word
+
+**DO NOT CHECK AGAINST A NUMBER WRITTEN IN THIS DOCUMENT.** 25 Nov 2026: this
+list used to say "58 tables, 114 policies". The audit of 23 November counted
+**51** tables and 585 storage objects, and the database was 161 MB, not the
+146 MB quoted elsewhere here. One of those two counts was wrong, and a stale
+number in a checklist is worse than no number - on the day it makes a clean
+restore look like a failure, or hides a real one.
+
+`docs/both-sides-must-match.sql` counts BOTH sides and does not hardcode
+anything, which is why it is the gate rather than this prose. The rule is: the
+two sides must equal each other. What they equal is not decided here.
 
 **If the policies do not match, stop.** That is the whole risk of this
 project, and finding it here, on staging, is exactly why we are doing it this
@@ -210,6 +389,29 @@ Only start this once Phase 2 has shown Sydney staging matching production.
 
 **3.1** Run the full browser suite against Sydney staging.
 
+**FIRST, POINT THE ROBOTS AT SYDNEY. THIS STEP WAS MISSING - 25 Nov 2026.**
+
+`scripts/check-browser.sh` loads `.env.local` (line 35) and starts the portal
+on port 3100 with whatever that file names. **`.env.local` currently names
+PRODUCTION.** Run 3.1 as it was written and the robots test the live database
+again - which is the fault found on 25 Nov that put roughly 891 test deals in
+production over thirty days.
+
+So before running anything here:
+
+1. Back up the real file: `cp .env.local .env.local.production`
+2. In `.env.local`, change `NEXT_PUBLIC_SUPABASE_URL`,
+   `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or the publishable key) and
+   `SUPABASE_SERVICE_ROLE_KEY` to the **Sydney staging** values.
+3. Set `PORTAL_TEST_DEAL_ID` to a deal that exists in Sydney staging.
+4. Check it: the robots' first screenshot should show staging, not the live
+   book.
+
+**And this is the permanent fix, not a Phase 3 chore.** Once Sydney staging
+exists and is current, `.env.local` points at it for good and the test suite
+stops writing to the live database forever. That is the root-cause fix for the
+robot deals, and it is free - the staging project has to exist anyway.
+
 ```
 cd ~/simplify-finance-portal && ./scripts/check-browser.sh
 ```
@@ -230,8 +432,9 @@ discovered on production at eight o'clock on a Saturday night.
 **3.3** Write down everything that broke and what fixed it. That list plus the
 Phase 1 error list is the script for the real day.
 
-**3.4** Check `auth_role()` works in Sydney. **Every one of the 114 policies
-calls it.** If it is missing or owned by the wrong role, nothing works for
+**3.4** Check `auth_role()` works in Sydney. **Effectively every policy on the
+database calls it** - count them on the day rather than trusting the figure
+that used to be written here; see the note in 2.4. If it is missing or owned by the wrong role, nothing works for
 anybody. Same for `save_my_board_view`, `sweep_the_reading_room`,
 `deal_exists` and `auth_credit_officer_id`.
 
@@ -243,7 +446,17 @@ Only start this when Phase 3 has been clean for several runs.
 
 ## Before the weekend
 
-### Set `READY_LINK_SECRET` in Vercel. Not optional.
+### Set `READY_LINK_SECRET` in Vercel. ~~Not optional.~~ DONE.
+
+**24 Nov 2026: this is already done.** `READY_LINK_SECRET` exists in Vercel on
+the Production environment, set 22 Nov. Nothing further is needed and nothing
+below this line needs doing - it is kept because it explains WHY the variable
+is there, which the next person to read this will want to know.
+
+Preview and Development do not have it and do not need it: the links are signed
+and checked on Production, and anywhere else the fallback below is fine.
+
+The original note follows.
 
 Three of the four client pages — `/ready`, `/answers`, `/opportunity` — open
 from a signed link we email. The line that signs them, in `lib/ready-link.ts`:
@@ -298,6 +511,11 @@ users. You have done every one of them before on staging.
 
 **4.6** Run `both-sides-must-match.sql` on both. **Every number identical,
 including the row counts this time.** One difference and we stop.
+
+Identical to EACH OTHER, not to any figure written in this document. See the
+note in 2.4 - the counts quoted in the 23 November draft did not match what
+the audit actually measured, and that is exactly how a good restore gets
+declared broken at eleven o'clock on a Saturday night.
 
 **4.7** The five things staging could not prove, in order:
 
@@ -447,10 +665,12 @@ Asked and not yet answered:
 1. **If we reuse the JWT secret, are the new anon and service keys byte-for-byte
    identical?** They say the docs do not state it. Chase this — if yes, the
    cutover becomes a single URL change.
-2. Does `supabase db dump` emit `CREATE POLICY` and the row-level-security
-   switches for public tables — yes or no.
-3. The exact statements to revoke default privileges on the target before
-   restoring.
+2. ~~Does `supabase db dump` emit `CREATE POLICY` and the row-level-security
+   switches for public tables.~~ **WITHDRAWN 25 Nov 2026 - we can answer this
+   ourselves off the dump file. See 1.4b. Do not wait for them on this.**
+3. ~~The exact statements to revoke default privileges on the target before
+   restoring.~~ **WITHDRAWN 25 Nov 2026 - already written in this document,
+   from our own 23 November audit. Lifted into the sequence as 1.4a.**
 4. Does custom SMTP remove ActiveCampaign and Postmark from the auth email path.
 5. Where logs, analytics, point-in-time recovery data and support access
    actually sit for a Sydney project.

@@ -99,15 +99,43 @@ describe('no client data goes near staging', () => {
 describe('the plan is written down where anyone can read it', () => {
   const PLAN = readFileSync('docs/moving-the-database-to-sydney.md', 'utf8')
 
-  it('it says nothing is being done yet', () => {
-    expect(PLAN).toContain('Nothing is being done yet')
+  // CHANGED 25 NOV 2026. This used to assert the plan said "Nothing is being
+  // done yet". It did, truthfully, on 23 November - seven questions were with
+  // Supabase and the instruction was to wait.
+  //
+  // We are no longer waiting, and the reason is in the plan: two of the three
+  // blockers we answered ourselves. The revoke statements Supabase were asked
+  // for had already been written in our own 23 November audit, and whether the
+  // dump carries the security policies can be read off the dump file instead of
+  // asked. So the status line had to move or it would be a lie in a document
+  // somebody follows at midnight.
+  //
+  // What this test guards now is the thing that actually matters: the plan must
+  // always say plainly where the work has got to, and must never quietly become
+  // a document that reads as if nothing has started while three steps are done.
+  it('says where the work has actually got to', () => {
+    expect(PLAN, 'the status heading must carry its own date')
+      .toMatch(/## Status, \d{1,2} \w+ 2026/)
+    expect(PLAN).toContain('Phase 1 has started')
+    expect(PLAN, 'and must still name what is genuinely unresolved')
+      .toContain('Still genuinely open with Supabase')
+  })
+
+  // THE GATE THAT REPLACED THE WAITING ONE. Production is not touched until
+  // staging has proven it, and that sentence is load-bearing.
+  it('and production is still untouched until staging proves it', () => {
+    expect(PLAN).toContain('Production is not touched at all until staging has')
   })
 
   // THE ONE THAT WOULD BREAK QUIETLY. Three client pages open from links
   // signed with the service role key unless READY_LINK_SECRET is set.
   it('and it names the client links as the thing to fix first', () => {
     expect(PLAN).toContain('READY_LINK_SECRET')
+    // "Not optional" is still in the document, now struck through beside DONE -
+    // it was set in Vercel on 22 Nov and tested end to end on 25 Nov. The words
+    // stay because the REASON stays, and the next person needs it.
     expect(PLAN).toContain('Not optional')
+    expect(PLAN).toContain('this is already done')
   })
 
   it('it is honest about what Sydney does and does not mean', () => {
