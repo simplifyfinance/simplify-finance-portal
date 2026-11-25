@@ -45,11 +45,26 @@ describe('when it can be sent back', () => {
     expect(canSendBack(SENT_BC, 'bc').ok).toBe(true)
   })
 
-  it('but not once they have agreed to it', () => {
+  // CHANGED 25 NOV 2026. This used to assert the opposite: that a client
+  // agreeing locked the button for good.
+  //
+  // It did, and it cost an hour. Fabio needed to pivot a client off Bankwest
+  // after they had agreed, both buttons were hidden, nothing on the screen
+  // said why, and the only route back was dragging the card from Compliance to
+  // Lending options on a different screen - which nothing mentions.
+  //
+  //   "I don't like dragging deal cards... even when we send to the client, it
+  //    doesn't suppress. So we can always change it and send it again."
+  //
+  // The rule was already written down for Send again, in this same file: a
+  // sent date is "a statement, not a lock". It had never been applied here.
+  //
+  // The agreement is not ignored - it is UNDONE, out loud, and written to the
+  // file. See lib/the-agreement-comes-off-both.test.ts, which is where the
+  // real risk of this change is guarded.
+  it('AND STILL CAN once they have agreed - the tick is a fact, not a lock', () => {
     const agreed = { ...SENT_BC, client_proceeded: true }
-    expect(canSendBack(agreed, 'bc')).toEqual({
-      ok: false, why: 'The client has already agreed to this one',
-    })
+    expect(canSendBack(agreed, 'bc').ok).toBe(true)
   })
 
   // AND THERE IS NO "IS IT FINISHED" RULE AT ALL.
@@ -114,7 +129,9 @@ describe('when it can be sent back', () => {
     const lo = { id: 'd1', lo_completed_at: '2026-10-26T04:00:00Z',
                  lo_owner_officer: 'o1', lo_owner_name: 'Katie Amos' }
     expect(canSendBack(lo, 'lo').ok).toBe(true)
-    expect(canSendBack({ ...lo, lo_client_proceeded: true }, 'lo').ok).toBe(false)
+    // 25 Nov 2026: was .toBe(false). A client agreeing no longer locks it -
+    // see the note above and lib/the-agreement-comes-off-both.test.ts.
+    expect(canSendBack({ ...lo, lo_client_proceeded: true }, 'lo').ok).toBe(true)
     // This used to assert that a finished BC is not a finished LO, and that
     // the lending options could not be sent back until they existed. That was
     // the paperwork rule Fabio threw out on 27 Oct - the lending options CAN
@@ -341,7 +358,10 @@ describe('sending the email again without a rework', () => {
     expect(canSendAgain(FINISHED_BC, 'bc')).toBe(false)
   })
 
-  it('and not once the client has agreed - that is a different stage now', () => {
-    expect(canSendAgain({ ...SENT_BC, client_proceeded: true }, 'bc')).toBe(false)
+  // CHANGED 25 NOV 2026, same reason as canSendBack above. "That is a
+  // different stage now" was true of where the DEAL had got to and wrong about
+  // what the broker needed to do - which was send the client something else.
+  it('and still can once the client has agreed, because that is when a pivot happens', () => {
+    expect(canSendAgain({ ...SENT_BC, client_proceeded: true }, 'bc')).toBe(true)
   })
 })

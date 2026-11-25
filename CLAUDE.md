@@ -117,6 +117,48 @@ Say "I don't know yet" and name the one check that would settle it. Reproduce
 rather than argue. Check your own test fixtures before blaming the system — an
 empty result from a fixture you built proves nothing about production.
 
+## A FINDING THAT IS NOT WRITTEN DOWN DID NOT HAPPEN
+
+25 Nov 2026, after a day of rehearsing the Sydney move. Fabio, for the fourth
+time:
+
+> "do not rely on memory... we're building a plan in the background so we can
+> fucking rely on it."
+
+And then:
+
+> "I hate that I keep reminding you... why me, the human, have to remind you to
+> remember things?"
+
+He is right and the reason is worth naming rather than apologising for: the
+default is to answer the question in front of you and move on. That is how the
+address fix went into one file and not the other three, and it is how five
+things learned in a rehearsal end up in a chat log instead of the document
+somebody will follow at midnight.
+
+**THE RULE. When work teaches something that was not known before, the document
+is updated IN THE SAME TURN, before moving on. Not at the end, not when asked.**
+
+That includes all of these:
+
+- a command in a plan that turns out to be wrong
+- an error hit and the fix that cleared it
+- a question answered that a document still lists as open
+- a prerequisite nobody knew about (Docker, a setting, an account)
+- a number in a document that measurement contradicts
+- a step that had to be done in a different order, and why
+
+**And the stale half matters as much as the new half.** A plan that still says
+"nothing is being done yet" three steps in, or still lists a question that was
+answered this morning, is worse than one that says nothing - somebody will
+follow it.
+
+Where things go: the migration goes in `docs/moving-the-database-to-sydney.md`,
+security in `docs/the-security-audit.md`, anything outstanding in
+`docs/OUTSTANDING.md`, and a fault that can come back gets a test that fails
+the build - see `lib/one-house-one-answer.test.ts` and
+`lib/no-silent-thousand.test.ts`.
+
 ## Working style
 
 - One terminal command per message. A fenced block is always a runnable command and

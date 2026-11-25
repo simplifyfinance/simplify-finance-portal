@@ -7,7 +7,8 @@ import { sentEmailAsText } from '@/lib/email-as-text'
 import { askedPatch, goingOut } from '@/lib/what-we-still-need'
 import { brandsOffered, brandToSettleOn, brandUncertainty } from '@/lib/the-brand-follows-the-broker'
 import SendItBack, { ReworkBanner } from '@/components/SendItBack'
-import { canSendBack, reworkOn, canSendAgain } from '@/lib/send-it-back'
+import { canSendBack, reworkOn, canSendAgain, undoesTheAgreement } from '@/lib/send-it-back'
+import UndoTheAgreement from '@/components/UndoTheAgreement'
 import { handStageOver } from '@/lib/hand-this-stage-over'
 import { isDebtRecycling } from '@/lib/debt-recycling'
 import { bcFieldsWin } from '@/lib/the-lo-copies-nothing-it-does-not-own'
@@ -460,6 +461,13 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   const [handingOver, setHandingOver] = useState(false)
   // SENDING IT BACK TO CREDIT - see components/SendItBack.tsx.
   const [sendingBack, setSendingBack] = useState(false)
+  // THE AGREEMENT STANDING IN THE WAY OF THE BUTTON THAT WAS JUST PRESSED.
+  //
+  // 25 Nov 2026. Both buttons used to disappear once the client agreed. They
+  // stay now, and this holds which one is waiting on the question - plus, for
+  // Send again, whether the wording made it to the clipboard, because that copy
+  // has to happen on the click itself. See lib/send-again.ts.
+  const [undoThen, setUndoThen] = useState<null | { what: 'again' | 'back'; copied?: boolean }>(null)
   // Which button opened the box, so onSent knows where to go next.
   const [thenSend, setThenSend] = useState(false)
 
@@ -2070,6 +2078,16 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
               // THE COPY HAPPENS ON THE CLICK, THE QUESTION AFTER IT.
               // 30 Oct 2026 - see lib/send-again.ts.
               onClick: async () => {
+                // THE CLIENT AGREED, SO THE QUESTION IS A BIGGER ONE. The
+                // clipboard copy still happens here, on the live click - the
+                // box that follows spends the activation exactly as confirm()
+                // does, which is the whole lesson of lib/send-again.ts.
+                if (undoesTheAgreement(deal, 'lo')) {
+                  let copied = true
+                  try { await copyEmailToClipboard() } catch { copied = false }
+                  setUndoThen({ what: 'again', copied })
+                  return
+                }
                 const next = await copyBeforeAsking(copyEmailToClipboard, () =>
                   confirm('Send this email to the client again?\n\nThey get it at the same addresses as last time.'))
                 if (next === 'cancelled') return
@@ -2108,7 +2126,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           ...(canSendToClient && canSendBack(deal, 'lo').ok ? [{
             label: '\u21BA Send it back',
             tone: 'urgent' as const,
-            onClick: () => setSendingBack(true),
+            onClick: () => {
+              if (undoesTheAgreement(deal, 'lo')) { setUndoThen({ what: 'back' }); return }
+              setSendingBack(true)
+            },
             title: 'Tells credit these lending options need doing again, and why',
           }] : []),
         ]}
@@ -2120,6 +2141,23 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           the only way anybody will trust the list. */}
       <WhatWeStillNeed deal={deal} me={me} dropped={questionsDropped}
         onDropped={keepDropped} onChanged={() => window.location.reload()} />
+
+      {undoThen && (
+        <UndoTheAgreement deal={deal} stage="lo"
+          byName={d.brokerSig || deal.assigned_broker || 'Broker'}
+          what={undoThen.what === 'again' ? 'send it again' : 'send it back'}
+          onCancel={() => setUndoThen(null)}
+          onDone={async () => {
+            const was = undoThen
+            setUndoThen(null)
+            if (was.what === 'back') { setSendingBack(true); return }
+            if (was.copied === false) {
+              setSendError('Could not copy the email — nothing was sent. The agreement has come off.')
+              return
+            }
+            await sendEmail(true)
+          }} />
+      )}
 
       {sendingBack && (
         <SendItBack deal={deal} stage="lo" byName={d.brokerSig || deal.assigned_broker || 'Broker'}

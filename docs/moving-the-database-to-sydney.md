@@ -80,6 +80,258 @@ arrive.
 
 ---
 
+# WHAT THE REHEARSAL ACTUALLY TAUGHT US — 25 NOVEMBER 2026
+
+**Phase 1 and Phase 2 were done on 25 November. This section is what we did not
+know when this plan was written two days earlier.** It is written down rather
+than remembered, because the person doing this on the day may not be the person
+who did it today.
+
+Fabio, 25 Nov: "do not rely on memory... we're building a plan in the background
+so we can fucking rely on it."
+
+## What was done, and in what order
+
+The order in this document was changed on the day, at Fabio's instruction, and
+the new order is the right one:
+
+> "bring the staging up to scratch. Match the staging to my current portal in
+> Korea. Then we merge it across to Sydney... the point of this is then we're
+> going to deploy bots to test every function of the current version of the
+> portal to see if anything broke when we move from Korea to Sydney."
+
+So: **update staging FIRST, then move it.** The original order moved an
+out-of-date Seoul and layered production's schema on afterwards, which leaves a
+hybrid - old data in an old shape with new columns bolted on - and robot
+failures against a hybrid are impossible to tell from real ones.
+
+What actually happened, in sequence:
+
+1. Dumped Seoul (roles, schema, data).
+2. Dumped production's SCHEMA ONLY. No client data left production at any point.
+3. Compared the two. **Staging was one table and about thirty columns behind** -
+   not three months of chaos. The gap that mattered: `deals` was missing all
+   fourteen settlement columns, so the entire Settlements tab would have failed
+   and it would have looked like Sydney broke it.
+4. Dropped Seoul's public schema and rebuilt it from production's.
+5. Proved it matched: 51 tables, 114 policies **word for word**, 36 functions,
+   79 indexes, 12 triggers, row level security on all 51.
+6. Re-dumped Seoul, restored into Sydney, locked Sydney down.
+7. Proved Sydney matched production on the same counts, with `anon` able to
+   reach nothing.
+8. Pointed the portal at Sydney and ran the 43 browser tests.
+
+## The five things this document did not know
+
+**1. DOCKER IS REQUIRED AND WAS NOT INSTALLED.**
+`supabase db dump` does not dump anything itself - it runs `pg_dump` inside a
+Docker container. Without Docker it stops at `docker: command not found`. The
+laptop has `pg_dump` and `pg_dumpall` 18.6 from Homebrew and using them directly
+is tempting; do not. Supabase document no pg_dump equivalent, so the flags would
+be ours, and what a dump silently leaves out is the one thing we cannot afford
+to guess at.
+
+**2. THE DIRECT CONNECTION DOES NOT WORK FROM DOCKER. USE THE SESSION POOLER.**
+Supabase's direct connection is IPv6 only unless the IPv4 add-on is on. Docker's
+default network is IPv4 only. So the container cannot reach the database however
+healthy the project is, and the error is a bare `Connection refused` that reads
+like an outage.
+
+This document said "use the direct connection, not the pooler - the pooler
+breaks the bulk copy". That is **right about the TRANSACTION pooler and wrong
+about the SESSION pooler**, which behaves like a real connection and is
+Supabase's own documented answer for IPv4-only networks. Session pooler was used
+for every command on the day and nothing broke.
+
+The two look different, which is how you tell them apart:
+
+```
+direct  : postgresql://postgres:PASSWORD@db.PROJECTREF.supabase.co:5432/postgres
+session : postgresql://postgres.PROJECTREF:PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres
+```
+
+**3. ONE LINE OF roles.sql CANNOT BE RESTORED.**
+
+```
+psql:roles.sql:13: ERROR: permission denied for parameter log_min_messages
+```
+
+The line is `GRANT SET ON PARAMETER "log_min_messages" TO
+"supabase_realtime_admin";`. The restoring role may not grant it. It is a
+Supabase internal for their realtime service, which the new project manages
+itself, and nothing of ours reads it. **Comment it out and re-run.**
+
+**This is not on Supabase's documented error list.** It is ours, found here,
+and it will happen again on the real day. The three statement timeouts above it
+- `anon` 3s, `authenticated` 8s - are ours and must survive.
+
+**4. THE DUMP DOES CARRY THE SECURITY POLICIES. Open question 2 is answered.**
+
+This was the single largest risk in the project: a restore that silently drops
+policies leaves a database where every row is present, every screen works, and
+anyone holding the publishable key can read everything.
+
+Counted off the schema file in about ten seconds:
+
+| | production | staging after restore |
+|---|---|---|
+| `CREATE POLICY` | 114 | 114, word for word |
+| `ENABLE ROW LEVEL SECURITY` | 51 | 51 |
+| tables | 51 | 51 |
+| functions | 36 | 36 |
+
+We were waiting on Supabase to answer this. We did not need to.
+
+**5. PASSWORD RECOVERY LINKS DO NOT WORK ON A NEW PROJECT.**
+The recovery email arrives and its link lands on the login page rather than a
+set-password screen, because the new project's redirect URLs have never been
+configured. On the real day that is **eighteen people unable to get in**, on a
+Sunday, with no way round it.
+
+Configure the new project's Site URL and redirect URLs BEFORE cutover. Add it
+to Phase 4's "before the weekend" list.
+
+## Two smaller ones, worth knowing
+
+**The circular foreign key warning is expected.**
+
+```
+pg_dump: warning: there are circular foreign-key constraints on this table:
+pg_dump: detail: lender_documents
+```
+
+It means the data cannot load in a simple order. The restore already handles it
+- that is exactly what `SET session_replication_role = replica` is doing in the
+middle of the psql command. Production will throw the same warning. It is not a
+problem.
+
+**The CLI needs the password percent-encoded; psql does not.** The same
+connection string that psql accepted was refused by `supabase db dump` with
+`password authentication failed`. If a password has symbols in it, the CLI
+needs them encoded. Easiest answer: when resetting a database password, use
+letters and numbers only.
+
+## THE RUN THAT MATTERED — 42 of 42, 25 November 2026
+
+**A clean full browser run against Sydney staging.** Signing in, opening deals,
+typing into boxes, two windows on one deal, the compliance tab, the emails -
+all 42 against a database in `ap-southeast-2`.
+
+Nothing in the portal broke because of the move. Every failure in the earlier
+runs was the database being empty, and the last three were a single blank
+field. The move itself did not break one thing.
+
+That is the result this whole exercise existed to get, and it was got on a
+database with no client data in it rather than at eight o'clock on a Saturday
+night.
+
+## What the robots found, and what they did not
+
+40 of 43 passed on the first full run against Sydney. **Every failure traced to
+the database being empty, not to Sydney:**
+
+| Failed | Why | Real? |
+|---|---|---|
+| `wesley.spec` | opens one specific client's deal by id, which only exists in production | no - point `PORTAL_WESLEY_DEAL_ID` at a Sydney deal |
+| `new-deal-busy.spec` | the "Test deals only" filter row only exists when a test deal does | no - make one test deal |
+| `settings.spec` | the credit team dropdown was empty | no - add a credit officer |
+| `next-steps-email.spec` ×2 | the WealthDesk link in settings is blank | no - settings was recreated empty |
+
+**Seed these before judging a run:** at least one broker, one credit officer,
+one deal flagged as a test deal, and a settings row **with the WealthDesk link
+filled in - that one blocks every save on the Settings page while it is blank**. Without them you will spend an afternoon chasing failures that are
+not failures.
+
+### IT WAS ALL ONE BLANK FIELD — answered 25 Nov 2026
+
+The settings test looked like the one real failure. It was not, and the way it
+hid is worth knowing.
+
+**A blank WealthDesk link refuses EVERY save on the Settings page.** The
+validation is deliberate - "It is the only way clients can send us their bank
+statements, and it goes in every next-steps email" - but it blocks the whole
+page, not just that field. So:
+
+- `settings.spec` pressed Save settings, the save was refused by a dialog, and
+  the test sat waiting for a value that was never written. It read as a
+  60-second timeout with no clue attached.
+- `next-steps-email.spec` x2 failed because the link itself was blank.
+
+One empty field, three failures, none of them Sydney.
+
+**So every robot failure in the first runs against Sydney traced to the database
+being empty. Nothing was broken by the move.**
+
+Two things to carry forward:
+
+1. The seed list below is not optional. A blank WealthDesk link in particular
+   silently blocks every other setting from saving, which on a fresh project
+   looks like a broken Settings page.
+2. On the real day this cannot happen, because production's settings row comes
+   across with its data. It is a staging artefact - but it cost an hour to
+   find, so it is written here rather than rediscovered.
+
+## WHAT IS POINTED AT WHAT, AS AT 25 NOVEMBER 2026 — READ THIS FIRST
+
+**THE LAPTOP NOW TALKS TO SYDNEY STAGING, NOT PRODUCTION.** `.env.local` was
+changed on 25 Nov. Three values point at the Sydney staging project:
+
+```
+NEXT_PUBLIC_SUPABASE_URL          Sydney staging
+NEXT_PUBLIC_SUPABASE_ANON_KEY     Sydney staging publishable key
+SUPABASE_SERVICE_ROLE_KEY         Sydney staging secret key
+PORTAL_TEST_DEAL_ID               a Sydney deal
+PORTAL_WESLEY_DEAL_ID             the same Sydney deal
+```
+
+**THIS CHANGES WHAT A SHIP DOES, AND IT IS THE FIX WE WANTED.** `ship.sh` runs
+`check-browser.sh`, which loads `.env.local` and runs 43 browser tests that sign
+in and type into real screens. Until today that was PRODUCTION - which is how
+roughly 891 robot deals appeared in the live database over thirty days in
+October. From now on those tests run against Sydney staging and the live book is
+never touched by a robot again.
+
+So: **do not put `.env.local` back to production.** The backup is
+`.env.local.production` if it is ever needed, and both are ignored by git.
+
+The one consequence worth knowing: a ship now proves the portal works against
+SYDNEY STAGING, not against production. Until cutover those are the same code
+against the same structure, which is exactly what we spent today proving. After
+cutover they are the same thing entirely.
+
+**The Sydney staging project costs about $10 a month.** Delete it when the real
+move is done and verified, not before.
+
+## WHAT STAGING STILL HAS NOT PROVEN
+
+Three things, and **two of them have not been done even once**:
+
+1. **The 582 client documents.** Staging has none. Copying them is a separate
+   Node script from Supabase's guide and it has never been run. Known rough
+   edges: it lists with a limit of 1000 and does not page past it, and it
+   uploads with `upsert: true`.
+2. **The 18 staff keeping their passwords.** This needs the JWT secret copied to
+   the new project BEFORE the auth users move. We did not do it - we set a
+   staging password by hand instead. Untested.
+3. **The real volume.** Staging moved 258KB. Production is 161MB with 306 deals,
+   1,911 clients and 21,479 history rows.
+
+**The mechanics are rehearsed. The parts that touch your staff and your clients
+are not.**
+
+## The plan from here, agreed 25 Nov
+
+- **Next few days:** run the robots repeatedly against Sydney staging, by hand
+  as well, and learn more. Seed the data above first.
+- **The weekend after that:** the real transfer - not this coming weekend.
+- **Before then, rehearse the two untested things:** the storage copy and the
+  JWT secret / auth users step.
+
+Fabio: "on the weekend... we use all the robots to test and learn a lot more.
+And then the weekend after, we'll do the transfer."
+
+---
+
 # PHASE 1 — Move staging from Seoul to Sydney
 
 This is the rehearsal of the real move. Same commands, nothing at stake.

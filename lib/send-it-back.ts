@@ -91,7 +91,7 @@ const STAMPS: Record<BackStage, string[]> = {
   lo: ['lo_sent_at', 'lo_completed_at'],
 }
 
-/** The stamp that means the client has agreed and it is too late. */
+/** The stamp that means the client has agreed. Not a lock since 25 Nov 2026. */
 const AGREED: Record<BackStage, string> = {
   bc: 'client_proceeded', lo: 'lo_client_proceeded',
 }
@@ -167,16 +167,78 @@ export function sendBackTarget(deal: any, stage: BackStage): { officerId: string
   return legacy ? { officerId: legacy, name: '' } : null
 }
 
+// THE CLIENT AGREEING IS NO LONGER A LOCK - 25 Nov 2026.
+//
+// It used to refuse outright: "The client has already agreed to this one." Both
+// this and canSendAgain() went dark the moment a client pressed Proceed, with
+// nothing on the screen saying why, and the only way back was dragging the card
+// from Compliance to Lending options on the deal board.
+//
+// Fabio, after twenty minutes looking for a button that was hidden, and a
+// hand-written SQL update on a live deal to get it back:
+//
+//   "I don't like dragging deal cards. We always talk about not dragging deal
+//    cards... I want to make sure in future, even when we send to the client,
+//    it doesn't suppress. So we can always change it and send it again."
+//
+// He is right, and the rule was already written down one function below for
+// Send again: a sent date "is a statement, not a lock". It was never applied
+// to the case where the client answered.
+//
+// WHAT DID NOT BECOME EASIER. Undoing a client's agreement is still a thing
+// that gets said out loud and written to the file - see undoesTheAgreement()
+// below and the dialog it feeds. What changed is that it is possible from the
+// screen the work is on, rather than possible only by dragging a card on a
+// different screen with nothing telling you so.
 export function canSendBack(deal: any, stage: BackStage): CanSendBack {
   if (!deal) return { ok: false, why: 'No deal' }
-  if (deal[AGREED[stage]]) {
-    return { ok: false, why: 'The client has already agreed to this one' }
-  }
   if (!sendBackTarget(deal, stage)) {
     return { ok: false, why: 'Nobody in credit worked on this one - open it and change it' }
   }
   return { ok: true, why: '' }
 }
+
+/**
+ * IS THIS ONE OF THE PRESSES THAT TAKES A CLIENT'S AGREEMENT OFF THE FILE?
+ *
+ * True once the client has agreed. The screen asks before doing it and the file
+ * note records who did. Never silent: a regulated document reads the answer
+ * this clears.
+ */
+export function undoesTheAgreement(deal: any, stage: BackStage): boolean {
+  return !!deal?.[AGREED[stage]]
+}
+
+/**
+ * EVERY FIELD THAT HOLDS "THE CLIENT AGREED", IN BOTH PLACES IT LIVES.
+ *
+ * THIS IS THE WHOLE RISK OF THE CHANGE, so it is one list rather than two.
+ *
+ * The client's own press lives on the DEAL. The broker's recorded answer -
+ * "Yes, they went with Bankwest" - lives in LO_DATA, and **that** is what the
+ * compliance pack reads. Clear the first and not the second and compliance
+ * faithfully rebuilds from a stale answer, naming a lender the client is no
+ * longer taking, on a regulated document.
+ *
+ * That is not hypothetical. It is the Charles Mullins fault of 25 Sep 2026
+ * coming back through a different door - the lending options moved from AMP to
+ * Bankwest and the pack went on saying AMP. See lib/client-agreement.ts, which
+ * holds the rule this depends on: lo_data is the answer, compliance_data is
+ * only ever a copy, and the copy is rebuilt from the answer every time.
+ *
+ * Fabio's condition on approving this, 25 Nov 2026: "as long as when we go to
+ * compliance, it doesn't hard code the previous choice, then no issues."
+ */
+export const AGREEMENT_FIELDS_ON_THE_DEAL: Record<BackStage, string[]> = {
+  bc: ['client_proceeded', 'proceeded_at', 'proceeded_source', 'proceeded_by'],
+  lo: ['lo_client_proceeded', 'lo_proceeded_at', 'lo_proceeded_lender',
+       'lo_proceeded_source', 'lo_proceeded_by'],
+}
+
+export const AGREEMENT_FIELDS_IN_LO_DATA: string[] = [
+  'clientAgreedLender', 'clientChosenLender', 'clientChosenLenderOther',
+  'clientChosenLenderReason', 'clientDecisionAt', 'clientDecisionBy',
+]
 
 /** Which timestamp columns this send-back would clear. For the words on screen. */
 export function clearedBySendingBack(deal: any, stage: BackStage): string[] {
@@ -337,6 +399,119 @@ export function reworkChip(r: Rework | null, now: Date = new Date()): string {
 // worth showing, so the green stays - but it is a statement, not a lock, and
 // there is now a quiet second button beside it. It asks before it goes, because
 // a client receiving the same email twice by accident is its own problem.
+// 25 Nov 2026: the `&& !deal[AGREED[stage]]` came off. A client who has agreed
+// is exactly the case where a broker needs to pivot and send something else -
+// and this function's own note already said a sent date is "a statement, not a
+// lock". See canSendBack above for the whole argument.
 export function canSendAgain(deal: any, stage: BackStage): boolean {
-  return !!deal?.[`${stage}_sent_at`] && !deal?.[AGREED[stage]]
+  return !!deal?.[`${stage}_sent_at`]
+}
+
+// ---------------------------------------------------------------------------
+// TAKING A CLIENT'S AGREEMENT BACK OFF THE FILE
+// ---------------------------------------------------------------------------
+//
+// 25 Nov 2026. Approved by Fabio on the mockup, with one condition:
+//
+//   "as long as when we go to compliance, it doesn't hard code the previous
+//    choice, then no issues"
+//
+// It does not - lib/client-agreement.ts rebuilds the compliance copy from
+// lo_data every time, which is the Charles Mullins fix. What this function
+// exists for is the OTHER half: lo_data itself has to stop saying the client
+// agreed, or compliance rebuilds faithfully from a stale answer and the pack
+// names a lender nobody is taking.
+
+/** The words shown before anything is cleared. Names the bank and the date. */
+export function undoWarning(deal: any, stage: BackStage): string {
+  const lender = txt(deal?.lo_proceeded_lender)
+  const at = deal?.[stage === 'lo' ? 'lo_proceeded_at' : 'proceeded_at']
+  const when = at ? new Date(at).toISOString().slice(0, 10) : ''
+  const who = lender ? `agreed to ${lender}` : 'agreed to proceed'
+  return `The client ${who}${when ? ` on ${when}` : ''}. Sending again means they are `
+    + `deciding on something different, so that agreement comes off the file.`
+}
+
+/**
+ * WHERE THE CARD GOES WHEN THE AGREEMENT COMES OFF - and when it does not.
+ *
+ * The board is worked out, never stored (see lib/the-board-columns.ts), and
+ * Compliance is reached by `lo_client_proceeded` alone. So clearing it walks
+ * the card back to Lending options on its own - nobody drags anything.
+ *
+ * EXCEPT once the compliance pack has actually gone out. `compliance_sent_at`
+ * is further along and this does not touch it, so the card stays where it is.
+ * Saying that on the dialog is the whole point: a broker who presses this
+ * expecting the card to move and watches it sit still will go looking for a
+ * second button that does not exist. That is this morning, again.
+ */
+export function whereTheCardGoes(deal: any, stage: BackStage): string {
+  if (stage === 'bc') {
+    if (deal?.lo_client_proceeded || deal?.compliance_sent_at) {
+      return 'This deal is already past the lending options, so the card stays '
+        + 'where it is. Only the agreement on the borrowing capacity comes off.'
+    }
+    return 'The card moves itself back from Lending options to Borrowing capacity.'
+  }
+  if (deal?.compliance_sent_at) {
+    return 'The compliance pack has already gone out, so the card stays in '
+      + 'Compliance. Only the agreement comes off.'
+  }
+  return 'The card moves itself back from Compliance to Lending options.'
+}
+
+/**
+ * THE PATCH THAT CLEARS IT, BOTH HALVES AT ONCE.
+ *
+ * Returns the columns to null on `deals` AND the keys to strip from lo_data.
+ * One function, so there is no way to do one and forget the other - which is
+ * the entire risk of this feature. lib/the-agreement-comes-off-both.test.ts
+ * fails the build if either list shrinks.
+ *
+ * WHAT HAPPENED IS KEPT, AND IT IS KEPT WITHOUT A NEW COLUMN.
+ *
+ * A file that shows an agreement being taken back is honest; one that shows it
+ * never existed is not, and a reviewer will ask which. So the undo is recorded
+ * in two places that already exist: a `kind: 'system'` line in `deal_notes`,
+ * which is the file's own memory and the thing anybody reviewing actually
+ * reads, and a stamp inside `lo_data` for the screen to show.
+ *
+ * NO NEW COLUMNS ON PURPOSE, 25 Nov 2026. `scripts/check-deal-columns.sh`
+ * fails the ship on any column the database does not have, so a column here
+ * would mean SQL on live AND on staging AND on Sydney, in the same fortnight
+ * the database is being moved between countries, to hold a value that two
+ * existing stores hold perfectly well. See docs/moving-the-database-to-sydney.md.
+ */
+export function undoTheAgreement(stage: BackStage, by: string, now = new Date()) {
+  const deal: Record<string, any> = {}
+  for (const f of AGREEMENT_FIELDS_ON_THE_DEAL[stage]) deal[f] = null
+  deal[AGREED[stage]] = false
+  const loDataStamp = stage === 'lo' ? {
+    agreementUndoneAt: now.toISOString(),
+    agreementUndoneBy: txt(by) || '',
+  } : null
+  return {
+    deal,
+    loDataKeysToClear: stage === 'lo' ? AGREEMENT_FIELDS_IN_LO_DATA : [],
+    loDataStamp,
+  }
+}
+
+/** lo_data with the agreement answers taken out. Never mutates what it is given. */
+export function loDataWithoutTheAgreement(loData: any, stamp?: any): any {
+  const out = { ...(loData || {}) }
+  for (const k of AGREEMENT_FIELDS_IN_LO_DATA) delete out[k]
+  return stamp ? { ...out, ...stamp } : out
+}
+
+/** The line that goes in the file notes. This is the half a reviewer reads. */
+export function undoTheAgreementLine(deal: any, stage: BackStage, by: string): string {
+  const what = BACK_STAGE_LABEL[stage]
+  const lender = txt(deal?.lo_proceeded_lender)
+  const at = deal?.[stage === 'lo' ? 'lo_proceeded_at' : 'proceeded_at']
+  const when = at ? new Date(at).toISOString().slice(0, 10) : ''
+  return `AGREEMENT UNDONE \u00b7 ${txt(by) || 'A broker'} took the client's agreement `
+    + `back off the ${what}${lender ? ` (they had agreed to ${lender}` : ''}`
+    + `${lender && when ? ` on ${when}` : ''}${lender ? ')' : ''}. `
+    + `The ${what} is being changed and goes to them again.`
 }

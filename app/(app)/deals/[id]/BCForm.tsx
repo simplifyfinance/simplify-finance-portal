@@ -8,7 +8,8 @@ import { sentEmailAsText } from '@/lib/email-as-text'
 import { askedPatch, goingOut } from '@/lib/what-we-still-need'
 import { brandsOffered, brandToSettleOn, brandUncertainty } from '@/lib/the-brand-follows-the-broker'
 import SendItBack, { ReworkBanner } from '@/components/SendItBack'
-import { canSendBack, reworkOn, canSendAgain } from '@/lib/send-it-back'
+import { canSendBack, reworkOn, canSendAgain, undoesTheAgreement } from '@/lib/send-it-back'
+import UndoTheAgreement from '@/components/UndoTheAgreement'
 import { handStageOver } from '@/lib/hand-this-stage-over'
 import { dutyStateOf } from '@/lib/duty-state'
 import { useFromTemplate } from '@/lib/deal-labels'
@@ -1144,6 +1145,9 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const [handingOver, setHandingOver] = useState(false)
   // SENDING IT BACK TO CREDIT - see components/SendItBack.tsx.
   const [sendingBack, setSendingBack] = useState(false)
+  // See the same state on the lending options tab. Both tabs keep their buttons
+  // after a client agrees, and both ask the same question first - 25 Nov 2026.
+  const [undoThen, setUndoThen] = useState<null | { what: 'again' | 'back'; copied?: boolean }>(null)
   // Which button opened the box, so onSent knows where to go next.
   const [thenSend, setThenSend] = useState(false)
 
@@ -2108,6 +2112,14 @@ Key assumptions: ${checklistText}`
               // click, the clipboard write was refused, and this button did
               // nothing at all.
               onClick: async () => {
+                // THE CLIENT AGREED, SO THE QUESTION IS A BIGGER ONE - and the
+                // clipboard copy still happens here, on the live click.
+                if (undoesTheAgreement(deal, 'bc')) {
+                  let copied = true
+                  try { await copyEmailToClipboard() } catch { copied = false }
+                  setUndoThen({ what: 'again', copied })
+                  return
+                }
                 const next = await copyBeforeAsking(copyEmailToClipboard, () =>
                   confirm('Send this email to the client again?\n\nThey get it at the same addresses as last time.'))
                 if (next === 'cancelled') return
@@ -2135,13 +2147,17 @@ Key assumptions: ${checklistText}`
             since: deal.client_proceeded ? proceedInfo.who : undefined,
             title: 'They pressed Proceed in the email, or we record it here',
           },
-          // SEND IT BACK. Only a broker, only where credit did the work, and
-          // only until the client has agreed - see canSendBack() in
-          // lib/send-it-back.ts, which is where all three rules live.
+          // SEND IT BACK. Only a broker, and only where credit did the work.
+          // 25 Nov 2026: the client agreeing is no longer a third rule that
+          // hides this - it is a question asked first. See canSendBack() in
+          // lib/send-it-back.ts, which is where both rules live.
           ...(canSendToClient && canSendBack(deal, 'bc').ok ? [{
             label: '\u21BA Send it back',
             tone: 'urgent' as const,
-            onClick: () => setSendingBack(true),
+            onClick: () => {
+              if (undoesTheAgreement(deal, 'bc')) { setUndoThen({ what: 'back' }); return }
+              setSendingBack(true)
+            },
             title: 'Tells credit this BC needs doing again, and why',
           }] : []),
         ]}
@@ -2155,6 +2171,24 @@ Key assumptions: ${checklistText}`
           same list, so there is never a question about what actually goes. */}
       <WhatWeStillNeed deal={deal} me={me} dropped={questionsDropped}
         onDropped={setQuestionsDropped} onChanged={() => window.location.reload()} />
+
+      {undoThen && (
+        <UndoTheAgreement deal={deal} stage="bc"
+          byName={brokerSig || deal.assigned_broker || 'Broker'}
+          what={undoThen.what === 'again' ? 'send it again' : 'send it back'}
+          onCancel={() => setUndoThen(null)}
+          onDone={async () => {
+            const was = undoThen
+            setUndoThen(null)
+            if (was.what === 'back') { setSendingBack(true); return }
+            if (was.copied === false) {
+              setSendToClientMsg('Could not copy the email — nothing was sent. The agreement has come off.')
+              setTimeout(() => setSendToClientMsg(''), 6000)
+              return
+            }
+            await sendToClient(true)
+          }} />
+      )}
 
       {sendingBack && (
         <SendItBack deal={deal} stage="bc" byName={brokerSig || deal.assigned_broker || 'Broker'}

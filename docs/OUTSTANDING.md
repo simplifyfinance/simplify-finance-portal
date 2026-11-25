@@ -423,3 +423,107 @@ here so nobody relies on it during exactly the window where it is not true.
 - Show a mockup before any visual change.
 - Never invent a figure. Never quote a DTI, a maximum borrowing capacity, or
   living expenses. Never say something is cheaper when it is not.
+
+---
+
+## THE LENDING OPTIONS BUTTONS STAY, EVEN AFTER THE CLIENT AGREES — approved 25 Nov 2026
+
+Fabio, after twenty minutes looking for a button that was hidden:
+
+> "I don't like dragging deal cards. We always talk about not dragging deal
+> cards... I want to make sure in future, even when we send to the client, it
+> doesn't suppress. So we can always change it and send it again."
+
+**Today:** the moment `lo_client_proceeded` is true, `canSendAgain` returns
+false and `canSendBack` refuses with "The client has already agreed to this
+one". Both buttons vanish with nothing on screen saying why, and the only way
+back is dragging the card from Compliance to Lending options on the deal board.
+Nothing on the tab says so. It cost an hour and a hand-written SQL update on a
+live deal.
+
+**Approved:** both buttons stay. The green tick is a fact, not a lock - which is
+already the stated rule for Send again and was never applied to this case.
+
+### The condition, and it is the whole risk
+
+> "as long as when we go to compliance, it doesn't hard code the previous
+> choice, then no issues"
+
+It does not, and that is not luck - it is the Charles Mullins fix of 25 Sep
+2026, where compliance kept saying AMP after the lending options moved to
+Bankwest. `lib/client-agreement.ts` holds the rule: **lo_data is the answer,
+compliance_data holds a copy, and the copy is rebuilt from the answer every
+time.** Compliance has no box that can set those fields.
+
+**BUT THE UNDO MUST CLEAR BOTH HALVES OF THE ANSWER, NOT JUST ONE.** The
+client's own press and the broker's recorded decision are different records in
+different places, and compliance rebuilds from the second one:
+
+| Where | Field | What it is |
+|---|---|---|
+| `deals` | `lo_client_proceeded` | the client pressed Proceed |
+| `deals` | `lo_proceeded_at` | when |
+| `deals` | `lo_proceeded_lender` | which bank they confirmed themselves |
+| `lo_data` | `clientAgreedLender` | **the broker's recorded Yes/No - THIS is what the compliance pack reads** |
+| `lo_data` | `clientChosenLender` / `clientChosenLenderOther` | the bank they chose instead |
+| `lo_data` | `clientChosenLenderReason` | why |
+| `lo_data` | `clientDecisionAt` / `clientDecisionBy` | who recorded it and when |
+
+Clear only the first three and compliance will faithfully rebuild from a stale
+`clientAgreedLender` - naming a lender the client is no longer taking, on a
+regulated document. That is the Charles Mullins fault coming back through a
+different door.
+
+### What to build
+
+1. `canSendAgain` and `canSendBack` stop refusing on `lo_client_proceeded`.
+2. When the client HAS agreed, both buttons first show the confirmation in the
+   approved mockup: it names the bank and the date, says the agreement comes
+   off, and says the deal moves back from Compliance to Lending options.
+3. On confirm, clear **every field in the table above**, write a file note
+   saying who undid it and when, and leave the original date visible as undone
+   rather than deleted.
+4. A test that fails the build if the undo clears the `deals` half and not the
+   `lo_data` half. That is the only way this stays fixed.
+
+### BUILT 25 NOV 2026 — all four, same day
+
+| | Where |
+|---|---|
+| 1. Both buttons stop refusing | `lib/send-it-back.ts` — `canSendBack`, `canSendAgain` |
+| 2. The confirmation that names the bank and the date | `components/UndoTheAgreement.tsx` |
+| 3. Clears both halves, writes the file note | `app/api/undo-the-agreement/route.ts` |
+| 4. The test that fails the build if either list shrinks | `lib/the-agreement-comes-off-both.test.ts` |
+
+Wired into **both** tabs, not just the lending options: `LOForm.tsx` and
+`BCForm.tsx`. The BC had the same hidden-button fault and nobody had hit it yet.
+
+**AND THE CARD MOVING IS NOT A SEPARATE JOB.** The board is worked out, never
+stored — `lib/the-board-columns.ts`. Compliance is reached by
+`lo_client_proceeded` alone, so clearing it walks the card back to Lending
+options by itself. The dialog says so, and says the opposite when
+`compliance_sent_at` is set: the pack has gone out, the card stays put, only the
+agreement comes off. A broker who expects the card to move and watches it sit
+still goes hunting for a button that does not exist — which is this morning,
+again.
+
+### THE FINDING: NO NEW COLUMNS, ON PURPOSE
+
+The first build wrote `lo_agreement_undone_at` and `_by` onto `deals`. That
+would have failed the ship — `scripts/check-deal-columns.sh` refuses any column
+the database does not have — and fixing it meant SQL on **live, staging AND
+Sydney**, in the same fortnight the database is being moved between countries.
+
+To hold a value that two existing stores already hold perfectly well. So the
+undo is recorded in `deal_notes` (a `kind: 'system'` line, which is what anyone
+reviewing the file actually reads) and in a stamp inside `lo_data`. No
+migration, nothing new for the Sydney move to carry.
+
+### WHAT THE ROBOTS DO NOT COVER
+
+No browser spec touches Send again or Send it back — checked, 25 Nov 2026.
+`lo-reaches-compliance.spec.ts` and `compliance-reads-the-record.spec.ts` are
+the nearest and neither presses either button. The guard on this change is the
+vitest suite, not the browser gate. Worth knowing before trusting a green ship.
+
+Mockup approved 25 Nov 2026. Built 25 Nov 2026.
