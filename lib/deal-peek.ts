@@ -10,6 +10,12 @@
 // straight to it.
 
 import { phaseOf, phaseSince, amountOf, PHASE_LABEL, type Phase } from './deal-phase'
+// securityOf LIVES IN which-house.ts NOW, and is re-exported here so every
+// existing caller keeps working. It moved because which-house needed it and
+// importing it back the other way made a circle - which
+// lib/the-files-do-not-import-each-other.test.ts refuses, correctly.
+import { theHouseBeingBought, securityOf } from './which-house'
+export { securityOf }
 import { chipsFor, dealTitle, type Chip } from './deal-labels'
 import { loanIdRows } from './loan-id'
 import { OFFICE } from './same-date-everywhere'
@@ -43,25 +49,17 @@ export function money(n: number | null): string {
   return '$' + Math.round(n).toLocaleString('en-AU')
 }
 
-// The security is whichever property the loan is actually against. The fact find
-// can hold several - the family home, an investment, one being sold - so the one
-// being bought or borrowed against comes first, and the rest are counted rather
-// than listed. A panel that lists four addresses answers nothing at a glance.
-export function securityOf(deal: any): { address: string; detail: string; more: number } {
-  const props: any[] = deal?.fact_find_data?.properties || []
-  const withAddress = props.filter(p => String(p?.address || '').trim())
-  const primary = withAddress.find(p => /purchas|security|new/i.test(String(p?.futureUse || ''))) || withAddress[0]
-  if (!primary) {
-    // Before a fact find has a property on it, the BC at least knows the suburb.
-    const suburb = String(deal?.bc_data?.suburb || '').trim()
-    return { address: suburb || '', detail: String(deal?.bc_data?.propertyType || '').trim(), more: 0 }
-  }
-  const detail = [primary.propertySubtype, primary.ownershipType].map((x: any) => String(x || '').trim()).filter(Boolean).join(' · ')
-  return { address: String(primary.address).trim(), detail, more: Math.max(0, withAddress.length - 1) }
-}
 
 export function buildPeek(deal: any, opts: { lenderName?: string; brokerName?: string; creditName?: string; colours?: { type?: any; use?: any } } = {}): Peek {
+  // THE HOUSE BEING BOUGHT, NOT THE FIRST ONE ON THE FACT FIND.
+  //
+  // 25 Nov 2026. securityOf() above takes the first property with an address,
+  // which on a purchase by somebody who already owns a house is THEIR house -
+  // and on a buy-and-sell it is the one they are selling. The quick look said
+  // so on every such deal. Same fault as the Isherwood handover, same fix.
+  // See lib/which-house.ts.
   const sec = securityOf(deal)
+  const boughtAddress = theHouseBeingBought(deal) || sec.address
   const applicants: string[] = (deal?.fact_find_data?.applicants || [])
     .map((a: any) => [a?.firstName, a?.lastName].map((x: any) => String(x || '').trim()).filter(Boolean).join(' '))
     .filter(Boolean)
@@ -100,7 +98,7 @@ export function buildPeek(deal: any, opts: { lenderName?: string; brokerName?: s
     security: {
       title: 'Security',
       fields: [
-        { key: 'Address', value: sec.address || 'none recorded', muted: !sec.address },
+        { key: 'Address', value: boughtAddress || 'none recorded', muted: !boughtAddress },
         ...(sec.detail ? [{ key: 'Type', value: sec.detail }] : []),
         ...(sec.more > 0 ? [{ key: '', value: `+${sec.more} more ${sec.more === 1 ? 'property' : 'properties'} on the fact find`, muted: true }] : []),
       ],

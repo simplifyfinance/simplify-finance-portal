@@ -24,7 +24,7 @@
 
 import { contractPrice, contractLoan, contractStampDuty } from './contract-figures'
 import { loanAmount, lvrOf } from './funds-to-complete'
-import { securityOf } from './deal-peek'
+import { theHouseBeingBought } from './which-house'
 import { lenderOnTheDeal } from './client-agreement'
 import { preapprovalLine } from './offer-accepted-panel'
 import { loanNow, monthlyRepayment, rateWords, termWords, repaymentWords } from './the-loan-now'
@@ -75,12 +75,20 @@ export function whoLine(names: string[], fallbackDealName?: string): string {
   return n.length === 1 ? n[0] : n.slice(0, -1).join(', ') + ' & ' + n[n.length - 1]
 }
 
-/** The address the deal knows, from the fact find's own property list. */
+/**
+ * THE HOUSE BEING BOUGHT.
+ *
+ * 25 Nov 2026. This used to ask compliance for a typed address and then fall
+ * back to the first property on the fact find. On Thomas and Sally Isherwood
+ * that printed U4 26 Richmond Avenue, Dee Why - the unit they are SELLING -
+ * on a handover for 16 Bergonia Street, Mona Vale, which Kylie had typed into
+ * "The property being bought" at the offer accepted step.
+ *
+ * It never read that field. See lib/which-house.ts for the whole story and
+ * lib/one-house-one-answer.test.ts for what now stops it happening again.
+ */
 export function addressOf(deal: any): string {
-  const typed = txt(deal?.compliance_data?.securityAddress)
-  if (typed && !/^TBA\b/i.test(typed)) return typed
-  const peek = txt(securityOf(deal)?.address)
-  return /^TBA\b/i.test(peek) ? '' : peek
+  return theHouseBeingBought(deal)
 }
 
 /**

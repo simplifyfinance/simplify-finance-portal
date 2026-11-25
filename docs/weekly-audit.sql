@@ -352,3 +352,45 @@ cross join lateral (
   select case when expected = found then 'PASS' else 'FAIL' end as result
 ) r
 order by case when result = 'FAIL' then 0 else 1 end, ord;
+
+
+-- ---------------------------------------------------------------------------
+-- 18. ONE FACT, TWO ANSWERS: THE PROPERTY
+-- ---------------------------------------------------------------------------
+--
+-- 25 Nov 2026. Added after the Isherwood handover printed the house the client
+-- was SELLING. Kylie had typed the right address at the offer accepted step;
+-- the document read somewhere else. The same fault had been fixed in the client
+-- emails the day before, in one file, and nothing told the other three.
+--
+-- Fabio: "we fixed something yesterday in offer accepted that is now a problem
+-- in settlements. So how can we avoid that?"
+--
+-- THE CODE HALF OF THE ANSWER IS lib/one-house-one-answer.test.ts, which reads
+-- the source and FAILS THE BUILD if a fifth place starts deciding this on its
+-- own. THIS IS THE DATA HALF: a deal where the two fields that describe the
+-- property disagree.
+--
+-- A ROW HERE IS NOT AUTOMATICALLY WRONG. A loan can be secured against a house
+-- other than the one being bought, and often is. What a row IS, is a deal where
+-- two documents will print two different addresses - so somebody should decide
+-- which is right before a client reads one of them.
+select d.deal_name,
+       d.purchase_address                    as typed_at_offer_accepted,
+       d.compliance_data->>'securityAddress' as typed_at_compliance,
+       d.offer_accepted_at::date             as offer_accepted,
+       (d.settled_at is not null)            as settled
+from deals d
+where coalesce(d.is_test, false) = false
+  and coalesce(d.purchase_address, '') <> ''
+  and coalesce(d.compliance_data->>'securityAddress', '') <> ''
+  and d.compliance_data->>'securityAddress' not ilike 'TBA%'
+  -- Punctuation and case are not a disagreement. "16 Bergonia St" and
+  -- "16 Bergonia Street" still are, and should be - two documents printing
+  -- those two is worth a look even though nobody is wrong.
+  and lower(regexp_replace(d.purchase_address, '[^a-z0-9]', '', 'gi'))
+   <> lower(regexp_replace(d.compliance_data->>'securityAddress', '[^a-z0-9]', '', 'gi'))
+order by d.offer_accepted_at desc nulls last;
+-- Expect: a short list, every one of them explainable. A long list means the
+-- two fields are being used for different things by different people, which is
+-- a bigger problem than any single document.

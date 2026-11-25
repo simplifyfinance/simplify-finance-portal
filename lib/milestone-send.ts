@@ -42,7 +42,7 @@ import { buildFinalCheckinEmail } from './final-checkin-email'
 import { lenderOnTheDeal, optionOnTheDeal, splitsOnTheDeal } from './client-agreement'
 import { toldTheOtherSide, copyTheseIn, otherSideGaps } from './other-side'
 import { clientEmails, clientFirstNames } from './client-emails'
-import { securityOf } from './deal-peek'
+import { theHouseBeingBought } from './which-house'
 import { ruleFor, preapprovalAge } from './offer-accepted-rules'
 import { DEFAULT_BRAND, type Brand } from './brand'
 
@@ -173,7 +173,11 @@ export function preapprovalExpiry(deal: any, now = new Date()): string {
  * address has not been typed yet. It was never wrong about those.
  */
 export function propertyAddressOf(deal: any): string {
-  return txt(deal?.purchase_address) || txt(securityOf(deal)?.address)
+  // 25 Nov 2026: through lib/which-house.ts now. The order is unchanged - this
+  // file had it right since 24 Nov - but it was the ONLY file that did, and
+  // the handover and the board quick look both still had the old fault. One
+  // answer, one place, and a test that fails the build if a second appears.
+  return theHouseBeingBought(deal)
 }
 
 // THE BLOCKS, BEFORE ANYBODY TOUCHES THEM.
