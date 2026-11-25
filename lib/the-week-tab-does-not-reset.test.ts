@@ -37,82 +37,90 @@ import { SEATS, SEAT_LABEL } from './the-run-through'
 
 const PAGE = readFileSync('app/(app)/dashboard/page.tsx', 'utf8')
 const RUN  = readFileSync('components/RunThrough.tsx', 'utf8')
-const SQL  = readFileSync('docs/the-week-tab-is-remembered.sql', 'utf8')
+const SQL  = readFileSync('docs/the-week-tab-is-the-teams.sql', 'utf8')
 
-describe('the tab is not hard-coded any more', () => {
-  it('does not open on "nobody" regardless of what the person left', () => {
+// ===========================================================================
+// SECOND ATTEMPT, 25 Nov 2026, AND THE FIRST ONE IS THE LESSON.
+//
+// The first fix remembered the tab AGAINST EACH LOGIN. It stopped the
+// resetting, every test passed, and it did not fix what Fabio reported:
+//
+//   "See the section? It's still not sharing everyone's section. Alan has the
+//    this week ticked and it's different to this."
+//
+// He had said it plainly before a line was written - "that box is shared with
+// all admin people... the same screen for everyone" - and the build went the
+// other way on the strength of four words in an earlier message. A per-person
+// memory is a DIFFERENT FEATURE from a shared one, and it fails in exactly the
+// way the original complaint describes.
+//
+// There is ONE tab now. Not one each.
+// ===========================================================================
+
+describe('there is one tab, and it belongs to the team', () => {
+  it('the page reads it from settings, not from a person', () => {
+    expect(PAGE).toContain("from('settings').select('week_tab').eq('id', 'singleton')")
+    expect(PAGE).toContain('openOn={weekTab}')
+  })
+
+  it('and no longer reads a per-person tab off the profile', () => {
+    // user_profiles.today_seat is left on the table deliberately - dropping a
+    // column on a live database buys nothing - but nothing may read it.
+    expect(PAGE).not.toContain('today_seat')
+  })
+
+  it('so viewing as somebody shows the same tab as your own, because there is only one', () => {
+    // The whole reason "view as" exists: checking the portal works for Alan.
+    // A check that shows a different tab from his cannot do that.
+    expect(PAGE).not.toContain('remember={!viewingId}')
+    expect(RUN).not.toContain('if (!remember) return')
+  })
+})
+
+describe('moving it moves it for everyone', () => {
+  it('writes through set_the_week_tab, never at the table', () => {
+    expect(RUN).toContain("rpc('set_the_week_tab', { p_tab: s })")
+    expect(RUN).not.toContain("from('settings').update")
+    expect(RUN).not.toContain("from('settings').upsert")
+  })
+
+  it('the button moves it rather than only setting local state', () => {
+    expect(RUN).toContain('onClick={() => { chooseSeat(s); setProblem(\'\') }}')
+  })
+})
+
+describe('the tab still opens where the team left it', () => {
+  it('does not open on "nobody" regardless', () => {
     expect(RUN).not.toContain("useState<Seat>('nobody')")
   })
 
-  it('opens on what they left, and falls back to the first tab', () => {
+  it('opens on the shared tab, and falls back to the first one', () => {
     expect(RUN).toContain('SEATS.includes(openOn as Seat)')
     expect(RUN).toContain("? (openOn as Seat) : 'nobody'")
-  })
-
-  it('checks the stored value is a real tab rather than trusting the column', () => {
-    // It arrives from a database column nothing else validates. A tab name
-    // that is not a tab would draw an empty meeting with the counts still
-    // showing above it - the worst of both.
-    const at = RUN.indexOf('useState<Seat>(')
-    expect(at).toBeGreaterThan(-1)
-    expect(RUN.slice(at, at + 160)).toContain('SEATS.includes')
-  })
-})
-
-describe('it is remembered against the login, not the browser', () => {
-  it('the page reads the viewed person\'s tab, not the signed-in one\'s', () => {
-    expect(PAGE).toContain('no_today, today_seat')
-    // whoseId is viewingId || user.id - the same id every other figure on this
-    // page is worked out from.
-    expect(PAGE).toContain(".eq('id', whoseId)")
-    expect(PAGE).toContain("openOn={(profile as any)?.today_seat || null}")
-  })
-
-  it('writes through save_my_board_view, never at the table', () => {
-    // user_profiles has one UPDATE policy and it is the admin one, so a direct
-    // write is refused for everybody else - silently, matching zero rows. The
-    // row also holds role and broker_key. docs/my-own-board-is-mine.sql.
-    expect(RUN).toContain("rpc('save_my_board_view', { p_today_seat: s })")
-    expect(RUN).not.toContain("from('user_profiles').update")
-  })
-})
-
-describe('LOOKING AT SOMEBODY DOES NOT REWRITE WHAT THEY LEFT OPEN', () => {
-  it('the page turns remembering off while viewing as someone', () => {
-    expect(PAGE).toContain('remember={!viewingId}')
-  })
-
-  it('and the component honours it before writing anything', () => {
-    const at = RUN.indexOf('const chooseSeat')
-    expect(at).toBeGreaterThan(-1)
-    const body = RUN.slice(at, at + 400)
-    expect(body).toContain('if (!remember) return')
-    expect(body.indexOf('if (!remember) return'))
-      .toBeLessThan(body.indexOf('save_my_board_view'))
   })
 })
 
 describe('the migration matches what the code expects', () => {
   it('adds the column the page selects', () => {
-    expect(SQL).toContain('add column if not exists today_seat text')
+    expect(SQL).toContain('add column if not exists week_tab text')
   })
 
-  it('DROPS the two-argument function rather than overloading it', () => {
-    // Two functions side by side and a call naming one argument becomes
-    // ambiguous - "function is not unique" - and every board fold in the
-    // portal stops saving.
-    expect(SQL).toContain('drop function if exists public.save_my_board_view(jsonb, jsonb)')
-    expect(SQL).toContain('p_today_seat text  default null')
+  it('REFUSES A VALUE THAT IS NOT A TAB', () => {
+    // A stored value that is not one of the five would open every admin on an
+    // empty meeting with the counts still showing above it.
+    expect(SQL).toContain("('nobody', 'this_week', 'next_week', 'client', 'lodged')")
+    expect(SQL).toContain('raise exception')
   })
 
-  it('keeps the old two arguments working, so folds and filters are untouched', () => {
-    expect(SQL).toContain('p_folds      jsonb default null')
-    expect(SQL).toContain('p_filters    jsonb default null')
+  it('writes one column and cannot reach the rate notice or the brands', () => {
+    expect(SQL).toContain('update public.settings set week_tab = p_tab')
+    expect(SQL).not.toContain('rate_notice =')
+    expect(SQL).not.toContain('brands =')
   })
 
   it('stays shut to anon', () => {
-    expect(SQL).toContain('revoke all on function public.save_my_board_view(jsonb, jsonb, text) from anon, public')
-    expect(SQL).toContain('grant execute on function public.save_my_board_view(jsonb, jsonb, text) to authenticated')
+    expect(SQL).toContain('revoke all on function public.set_the_week_tab(text) from anon, public')
+    expect(SQL).toContain('grant execute on function public.set_the_week_tab(text) to authenticated')
   })
 })
 

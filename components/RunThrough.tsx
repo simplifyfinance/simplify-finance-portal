@@ -46,7 +46,7 @@ export default function RunThrough({
   team = [], stuckPushes = [], weekDone = {},
   meName = '',
   todayWords = '', now,
-  openOn = null, remember = true,
+  openOn = null,
 }: {
   deals: any[]
   brokerNames: Record<string, string>
@@ -93,12 +93,12 @@ export default function RunThrough({
    * An unrecognised value is treated the same way rather than trusted, because
    * it arrives from a database column that nothing else validates.
    */
-  openOn?: string | null
   /**
-   * WHETHER CLICKING A TAB SAVES IT. False while looking at somebody else's
-   * Today, so a check does not rewrite what they left open.
+   * WHICH TAB THE WHOLE ADMIN TEAM IS ON. One value, out of settings, shared
+   * by everybody - see the note in app/(app)/dashboard/page.tsx. Null means
+   * nobody has moved it yet and the first tab stands.
    */
-  remember?: boolean
+  openOn?: string | null
   now?: Date
 }) {
   const when = now || new Date()
@@ -110,23 +110,28 @@ export default function RunThrough({
   const [seat, setSeat] = useState<Seat>(
     () => (SEATS.includes(openOn as Seat) ? (openOn as Seat) : 'nobody'))
 
-  // REMEMBERED AGAINST THE LOGIN, AND FIRE AND FORGET.
+  // ONE TAB, FOR EVERYONE, AND FIRE AND FORGET.
   //
-  // Through save_my_board_view rather than at the table, for the same reason
-  // the board folds go that way: user_profiles has exactly one UPDATE policy
-  // and it is the admin one, so a direct write is refused for everybody else -
-  // silently, by matching zero rows. The row also holds role and broker_key, so
-  // widening that policy would let any login make itself an admin.
-  // docs/my-own-board-is-mine.sql has the whole argument.
+  // Through set_the_week_tab rather than at the table: there is no UPDATE
+  // policy on settings for ordinary staff, so a direct write would be refused
+  // by matching zero rows - silently - and the tab would move on this screen
+  // and nowhere else. The function writes one column and checks the value is
+  // one of the five tabs; settings also holds the rate notice and the brands,
+  // and a function that could write those would let any login change what every
+  // client email says.
   //
-  // A refused write leaves the tab where it is for this session and gone at the
-  // next login, which is no worse than never having remembered it. Nothing here
-  // may interrupt a meeting because a preference did not save.
+  // IT MOVES FOR EVERYBODY, INCLUDING WHILE LOOKING AT SOMEBODY. That is the
+  // point rather than a side effect - there is one meeting and one place the
+  // team is standing in it.
+  //
+  // Fire and forget: a refused write leaves the tab where it is for this
+  // session. Nothing here may interrupt a Monday meeting because a preference
+  // did not save.
   const chooseSeat = (s: Seat) => {
     setSeat(s)
-    if (!remember) return
-    supabase.rpc('save_my_board_view', { p_today_seat: s }).then(() => {})
+    supabase.rpc('set_the_week_tab', { p_tab: s }).then(() => {})
   }
+
   const [look, setLook] = useState<Record<string, string>>({})
   const [showAll, setShowAll] = useState<Record<string, boolean>>({})
   const { say, busy, problem, setProblem, withAnswers } = useSayTheWeek(when)
