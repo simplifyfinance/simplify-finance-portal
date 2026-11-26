@@ -28,6 +28,51 @@ export function fullName(a: any): string {
   return [a?.firstName, a?.lastName].map((x: any) => String(x || '').trim()).filter(Boolean).join(' ')
 }
 
+// THE NAME ON THE FORM, WHICH IS NOT THE NAME IN THE SENTENCE.
+//
+// 26 Nov 2026. Cath, reading her way through a compliance file: "Applicant's
+// middle name... Even when the Credit Managers complete these fields in ONE,
+// the information doesn't appear in the generated Fact Find."
+//
+// She was right, and it was not a near miss. A middle name had been typed on
+// 185 of 311 deals and shown on nothing, ever - there is a box for it on the
+// Fact Find tab and no document in the portal had ever printed it.
+//
+// WHY THIS IS A SECOND FUNCTION AND NOT A FIX TO fullName().
+//
+// fullName() is used in about twenty places and most of them are PROSE: the
+// compliance narrative ("Sarah Smith is employed as..."), the document chase
+// list, handover headings, the broker notes. A middle name in those reads as a
+// legal document that wandered into a sentence, and nobody asked for it there.
+//
+// What Cath is reading is an identity section on a form a client signs. That
+// wants the whole legal name. So: fullName() for sentences, legalName() for the
+// name box on a form. Two different questions that happen to share a word.
+export function legalName(a: any): string {
+  return [a?.firstName, a?.middleName, a?.lastName]
+    .map((x: any) => String(x || '').trim()).filter(Boolean).join(' ')
+}
+
+// HOW MANY, AND HOW OLD - 26 Nov 2026, same note from Cath.
+//
+// The count has been on both documents since they were written. The ages never
+// were, although there is a box per dependant on the tab and 62 deals had them
+// filled in. Worse, the Personal Assessment Form carried a row LABELLED "Ages
+// of dependants" that printed the count: three dependants came out reading as
+// though they were all aged 3.
+//
+// So one function, used by both documents, and no way for them to disagree.
+export function dependantsLine(ff: any): string {
+  const count = String(ff?.dependants ?? '').trim()
+  const ages = (Array.isArray(ff?.dependantAges) ? ff.dependantAges : [])
+    .map((x: any) => String(x ?? '').trim()).filter(Boolean)
+  if (!ages.length) return count
+  // "2 - aged 4, 7". The count stays even when the ages are there, because the
+  // two can disagree - three dependants with two ages typed is a question
+  // somebody should be asked, not a thing this function quietly tidies away.
+  return count ? `${count} - aged ${ages.join(', ')}` : `Aged ${ages.join(', ')}`
+}
+
 // Age from a date of birth, in whatever order it was typed. Returns null rather
 // than a wrong number when the date cannot be read.
 // EVERY DATE AS dd/mm/yyyy.

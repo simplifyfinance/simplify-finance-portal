@@ -98,10 +98,23 @@ describe('the rest of the section', () => {
     expect(l.product).toBe('Bankwest — Complete Home Loan')
   })
 
-  it('and carries the comparison rate, term and fee', () => {
-    expect(l.comparison).toBe('6.61% p.a.')
+  it('and carries the term and fee', () => {
     expect(l.term).toBe('30 years')
     expect(l.annualFee).toBe('$395')
+  })
+
+  // THE COMPARISON RATE CAME OFF - 26 Nov 2026.
+  //
+  // This used to assert l.comparison === '6.61% p.a.', off a fixture that typed
+  // one in. No real deal ever has: nothing in the portal writes that field and
+  // there is no box to type one into, so the Broker Notes PDF printed
+  // "Comparison rate: Not recorded" on all 311 deals in the book.
+  //
+  // It was raised as a field that was not carrying over. Fabio: "We don't have
+  // comparison rate... We never send comparison rate to anyone." So the line
+  // came off the document instead of a box being built to feed it.
+  it('and says nothing about a comparison rate, because we do not have one', () => {
+    expect(l).not.toHaveProperty('comparison')
   })
 
   // A BLANK IS NOT A NO. Printing "No" on a product that has an offset is
@@ -113,9 +126,8 @@ describe('the rest of the section', () => {
   })
 
   it('and a figure nobody recorded is empty, never a zero', () => {
-    const bare = productLines({ fixedPI: mod({ rate: '', loanTerm: '' }), annualFee: '', comparison: '' })
+    const bare = productLines({ fixedPI: mod({ rate: '', loanTerm: '' }), annualFee: '' })
     expect(bare.rate).toBe('')
-    expect(bare.comparison).toBe('')
     expect(bare.term).toBe('')
     expect(bare.annualFee).toBe('')
   })

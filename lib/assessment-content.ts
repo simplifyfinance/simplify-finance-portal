@@ -9,6 +9,7 @@
 
 import type { Item, Column, Line } from './assessment-form'
 import { limitToSend } from './limit-to-send'
+import { legalName, dependantsLine } from './fact-find'
 
 const s = (v: any) => (v === null || v === undefined) ? '' : String(v)
 // Deliberately `any`. These lists come out of a jsonb column with no type at
@@ -144,7 +145,7 @@ export function assessmentItems(input: BuildInput): Item[] {
   items.push({ kind: 'heads', titles: ['Applicant 1', 'Applicant 2'] })
 
   items.push({ kind: 'row', label: 'Name (as per photo ID)',
-    cols: two((a, i) => [[{ name: A(i, 'name'), value: [a.firstName, a.lastName].filter(Boolean).join(' ') }]], applicants) })
+    cols: two((a, i) => [[{ name: A(i, 'name'), value: legalName(a) }]], applicants) })
 
   items.push({ kind: 'row', label: 'Date of birth',
     cols: two((a, i) => [[{ name: A(i, 'dob'), value: s(a.dob) }]], applicants) })
@@ -184,8 +185,14 @@ export function assessmentItems(input: BuildInput): Item[] {
   items.push({ kind: 'row', label: 'Marital status',
     cols: two((a, i) => [[{ name: A(i, 'marital'), radio: MARITAL, value: maritalOf(a) }]], applicants) })
 
+  // IT SAID "AGES" AND PRINTED THE COUNT - 26 Nov 2026.
+  //
+  // Not a missing field, a wrong one: three dependants came out of this row
+  // reading as though they were all aged 3. The ages were on the deal the whole
+  // time. See dependantsLine() in lib/fact-find.ts, which both documents use so
+  // they cannot drift apart again.
   items.push({ kind: 'row', label: 'Ages of dependants',
-    cols: two((a, i) => [[{ name: A(i, 'dependants'), value: i === 0 ? s(ff.dependants) : '' }]], applicants) })
+    cols: two((a, i) => [[{ name: A(i, 'dependants'), value: i === 0 ? dependantsLine(ff) : '' }]], applicants) })
 
   items.push({ kind: 'row', label: 'Occupation',
     cols: two((a, i) => [[{ name: A(i, 'occupation'), value: s(currentOf(a.employment || [])?.occupation) }]], applicants) })

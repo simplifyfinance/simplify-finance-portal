@@ -527,3 +527,68 @@ the nearest and neither presses either button. The guard on this change is the
 vitest suite, not the browser gate. Worth knowing before trusting a green ship.
 
 Mockup approved 25 Nov 2026. Built 25 Nov 2026.
+
+---
+
+## THREE FIELDS TYPED HUNDREDS OF TIMES AND PRINTED NOWHERE — 26 Nov 2026
+
+Cath, working through a compliance file by hand:
+
+> "I noticed a few fields in ONE that don't seem to carry over to the generated
+> Fact Find form... Even when the Credit Managers complete these fields in ONE,
+> the information doesn't appear in the generated Fact Find."
+
+She named four. **She was right about all four**, and the database said how
+badly (311 live deals, test deals excluded):
+
+| Field | Typed on | Where it went |
+|---|---|---|
+| Middle name | **185 of 311** | Nowhere. No document in the portal ever printed it. |
+| Citizenship (`residencyStatus`) | **208 of 311** | Assessment form only. No row on the Fact Find at all. |
+| Dependants' ages | **62** | Nowhere. Both documents printed the count. |
+| Comparison rate | **0** | Nothing writes it. There is no box. |
+
+### The one that was worse than missing
+
+The Personal Assessment Form had a row **labelled "Ages of dependants" that
+printed the count**. Three dependants read as though they were all aged three,
+on a form a client signs. Not a blank — a wrong answer.
+
+### What was built
+
+- `legalName()` in `lib/fact-find.ts` — first, middle, last. Used in the name
+  box on both forms.
+- **`fullName()` was deliberately left alone.** It feeds about twenty callers
+  and most of them are prose: the compliance narrative, the document chase
+  list, handover headings, the broker notes. A middle name in a sentence reads
+  as a legal document that wandered in. Two functions, not one widened one.
+- `dependantsLine()` — the count and the ages, used by **both** documents so
+  they cannot drift apart again. The count stays beside the ages: three
+  dependants with two ages typed is a question for a person, not something a
+  document tidies away.
+- A **Citizenship** row on the Fact Find.
+- `lib/what-cath-found-missing.test.ts` pins all of it.
+
+Nothing needs re-typing. The data was always on the deal; the 185 and the 62
+get it back the moment somebody regenerates the document.
+
+### The comparison rate came OFF a document instead
+
+Zero of 311, because nothing in the portal writes that field and there is no box
+anywhere to type one into. So the Broker Notes PDF had been printing
+**"Comparison rate: Not recorded"** on every deal since it was built.
+
+Fabio: *"We don't have comparison rate... We never send comparison rate to
+anyone."* So the line came off, rather than a box being built to feed it. A row
+that is always empty is worse than no row — it teaches whoever reads the sheet
+that this part of it can be skipped.
+
+### THE LESSON, WHICH IS THE POINT OF WRITING THIS DOWN
+
+**No test could have caught any of these, and none did.** Every one was found by
+a person reading a finished document and asking why a box she had filled in was
+not on it. Four fields, months in the dark, on regulated paperwork.
+
+Nothing in the ship pipeline compares *what the tabs capture* against *what the
+documents print*. That gap is still open after this fix — these four are closed,
+the next four are not. Worth a guard script one day.

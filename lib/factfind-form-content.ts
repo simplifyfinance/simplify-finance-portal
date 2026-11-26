@@ -16,7 +16,8 @@ import { dutyStateOf } from './duty-state'
 
 import type { Item, Line } from './assessment-form'
 import { money, withFrequency, readMoney } from './money'
-import { notWorking, selfEmployed, fullName, annualIncome, dateAU } from './fact-find'
+import { notWorking, selfEmployed, fullName, legalName, dependantsLine,
+         annualIncome, dateAU } from './fact-find'
 import { loanFigureRows } from './lmi'
 import { rowLegalFeeLabel } from './lender-fees'
 import { lenderOnTheDeal } from './client-agreement'
@@ -129,7 +130,9 @@ export function factFindFormItems(input: FactFindFormInput): Item[] {
 
   // -- 1. APPLICANTS ---------------------------------------------------------
   items.push(...section('Applicants', who, [
-    row('app.name',  'Full name',      applicants.map(a => ({ text: fullName(a) }))),
+    // legalName, not fullName: this is the identity box on a form somebody
+    // signs, so the middle name belongs in it. See lib/fact-find.ts.
+    row('app.name',  'Full name',      applicants.map(a => ({ text: legalName(a) }))),
     row('app.title', 'Title',          applicants.map(a => ({ text: txt(a.title) }))),
     row('app.pref',  'Preferred name', applicants.map(a => ({ text: txt(a.preferredName) }))),
     row('app.prev',  'Previous name',  applicants.map(a => ({ text: txt(a.previousName) }))),
@@ -137,7 +140,12 @@ export function factFindFormItems(input: FactFindFormInput): Item[] {
     row('app.sex',   'Gender',         applicants.map(a => ({ text: txt(a.gender) }))),
     row('app.mob',   'Mobile',         applicants.map(a => ({ text: txt(a.phoneMobile) }))),
     row('app.email', 'Email',          applicants.map(a => ({ text: txt(a.emailPersonal) }))),
-    txt(ff.dependants) ? askRow('app.deps', 'Dependants', 1, [txt(ff.dependants)]) : null,
+    // CITIZENSHIP. 26 Nov 2026. Typed on 208 of 311 deals, printed on the
+    // Personal Assessment Form, and missing from this one entirely.
+    row('app.res',   'Citizenship',    applicants.map(a => ({ text: txt(a.residencyStatus) }))),
+    // THE COUNT AND THE AGES. The ages were typed on 62 deals and printed
+    // nowhere - see dependantsLine() in lib/fact-find.ts.
+    dependantsLine(ff) ? askRow('app.deps', 'Dependants', 1, [dependantsLine(ff)]) : null,
   ]))
 
   // -- 2. ADDRESS HISTORY ----------------------------------------------------

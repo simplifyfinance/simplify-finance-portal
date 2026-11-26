@@ -65,7 +65,6 @@ export type Chosen = {
   fixedIO?: RateModule
   offsetAccount?: any
   annualFee?: any
-  comparison?: any
   [k: string]: any
 }
 
@@ -78,7 +77,7 @@ export type ProductLines = {
   repayments: string
   /** "6.54% p.a." */
   rate: string
-  comparison: string
+  // NO COMPARISON RATE. 26 Nov 2026 - see the note in productLines().
   term: string
   offset: string
   annualFee: string
@@ -131,7 +130,6 @@ export function productLines(chosen: Chosen | null | undefined): ProductLines {
   const lender = txt(chosen?.lenderName)
   const name = txt(chosen?.productName)
   const rate = on ? num(on.mod.rate) : 0
-  const comp = num(chosen?.comparison)
   const term = on ? num(on.mod.loanTerm) : 0
   const fee = num(chosen?.annualFee)
   const offset = chosen?.offsetAccount
@@ -141,7 +139,18 @@ export function productLines(chosen: Chosen | null | undefined): ProductLines {
     rateType: rateTypeLine(chosen),
     repayments: repaymentsLine(chosen),
     rate: rate > 0 ? `${rate}% p.a.` : '',
-    comparison: comp > 0 ? `${comp}% p.a.` : '',
+    // THERE IS NO COMPARISON RATE AND THERE NEVER WAS - 26 Nov 2026.
+    //
+    // The Broker Notes PDF carried a "Comparison rate" line reading from
+    // chosen.comparison. Nothing in the portal has ever written that field -
+    // there is no box anywhere to type one into - so it printed "Not recorded"
+    // on all 311 deals in the book.
+    //
+    // Raised by Cath as a field that was not carrying over. It was not. Fabio:
+    // "We don't have comparison rate... We never send comparison rate to
+    // anyone." So the line came off the document rather than a box being added
+    // to feed it. A row that is always empty is worse than no row: it teaches
+    // whoever reads the sheet that this part of it can be skipped.
     term: term > 0 ? years(term) : '',
     // A BLANK IS NOT A NO. Nobody ticked the box either way, and printing "No"
     // on a product that has an offset is worse than printing nothing.

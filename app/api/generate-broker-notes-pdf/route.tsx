@@ -177,13 +177,18 @@ export async function generateBrokerNotesPdfBuffer(dealId: string, supabase: any
                 <F label="Rate type" value={product.rateType || 'Not recorded'}
                    bold gap={!product.rateType} />
               </View>
+              {/* COMPARISON RATE CAME OFF - 26 Nov 2026.
+                  It printed "Not recorded" on all 311 deals, because nothing
+                  in the portal has ever written that field and there is no box
+                  to type one into. Raised as a missing field by Cath; Fabio:
+                  "We don't have comparison rate... We never send comparison
+                  rate to anyone." A line that is always empty teaches a credit
+                  assessor to skip the row above it. */}
               <View style={s.row}>
                 <F label="Repayments" value={product.repayments || 'Not recorded'}
                    bold gap={!product.repayments} />
                 <F label="Rate" value={product.rate || 'Not recorded'}
                    bold gap={!product.rate} />
-                <F label="Comparison rate" value={product.comparison || 'Not recorded'}
-                   gap={!product.comparison} />
               </View>
               <View style={[s.row, { marginBottom: 0 }]}>
                 <F label="Term" value={product.term || 'Not recorded'} gap={!product.term} />
