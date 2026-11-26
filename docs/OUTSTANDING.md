@@ -592,3 +592,75 @@ not on it. Four fields, months in the dark, on regulated paperwork.
 Nothing in the ship pipeline compares *what the tabs capture* against *what the
 documents print*. That gap is still open after this fix — these four are closed,
 the next four are not. Worth a guard script one day.
+
+---
+
+## ONE EMAIL, THREE FAULTS — THE LOCK ON A LODGED DEAL, 26 Nov 2026
+
+Catherine, on **Simone Howland — OO Refinance — Wyoming — MACQ**, a deal changed
+right after lodgement where one split had to become two ($60k variable, $430k
+fixed one year):
+
+> "I may need your help with the best way to do that as it kept locking and when
+> I hit edit on the single loan split, it only let me update that $ value, not
+> add an additional split/product. Credit (Mel) isn't able to edit even when I
+> unlock FYI — remains locked for her. I asked her to send me the details to
+> update as admin."
+
+Three separate things, and only one of them a bug in the ordinary sense.
+
+### 1. "It kept locking" — a bug
+
+The unlock lived in the deal page's React state and nowhere else. Anything that
+reloaded the page put the lock straight back, and plenty of actions on a deal
+reload when they finish. From where she stood the button did not hold.
+
+Now kept in `sessionStorage`, per deal, and cleared when the page unmounts —
+which is what navigating away does. **A reload does not unmount anything, so the
+unlock survives exactly the case it was failing.** The promise on screen still
+holds: it re-locks when you leave the deal. It just also holds when you did not.
+`lib/the-unlock-survives-a-reload.ts`.
+
+### 2. "It only let me update that $ value" — a dead end, by design
+
+Nothing was broken. **The BC owns the loan structure** and always has
+(`canEditStructure` is hard `false` on the deal strip). The strip's Edit button
+changes one figure — the amount — and the header beside it said "amount and rate
+come from the lender options below", which is true and is about something else.
+
+So she was standing in the one place that cannot add a split, being told nothing
+about the place that can. The `+ Add split` button is hidden whenever the BC owns
+the structure, and in its place there was **blank space**.
+
+Now a link sits there: *adding or removing a split is done on the BC ↗*. Same
+pattern the rows underneath already use when an answer lives on another tab. A
+signpost, not a second door — the BC still owns it.
+
+### 3. "Credit isn't able to edit even when I unlock" — the design, changed
+
+`canUnlock` was `admin || broker`. Mel is staff, so no unlock button, ever, no
+matter what Catherine did.
+
+The reasoning was that credit should leave a file note asking a broker to make
+the change, so it is made by somebody accountable. In practice it made Catherine
+the typist for work Mel had already done, on a deal that needed changing that
+day.
+
+Fabio, 26 Nov 2026: *"I don't mind credit being able to unlock it. as long we
+are recording everyhting on file notes history."*
+
+**It always was.** An unlock has never opened without a typed reason, and
+`TabLock` refuses to unlock at all when the file note cannot be written — *"an
+untraceable edit is worse than a locked tab"*. The choice was never between a
+record and no record. It was between credit changing it with their name on it,
+and credit emailing it to somebody who types it with theirs. Moved to
+`CAPABILITIES.unlockLodgedDeal` in `lib/permissions.ts`.
+
+### THE PATTERN WORTH NOTICING
+
+Two of these three were **invisible to everyone except the person doing the
+work**, and neither would ever have appeared in a test. The lock dropping looked
+like the button not working. The missing Add split looked like a missing
+feature. Both were found because somebody wrote an email instead of giving up.
+
+Guarded by `lib/the-lock-catherine-hit.test.ts`.

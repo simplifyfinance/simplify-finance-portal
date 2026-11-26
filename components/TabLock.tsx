@@ -17,9 +17,16 @@ import SomethingChanged from '@/components/SomethingChanged'
 // input, textarea, select and button inside it, so all five tabs are covered
 // without touching five large forms and hoping nothing was missed.
 
-export default function TabLock({ locked, tab, dealId, deal, role, me, onUnlocked,
-                                  onDealPatched, children }: {
+export default function TabLock({ locked, lodged, tab, dealId, deal, role, me, onUnlocked,
+                                  onRelock, onDealPatched, children }: {
   locked: boolean
+  // IS THIS A LODGED DEAL THAT SOMEBODY HAS OPENED?
+  //
+  // `locked` is already false in two completely different situations: a normal
+  // deal that was never locked, and a lodged deal standing open because
+  // somebody unlocked it. They looked identical on screen, which is the whole
+  // fault below.
+  lodged?: boolean
   tab: string
   dealId: string
   // THE WHOLE DEAL, for the fact find's "Something changed" panel below. The
@@ -30,6 +37,8 @@ export default function TabLock({ locked, tab, dealId, deal, role, me, onUnlocke
   role: string | undefined
   me: { id: string | null; name: string }
   onUnlocked: () => void
+  /** Closes it again, now, by hand. */
+  onRelock?: () => void
   onDealPatched?: (patch: any) => void
   children: React.ReactNode
 }) {
@@ -43,7 +52,46 @@ export default function TabLock({ locked, tab, dealId, deal, role, me, onUnlocke
   // outside it. See components/useBackdropClose.ts.
   const backdrop = useBackdropClose(() => setOpen(false))
 
-  if (!locked) return <>{children}</>
+  // A DEAL THAT IS OPEN SAYS SO, AND SAYS HOW TO CLOSE IT.
+  //
+  // 26 Nov 2026. Until today the unlock was invisible once it worked: the bar
+  // vanished, the form went live, and nothing on the page said this was a
+  // lodged deal standing open. It re-locked when you left the deal, silently,
+  // and there was no way to close it on purpose.
+  //
+  // Fabio, after reading three fixes and still not having the one he wanted:
+  // "I want to be able to lock and unlock... And then once that's done, how do
+  // we know it's locked again?"
+  //
+  // You could not know. That is the answer, and this is the fix: while it is
+  // open you can see it, and one button shuts it.
+  //
+  // IT IS NOT A WARNING FOR ITS OWN SAKE. Somebody who unlocked a deal to
+  // change one figure and then went to lunch has a live form on a file that is
+  // with a bank. The bar is how they find that out.
+  if (!locked) {
+    if (!lodged || !onRelock) return <>{children}</>
+    return (
+      <div>
+        <div className="flex items-center gap-2.5 flex-wrap bg-chase-bg border border-chase-edge
+                        rounded-xl px-3 py-2.5 mb-3">
+          <span>🔓</span>
+          <span className="text-[12px] text-chase font-semibold">
+            Unlocked &mdash; this deal is lodged.
+          </span>
+          <span className="text-[12px] text-muted">
+            Everything you change is going on the file.
+          </span>
+          <button onClick={onRelock}
+            className="ml-auto text-[11.5px] font-semibold text-ink border border-line bg-card
+                       rounded-lg px-2.5 py-1 hover:bg-page">
+            Lock it again
+          </button>
+        </div>
+        {children}
+      </div>
+    )
+  }
 
   const mayUnlock = canUnlock(role)
 
@@ -121,6 +169,9 @@ export default function TabLock({ locked, tab, dealId, deal, role, me, onUnlocke
             {msg && <p className="text-[12px] text-[#C4553B] m-0 mt-2.5">{msg}</p>}
             <p className="text-[11px] text-faint m-0 mt-3 leading-[1.45]">
               Unlocks every tab on this deal, and re-locks when you leave it.
+            </p>
+            <p className="text-[11px] text-faint m-0 mt-1 leading-[1.45]">
+              While it is open there is a Lock it again button at the top of the deal.
             </p>
           </div>
         </div>

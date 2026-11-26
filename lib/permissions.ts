@@ -29,6 +29,26 @@ export const CAPABILITIES = {
   // reassign deals". Who moved it is recorded on the deal either way.
   reassignDeals:     ['admin', 'broker', 'staff'],
   viewCommissions:   ['admin'],
+  // EVERYBODY, SINCE 26 NOV 2026 - and it used to be admin and brokers only.
+  //
+  // Catherine, on a Macquarie deal changed right after lodgement: "Credit (Mel)
+  // isn't able to edit even when I unlock FYI - remains locked for her. I asked
+  // her to send me the details to update as admin."
+  //
+  // That was the design: credit reads a lodged deal and asks a broker to change
+  // it, so the change is made by somebody accountable for it. In practice it
+  // made Catherine the typist for work Mel had already done, on a deal that
+  // needed changing that day.
+  //
+  // Fabio, 26 Nov 2026: "I don't mind credit being able to unlock it. as long
+  // we are recording everyhting on file notes history."
+  //
+  // WHICH IT ALREADY DOES, AND THAT IS THE WHOLE REASON THIS IS SAFE. The
+  // unlock will not open without a typed reason, and components/TabLock.tsx
+  // refuses to unlock at all if the file note cannot be written - "an
+  // untraceable edit is worse than a locked tab". Nothing about the record
+  // changes here; only who may stand in front of it.
+  unlockLodgedDeal:  ['admin', 'broker', 'staff'],
 } as const
 
 // WHO CAN LOOK AT PREVIOUS VERSIONS OF A DEAL.

@@ -502,6 +502,27 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                 + Add split
               </button>
             )}
+            {/* AND WHERE TO GO WHEN THERE IS NO BUTTON - 26 Nov 2026.
+              *
+              * The note above says "the place to add a seventh is the BC". The
+              * SCREEN did not say it anywhere. It said "amount and rate come
+              * from the lender options below", which is true and is about
+              * something else, and then offered an Edit beside each split that
+              * changes one figure.
+              *
+              * Catherine, needing one split to become two on a lodged deal:
+              * "when I hit edit on the single loan split, it only let me update
+              * that $ value, not add an additional split/product."
+              *
+              * Nothing was broken. She was standing in the one place that
+              * cannot do it, being told nothing about the place that can. Same
+              * link the rows below already use when an answer lives elsewhere. */}
+            {structureIsBc && (
+              <a href={`/deals/${deal.id}?stage=BC`}
+                 className="ml-auto text-[12px] text-info hover:underline whitespace-nowrap">
+                adding or removing a split is done on the BC &#8599;
+              </a>
+            )}
           </div>
           {/* TWO LINES PER SPLIT - docs/approved-looks/ds.html, density B.
               Fabio chose B on 3 Oct 2026 and confirmed it on the 5th: "this is

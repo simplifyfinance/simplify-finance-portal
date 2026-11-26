@@ -11,16 +11,33 @@
 // at the bottom are read only."
 
 import { isWithLender } from './deal-phase'
+import { can } from './permissions'
 
 export function isLocked(deal: any): boolean {
   return isWithLender(deal)
 }
 
-// Admin and brokers only. A credit officer reads the same page with no unlock
-// button; if something is wrong they add a file note asking for it to be
-// changed - which is also a record, and a better one than a silent edit.
+// WHO MAY UNLOCK A LODGED DEAL.
+//
+// This used to read `role === 'admin' || role === 'broker'`, and the note under
+// it said a credit officer should leave a file note asking for the change
+// instead - "which is also a record, and a better one than a silent edit".
+//
+// The record was never the problem. An unlock has ALWAYS had to say why, and
+// components/TabLock.tsx refuses to unlock when the file note cannot be
+// written. So the choice was never between a record and no record; it was
+// between credit making the change with their name on it, and credit emailing
+// the change to somebody else who then types it with THEIR name on it.
+//
+// The second one is worse on every count, and on 26 Nov 2026 it cost a day on a
+// Macquarie deal that was changed right after lodgement. Catherine: "Credit
+// (Mel) isn't able to edit even when I unlock FYI... I asked her to send me the
+// details to update as admin."
+//
+// The list lives in lib/permissions.ts, with everything else that is a question
+// of who.
 export function canUnlock(role: string | null | undefined): boolean {
-  return role === 'admin' || role === 'broker'
+  return can(role, 'unlockLodgedDeal')
 }
 
 export const TAB_LABEL: Record<string, string> = {

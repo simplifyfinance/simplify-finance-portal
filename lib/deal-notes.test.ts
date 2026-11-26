@@ -22,10 +22,24 @@ describe('the lock', () => {
     expect(isLocked(lodged)).toBe(true)
     expect(isLocked({ ...lodged, settled_at: '2026-10-01' })).toBe(true)
   })
-  it('only admin and brokers may unlock', () => {
+  // CHANGED 26 NOV 2026. This used to assert canUnlock('staff') === false.
+  //
+  // Credit could not unlock a lodged deal, by design: the idea was that they
+  // leave a file note asking a broker to change it, so the change is made by
+  // somebody accountable for it.
+  //
+  // In practice, on a Macquarie deal changed the day after lodgement, it made
+  // Catherine the typist for work Mel had already done. Catherine: "Credit
+  // (Mel) isn't able to edit even when I unlock FYI - remains locked for her. I
+  // asked her to send me the details to update as admin."
+  //
+  // Fabio: "I don't mind credit being able to unlock it. as long we are
+  // recording everyhting on file notes history." It always was, and still is -
+  // see lib/the-lock-catherine-hit.test.ts, which guards that half.
+  it('anybody with a role may unlock - and nobody without one', () => {
     expect(canUnlock('admin')).toBe(true)
     expect(canUnlock('broker')).toBe(true)
-    expect(canUnlock('staff')).toBe(false)
+    expect(canUnlock('staff')).toBe(true)
     expect(canUnlock(null)).toBe(false)
     expect(canUnlock('')).toBe(false)
   })

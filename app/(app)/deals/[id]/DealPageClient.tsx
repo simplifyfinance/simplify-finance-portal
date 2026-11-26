@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { PAGE_WIDE } from '@/lib/page-width'
+import { rememberUnlock, unlockIsRemembered, forgetUnlock } from '@/lib/the-unlock-survives-a-reload'
 import { brokerLabel } from '@/lib/broker-key'
 import DealPresence from '@/components/DealPresence'
 import DealTabCards, { DEAL_TABS } from '@/components/DealTabCards'
@@ -236,7 +237,19 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   // "i need to reqword a deal card I want one button unlock and it allows me to
   // evrythign on all tabs". Reworking a card is never one tab's worth of work.
   // See lib/deal-lock.ts.
+  // AND IT SURVIVES A RELOAD, since 26 Nov 2026.
+  //
+  // It used to be this state and nothing else, so anything that reloaded the
+  // page put the lock back - which is what Catherine hit: "it kept locking".
+  // See lib/the-unlock-survives-a-reload.ts for what is kept and what is not.
   const [dealUnlocked, setDealUnlocked] = useState(false)
+  useEffect(() => {
+    if (unlockIsRemembered(deal.id)) setDealUnlocked(true)
+    // LEAVING THE DEAL STILL RE-LOCKS IT. This runs when the page unmounts,
+    // which is what navigating away does. A reload does not unmount anything,
+    // which is exactly the case this exists for.
+    return () => forgetUnlock(deal.id)
+  }, [deal.id])
   // Bumped when a document is added on the Fact Find tab, so the list above the
   // tabs picks it up. The list moved out of that form - see DealDocuments.
   const [documentsVersion, setDocumentsVersion] = useState(0)
@@ -933,9 +946,12 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
       <Bubble tone={TAB_TONE[stage] || 'info'}
         title={tabs.find(t => t.key === stage)?.label || stage}
         icon={TAB_ICON[stage] || TAB_ICON.BC}>
-      <TabLock locked={isLocked(dealData) && !dealUnlocked} tab={stage} dealId={dealData.id}
+      <TabLock locked={isLocked(dealData) && !dealUnlocked}
+        lodged={isLocked(dealData)}
+        onRelock={() => { setDealUnlocked(false); forgetUnlock(dealData.id) }}
+        tab={stage} dealId={dealData.id}
         deal={dealData} role={userRole} me={me}
-        onUnlocked={() => { setDealUnlocked(true); reloadFile() }}
+        onUnlocked={() => { setDealUnlocked(true); rememberUnlock(dealData.id); reloadFile() }}
         onDealPatched={(patch: any) => { setDealData((prev: any) => ({ ...prev, ...patch })); reloadFile() }}>
         <TabBoundary tab={stage}>
           {stage === 'FactFind' && <FactFindForm whoElseHere={whoElseHere} me={me} deal={dealData} onDocumentsChanged={() => setDocumentsVersion(v => v + 1)} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} onSaveStatus={setSaveStatus} />}
