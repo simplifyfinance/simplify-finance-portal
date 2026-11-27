@@ -5,7 +5,6 @@ import TheContracts from '@/components/TheContracts'
 import TheOtherDocuments from '@/components/TheOtherDocuments'
 import SettlementSteps from '@/components/SettlementSteps'
 import { stepOf } from '@/lib/the-seven-steps'
-import SettlementTrail from '@/components/SettlementTrail'
 import { useSettlementSettings } from '@/lib/use-settlement-settings'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { todayYmd } from '@/lib/periods'
@@ -13,6 +12,7 @@ import { STATE_LABEL, isRefinance, isPurchase, stepLabel, attentionFor,
          STEPS, stepIsOn, stepPatch,
          type SettlementState, type SettlementStep } from '@/lib/settlement'
 import { OFFICE } from '@/lib/same-date-everywhere'
+import { isWithLender } from '@/lib/deal-phase'
 
 // The same fields as the settlements board, on the deal itself, for the people who
 // work settlements. A broker opening this deal never renders it - the panel is the
@@ -68,7 +68,26 @@ export default function DealSettlementPanel({ deal, onUpdated, me }: {
   //
   // The sees_settlements flag still gates the Settlements SCREEN, which is the
   // whole book across every broker. That is a different question and it stays.
-  if (!d.lodged_at) return null   // nothing to settle until it is lodged
+  // IT ASKED THE WRONG QUESTION - 26 Nov 2026.
+  //
+  // This gated on the lodgement date alone, so the whole settlement panel -
+  // the seven steps, the contracts, ATTN Settlements and Latest update - was
+  // hidden on any deal without a lodgement DATE.
+  //
+  // Belle, on Thomas and Sally Isherwood: "loan docs have just been issued im
+  // gonna put a comment in the latest update but I couldnt find that section in
+  // that particular deal."
+  //
+  // That deal has a preapproval, an offer accepted and a formal approval on it.
+  // It has obviously reached the lender. Nobody ever ticked Lodged, so the
+  // panel went on waiting for a date that was never coming, while the work it
+  // exists for had already started.
+  //
+  // So it asks the question it meant to ask. isWithLender() reads the FURTHEST
+  // milestone the deal has reached, not the first one - see lib/deal-phase.ts -
+  // and a deal at formal approval is with the lender whatever the lodgement
+  // column says.
+  if (!isWithLender(d)) return null   // nothing to settle until it is with the lender
 
   const refi = isRefinance(d)
   const attention = attentionFor(d, today)
@@ -228,32 +247,44 @@ export default function DealSettlementPanel({ deal, onUpdated, me }: {
         )}
       </div>
 
-      {/* ATTN SETTLEMENTS - THE FIELD THAT CROSSES THE HANDOVER.
-          The broker and the credit manager write into it before formal, and it
-          comes through when the file lands. Settlements add to it as they go.
-          One field, both sides, nothing retyped. */}
-      <div className="px-4 pb-3">
-        <div className="rounded-xl border border-info-edge border-l-[4px] border-l-info bg-info-bg px-4 py-3">
-          <div className="mb-2 text-[10.5px] font-extrabold uppercase tracking-[.08em] text-info">
-            ATTN Settlements
+      {/* THE TWO NOTE TRAILS MOVED OUT - 26 Nov 2026.
+          They are in components/TheDealTrail.tsx now, drawn on every deal at
+          every stage with no gate at all. Neither was a settlement field once
+          it became a trail, and sitting in here meant nobody could write a note
+          on a deal that had not reached the bank. See that file for the whole
+          history of how they ended up in the wrong box. */}
+      {/* A DEAL PAST LODGEMENT WITH NO LODGEMENT DATE IS NOT A COSMETIC GAP.
+        *
+        * 26 Nov 2026, found with the panel above. `lodged_at` is what the
+        * lodgement numbers are counted from - components/MonthlyActuals.tsx and
+        * components/BrokerTargets.tsx both read it and nothing else. A deal
+        * that reached formal approval without it has never been counted as
+        * lodged, by anybody, in any month.
+        *
+        * The panel is the only screen that knows, so the panel says it. */}
+      {!d.lodged_at && (
+        <div className="px-4 pb-3">
+          <div className="rounded-xl border border-chase-edge bg-chase-bg px-4 py-3">
+            <div className="text-[12.5px] font-bold text-chase mb-1">
+              No lodgement date on this deal
+            </div>
+            <div className="text-[11.5px] text-body leading-relaxed">
+              It has reached the lender, so the settlement work below is live. But the
+              lodgement numbers are counted off that date &mdash; until somebody records it,
+              this deal is missing from every lodgement figure for the month it went in.
+            </div>
+            {/* AND WHERE TO PUT IT IN. The button already exists, under
+              * &ldquo;What happened next?&rdquo; on the stage panel above -
+              * `lodged_at` is offered there on any deal that has not settled.
+              * Saying the number is wrong without saying how to fix it is half
+              * a message. */}
+            <div className="text-[11.5px] text-body leading-relaxed mt-1.5">
+              Record it with the <b>Lodged</b> button under &ldquo;What happened next?&rdquo;
+              further up this page.
+            </div>
           </div>
-          <SettlementTrail deal={d} column="attn_settlements" me={me?.name || ''} busy={busy} tone="info"
-            placeholder="Anything settlements need to know about this file"
-            onWrite={patch => save(patch)} />
         </div>
-      </div>
-
-      {/* LATEST UPDATE, AS A TRAIL. 17 Nov 2026: "a trail, not a box. Every
-          entry dated and named, nothing typed over." settlement_note is left
-          exactly where it is and seeds the first entry. */}
-      <div className="px-4 pb-3">
-        <div className="rounded-xl border border-card-line bg-card px-4 py-3">
-          <div className="mb-2 text-[10.5px] font-extrabold uppercase tracking-[.08em] text-muted">
-            Latest update
-          </div>
-          <SettlementTrail deal={d} me={me?.name || ''} busy={busy} onWrite={patch => save(patch)} />
-        </div>
-      </div>
+      )}
 
       {/* THE CONTRACTS. Dropped at Contracts Issued and checked against the
           formal approval - "everyhtig passes through formal". The file is read

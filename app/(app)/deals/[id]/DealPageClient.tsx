@@ -29,6 +29,7 @@ import ClientAgreed from '@/components/ClientAgreed'
 import DealProgress, { currentStage } from './DealProgress'
 import DealSettlement from './DealSettlement'
 import DealSettlementPanel from './DealSettlementPanel'
+import TheDealTrail from '@/components/TheDealTrail'
 import OfferAccepted from '@/components/OfferAccepted'
 import DealCommission from './DealCommission'
 import CloseDeal from './CloseDeal'
@@ -888,6 +889,12 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
               destroyed the moment it crossed it. It draws itself away when there
               is nothing to record. */}
           <OfferAccepted deal={dealData} me={me}
+            onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+          {/* WHAT HAPPENED ON THIS DEAL. Written ONCE, outside every
+              condition, the way the rule above demands - and with no gate of
+              its own either. Notes start at the first phone call, not at
+              lodgement. 26 Nov 2026, see components/TheDealTrail.tsx. */}
+          <TheDealTrail deal={dealData} me={me}
             onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
           <DealSettlementPanel deal={dealData} me={me} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
           <DealCommission deal={dealData} />

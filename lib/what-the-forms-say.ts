@@ -54,6 +54,10 @@ export const PAGE_FILES = [
   'app/(app)/deals/[id]/DealProgress.tsx',
   'app/(app)/deals/[id]/DealSettlement.tsx',
   'app/(app)/deals/[id]/DealSettlementPanel.tsx',
+  // 26 Nov 2026. Latest update and ATTN Settlements moved OUT of the settlement
+  // panel so they are drawn on every deal at every stage. The words went with
+  // them, so the lock follows them here - exactly as it did for WhatNow.tsx.
+  'components/TheDealTrail.tsx',
   'app/(app)/deals/[id]/DealCommission.tsx',
   'app/(app)/deals/[id]/CloseDeal.tsx',
   'app/(app)/deals/[id]/BrokerAssignment.tsx',

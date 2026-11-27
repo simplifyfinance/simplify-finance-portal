@@ -780,3 +780,112 @@ exactly the reason above, even though it succeeded. Honest, and blocking.
 The default is No, so the common path never touches it. **But this is the clock
 on the policy fix.** Until the two `clients` rules agree, anybody answering Yes
 on a two-applicant deal gets stopped.
+
+---
+
+## "I COULDN'T FIND THAT SECTION IN THAT PARTICULAR DEAL" — 26 Nov 2026
+
+Belle, on **Thomas and Sally Isherwood - OO Purchase - Mona Vale - STG - 2026**:
+
+> "loan docs have just been issued im gonna put a comment in the latest update
+> but I couldnt find that section in that particular deal - why this section is
+> missing from particular deal"
+
+One line in `DealSettlementPanel.tsx` gated the **entire** settlement panel —
+the seven steps, the contracts, ATTN Settlements and Latest update — on the
+deal having a **lodgement date**.
+
+That deal:
+
+| lodged_at | preapproval | offer accepted | formal approval |
+|---|---|---|---|
+| **null** | 28 Sep | 23 Nov | 26 Nov |
+
+It had plainly reached the lender. Nobody ever ticked Lodged, so the panel went
+on waiting for a date that was never coming — while the settlement work it
+exists for had already started.
+
+**The question was wrong, not the answer.** "Has it been lodged?" and "has it
+reached the lender?" are different questions, and only the second is what this
+panel wants to know. Now `isWithLender()`, which reads the furthest milestone
+the deal has reached rather than the first.
+
+### AND THE PART THAT IS NOT COSMETIC
+
+`lodged_at` is what the **lodgement numbers** are counted from.
+`components/MonthlyActuals.tsx` and `components/BrokerTargets.tsx` read that
+column and nothing else.
+
+**A deal that reached formal approval without one has never been counted as
+lodged, in any month, by anybody.** Showing the panel makes the settlement work
+possible; it does not put the deal back in the figures.
+
+Nothing else in the portal would ever have mentioned it, so the panel now says
+so in plain words: *the lodgement numbers are counted off that date — until
+somebody records it, this deal is missing from every lodgement figure for the
+month it went in.*
+
+### A WRONG TURN, WRITTEN DOWN
+
+I first reported that **there was no way to record a skipped lodgement date on a
+live deal**, and told Fabio so. That was wrong.
+
+`STAGES` in `DealSettlement.tsx` marks `lodged_at` with `mark: true`, and
+`available` offers every unrecorded stage on any deal that has not settled. So a
+**Lodged** button has been sitting under "What happened next?" the whole time.
+"Record a date we missed" is the settled-deal version of the same thing.
+
+The warning now points at it. A message that says a number is wrong without
+saying how to fix it just moves the confusion along one step.
+
+### HOW BIG IT IS: FIVE DEALS, TWO OF THEM SETTLED
+
+| Deal | Broker | Furthest point |
+|---|---|---|
+| Matti & Elizabeth Hallanoro - OO Internal Refi - St Ives | fabio | **settled 15 Sep** |
+| Melody Ng Villanueva | mark | **settled 19 Oct** |
+| Thomas and Sally Isherwood - OO Purchase - Mona Vale | fabio | formal approval 26 Nov |
+| Richard Lake & Letitia Lake - OO Preapp | fabio | preapproval 18 Oct |
+| Wesley Perrott | mark | preapproval 16 Sep |
+
+**Two settled deals were never counted as lodged.** September and October
+lodgement figures are both understated, and nothing in the portal has ever said
+so. The five dates need recording by hand before any lodgement figure is
+trusted.
+
+Guarded by `lib/the-panel-waits-for-the-lender.test.ts`.
+
+### THE FIX WAS HALF A FIX — corrected the same day
+
+Fabio, shown the above:
+
+> "I don't like that... Whatever goes in and out. Like, you should always be
+> available at all times. It can't be tied to a lodgement date."
+
+Right, and the first fix only widened the gate instead of removing it. Notes
+start at the first phone call, not at lodgement.
+
+**Latest update and ATTN Settlements are now their own component** —
+`components/TheDealTrail.tsx` — drawn on every deal, at every stage, with no
+condition of any kind. Written once on the deal page, outside every branch, per
+that page's own rule.
+
+What stays inside the settlement panel, still gated on `isWithLender()`: the
+seven steps, the contracts, the other documents, the discharge. Those are jobs
+that cannot start before a deal reaches the bank, and on a new lead they are a
+row of empty boxes for work nobody has begun.
+
+**Why it ever ended up in the wrong box**, which is the part worth keeping:
+
+- **24 Aug 2026** — the settlement panel is built for the settlements team.
+  "Latest update" is one line inside it; the placeholder reads *"settling 3pm"*.
+  A settlement field. Hiding it before lodgement is correct.
+- **15 Nov 2026** — Fabio: *"Latest update - a trail, not a box. Every entry
+  dated and named, nothing typed over."* At that moment it stopped being a
+  settlement field and became where anybody writes down what happened.
+- It stayed in the August box and kept the August rule. Nobody moved it,
+  including me, and I built the trail. Three weeks, and it took Belle.
+
+`lib/nothing-is-lost.page.json` was edited by hand to move "Latest update" from
+the panel to the new file, which is exactly the friction that snapshot exists to
+create.
