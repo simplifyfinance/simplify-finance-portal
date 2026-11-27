@@ -7,6 +7,9 @@ import { checkedWrite } from '@/lib/checked-write'
 import {
   positionFor, wouldEmptyTheClient, emptyRefusal, applicantName,
 } from '@/lib/client-position'
+import {
+  reviewAll, confirmationLine, namesInTheQuestion, nothingToWrite,
+} from '@/lib/what-goes-on-the-client-record'
 import SaveTheAssessment from '@/components/SaveTheAssessment'
 
 export const CLOSE_REASONS: { value: string; label: string; needsDate?: boolean }[] = [
@@ -35,7 +38,18 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
   }, [params, deal?.status])
   const [reason, setReason] = useState('')
   const [note, setNote] = useState('')
-  const [savePosition, setSavePosition] = useState(true)
+  // DEFAULT NO, SINCE 26 NOV 2026.
+  //
+  // This was a tick box, ticked for you. One click closed the deal AND
+  // overwrote both client records with figures nobody had looked at.
+  //
+  // Fabio: "the preference is normally we don't because we lost the deal, but
+  // just that needs to be a serious question." A deal that was lost usually
+  // changes nothing about what somebody owns - they did not buy the house and
+  // they did not take the loan.
+  const [savePosition, setSavePosition] = useState(false)
+  // And having said yes, you have to read what you are about to write.
+  const [confirmedPosition, setConfirmedPosition] = useState(false)
   const [action, setAction] = useState('')
   const [due, setDue] = useState('')
   const [busy, setBusy] = useState(false)
@@ -51,8 +65,13 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
   }, [deal])
 
   function reset() {
-    setReason(''); setNote(''); setSavePosition(true); setAction(''); setDue(''); setError('')
+    setReason(''); setNote(''); setSavePosition(false); setConfirmedPosition(false)
+    setAction(''); setDue(''); setError('')
   }
+
+  // What is about to go on each record, in the words the screen reads out.
+  const reviews = useMemo(() => reviewAll(deal?.fact_find_data || {}, linked), [deal, linked])
+  const blankFactFind = nothingToWrite(reviews)
 
   // WHAT THEY OWN, WITH NO NEW LOAN ON IT, BECAUSE NO LOAN HAPPENED.
   //
@@ -114,6 +133,11 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
     if (chosen?.needsDate && !due) { setError('This reason needs a follow-up date — it is a "not now", not a "never".'); return }
     if (due && !action.trim()) { setError('Say what the next action is, not just when.'); return }
 
+    if (savePosition && !confirmedPosition) {
+      setError('Read what is about to go on their records, then tick the line to confirm it.')
+      return
+    }
+
     setBusy(true)
     try {
       const { data: u } = await supabase.auth.getUser()
@@ -126,11 +150,30 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
         next_action_due: due || null,
         closed_by: u?.user?.id || null,
       }
+
+      // THE CLIENT RECORDS GO FIRST, AND THAT ORDER IS THE WHOLE FIX.
+      //
+      // 26 Nov 2026. It used to close the deal and then write the positions, so
+      // a failure on the second half threw with the first half already done.
+      // The screen then said "NOT SAVED ... Nothing has been recorded", left
+      // the window open, and never told the page the deal had closed - while
+      // the deal was, in fact, closed.
+      //
+      // Catherine: "the deals were showing as Lost, even though the window
+      // didn't close. So it worked but looked like it didn't."
+      //
+      // Writing the records first means a failure stops BEFORE anything else
+      // happens. Nothing is closed, nothing is half done, and the message is
+      // true when it says so. You press it again.
+      if (savePosition && linked.length > 0) await writePositions()
+
       const { data, error: e } = await supabase.from('deals').update(patch).eq('id', deal.id).select('id')
       if (e) throw new Error(e.message)
-      if (!data || data.length === 0) throw new Error('The close did not reach the database. Nothing was changed.')
-
-      if (savePosition && linked.length > 0) await writePositions()
+      if (!data || data.length === 0) {
+        throw new Error(savePosition && linked.length > 0
+          ? 'Their records were updated, but the deal did not close. Try closing it again.'
+          : 'The close did not reach the database. Nothing was changed.')
+      }
 
       // A follow-up date asks support to put a task on the deal card, for the broker
       // and themselves. Until tasks live in the portal, this is how it survives.
@@ -243,20 +286,114 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
                 <div className="text-[11px] text-faint mt-2">Setting a date emails support to put a follow-up task on the deal card, for the broker and themselves.</div>
               </div>
 
+              {/* DOES LOSING THIS DEAL CHANGE WHAT THEY OWN? - 26 Nov 2026.
+                *
+                * A question with No already chosen, in place of a tick box that
+                * was already ticked. Fabio: "the preference is normally we
+                * don't because we lost the deal, but just that needs to be a
+                * serious question."
+                *
+                * And if the answer is yes, the figures are read out before they
+                * are written: "please create a habit that you show what the A&L
+                * is and say, are you confirming this is the current position?" */}
               {linked.length > 0 && (
-                <label className="flex items-start gap-2.5 border border-[#EDE7DD] rounded-xl p-3.5 cursor-pointer hover:bg-[#FCFAF6]">
-                  <input type="checkbox" checked={savePosition} onChange={e => setSavePosition(e.target.checked)}
-                    className="mt-[3px] accent-[#0E8FCB]" />
-                  <span>
-                    <span className="block text-[13px] font-medium text-ink">
-                      Save the client&apos;s position for {linked.map((a: any) => a.name || 'applicant').join(' and ')}
+                <div className="border border-[#EDE7DD] rounded-xl p-3.5">
+                  <p className="m-0 mb-1 text-[13px] font-semibold text-ink">
+                    Does losing this deal change what {namesInTheQuestion(linked)} own?
+                  </p>
+                  <p className="m-0 mb-3 text-[11.5px] text-muted leading-relaxed">
+                    Normally it does not. The deal did not proceed, so nothing they own has
+                    changed. Only say yes if this deal&apos;s Fact Find is their true, current
+                    position &mdash; it replaces what is on their client record.
+                  </p>
+
+                  <label className={`flex items-start gap-2.5 rounded-[10px] border p-2.5 mb-2 cursor-pointer ${
+                    !savePosition ? 'border-info-edge bg-info-bg' : 'border-line bg-page hover:bg-card'}`}>
+                    <input type="radio" name="savePosition" checked={!savePosition}
+                      onChange={() => { setSavePosition(false); setConfirmedPosition(false) }}
+                      className="mt-[3px] accent-[#0E8FCB]" />
+                    <span>
+                      <span className="block text-[12.5px] font-semibold text-ink">
+                        No &mdash; leave their client records alone
+                      </span>
+                      <span className="block text-[11.5px] text-muted">
+                        The deal closes. Nothing about {namesInTheQuestion(linked)} changes.
+                      </span>
                     </span>
-                    <span className="block text-[11.5px] text-faint">
-                      Their properties, liabilities and assets as declared on the fact find. No loan is added,
-                      because no loan happened. This overwrites what is on their client record.
+                  </label>
+
+                  <label className={`flex items-start gap-2.5 rounded-[10px] border p-2.5 cursor-pointer ${
+                    savePosition ? 'border-info-edge bg-info-bg' : 'border-line bg-page hover:bg-card'}`}>
+                    <input type="radio" name="savePosition" checked={savePosition}
+                      onChange={() => setSavePosition(true)}
+                      className="mt-[3px] accent-[#0E8FCB]" />
+                    <span>
+                      <span className="block text-[12.5px] font-semibold text-ink">
+                        Yes &mdash; update their records from this Fact Find
+                      </span>
+                      <span className="block text-[11.5px] text-muted">
+                        You are shown exactly what goes on each record before anything is written.
+                      </span>
                     </span>
-                  </span>
-                </label>
+                  </label>
+
+                  {savePosition && (
+                    <div className="mt-3 border-t border-line-soft pt-3">
+                      <p className="m-0 mb-2 text-[12.5px] font-semibold text-ink">
+                        This is what goes on their records.
+                      </p>
+                      {blankFactFind ? (
+                        <p className="m-0 mb-2 text-[11.5px] text-chase bg-chase-bg border border-chase-edge
+                                      rounded-[10px] px-3 py-2 leading-relaxed">
+                          This Fact Find holds nothing for anybody. Saying yes would replace their
+                          records with blanks. Choose No, or fill the Fact Find in first.
+                        </p>
+                      ) : reviews.map(r => (
+                        <div key={r.clientId || r.name} className="mb-2.5">
+                          <div className="text-[12px] font-bold text-ink mb-1">{r.name}</div>
+                          {r.holdsNothing ? (
+                            <div className="text-[11.5px] text-faint italic">Nothing on the Fact Find</div>
+                          ) : (
+                            <>
+                              {([['Properties', r.properties], ['Liabilities', r.liabilities],
+                                 ['Assets', r.assets]] as const).map(([head, lines]) => lines.length > 0 && (
+                                <div key={head} className="mb-1">
+                                  <div className="text-[9.5px] font-bold tracking-[.06em] uppercase text-faint">{head}</div>
+                                  {lines.map((l, i) => (
+                                    <div key={i} className="flex gap-3 justify-between border-b border-line-soft py-[3px]">
+                                      <span className="text-[11.5px] text-body">{l.what}</span>
+                                      <span className="text-[11.5px] font-semibold text-ink tabular-nums whitespace-nowrap">{l.amount}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ))}
+                            </>
+                          )}
+                          {/* THE NUMBER THAT SAYS THE FACT FIND IS THIN. An item
+                            * nobody assigned is an item that may not be theirs. */}
+                          {r.unconfirmed > 0 && (
+                            <div className="text-[11px] text-chase mt-1">
+                              {r.unconfirmed} of these {r.unconfirmed === 1 ? 'was' : 'were'} never
+                              assigned to anybody on the Fact Find. Check before you confirm.
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      {!blankFactFind && (
+                        <label className="flex items-start gap-2.5 rounded-[10px] border border-info-edge
+                                          bg-info-bg px-3 py-2.5 cursor-pointer mt-1">
+                          <input type="checkbox" checked={confirmedPosition}
+                            onChange={e => setConfirmedPosition(e.target.checked)}
+                            className="mt-[3px] accent-[#0E8FCB]" />
+                          <span className="text-[12.5px] font-semibold text-ink">
+                            {confirmationLine(linked)}
+                          </span>
+                        </label>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* The paper, at the same moment as the position. Fabio, 23 Sep
@@ -269,9 +406,15 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
             <div className="px-5 py-3.5 border-t border-[#F6F2EA] bg-[#FDFCFA] flex justify-end gap-2">
               <button onClick={() => { setOpen(false); reset() }} disabled={busy}
                 className="text-[12.5px] text-muted px-3.5 py-2 hover:text-ink">Cancel</button>
-              <button onClick={confirm} disabled={busy}
+              {/* DEAD UNTIL THE LINE IS TICKED. The confirmation is the point
+                * of the panel above it; a button that goes anyway would make it
+                * decoration. A blank Fact Find cannot be confirmed at all. */}
+              <button onClick={confirm}
+                disabled={busy || (savePosition && (!confirmedPosition || blankFactFind))}
                 className="bg-ink text-page rounded-lg px-5 py-2 text-[13px] font-semibold hover:opacity-90 transition disabled:opacity-40">
-                {busy ? 'Closing...' : 'Close deal'}
+                {busy ? 'Closing...'
+                  : savePosition ? 'Close deal and update records'
+                  : 'Close deal'}
               </button>
             </div>
           </div>

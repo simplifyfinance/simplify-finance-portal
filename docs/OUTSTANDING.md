@@ -664,3 +664,119 @@ like the button not working. The missing Add split looked like a missing
 feature. Both were found because somebody wrote an email instead of giving up.
 
 Guarded by `lib/the-lock-catherine-hit.test.ts`.
+
+---
+
+## THE SECOND APPLICANT NOBODY CAN READ — 26 Nov 2026
+
+Catherine, marking several of Mark Gallo's deals as lost:
+
+> "I got through two successfully, and then when I did those showing in the
+> screenshots it came up with an error. However, the deals were showing as Lost,
+> even though the window didn't close. So it worked but looked like it didn't."
+
+The error on screen: **"NOT SAVED — Jacob Hastie's position was not saved - the
+database refused the change. Nothing has been recorded."**
+
+### Two wrong guesses before the right one
+
+Written down because the wrong turns cost three rounds of SQL:
+
+1. **"The matching rule must be failing for second applicants."** It was not.
+   All six applicants passed it.
+2. **"The client record must not exist."** It did. All six.
+
+Neither was the cause, and the answer was already sitting in the policy dump I
+had read past.
+
+### The actual cause: two rules that disagree
+
+| | What it matches |
+|---|---|
+| `clients` **UPDATE** — "Client editing via deals" | the deal's main client **OR any applicant in `fact_find_data`** |
+| `clients` **SELECT** — "Client visibility via deals" | the deal's main client **only** |
+
+A second applicant is covered by one and not the other. So:
+
+- The portal **is allowed to change** Jacob Hastie. It changes him.
+- It is **not allowed to read him back**, so the `RETURNING` row comes back empty.
+- `checkedWrite` sees zero rows, which is also what a refusal looks like, and
+  reports **"the database refused the change. Nothing has been recorded."**
+
+**The write succeeded. The message is false.** Same class of fault as the deal
+showing Lost behind an error box: the portal reporting failure on work it did.
+
+Confirmed in the data — every second applicant is a main client nowhere and not
+a book client, so no SELECT policy reaches them at all:
+
+| | main client somewhere | book client |
+|---|---|---|
+| Jacob Hastie, Pamela Jeffries, Tyrone Mawing | false | false |
+| Harrison Hastie, John Jeffries, Leilah Mawing | true | false |
+
+### THE PART THAT IS WORSE THAN THE ERROR MESSAGE
+
+`CloseDeal.writePositions()` reads the client's current position before writing,
+so that an empty fact find cannot blank a full client record —
+`wouldEmptyTheClient()`, the Natasha Chapman guard.
+
+**That read is one of the reads this policy blocks.** It comes back empty, `had`
+is 0, the guard decides there is nothing to protect and returns false.
+
+So for **every second applicant in the book**, the protection against wiping a
+client's assets, liabilities and properties with an empty fact find has never
+been able to fire. It is not weakened; it is absent, silently, and it reports
+success either way.
+
+### The direction of the fix — NOT just copying one policy to the other
+
+The UPDATE policy has **no role test at all**: its whole condition is "a deal
+exists that mentions this client". The SELECT policy has the full role test
+(admin / sees-all / broker matching / staff matching their credit assignment).
+
+So editing is currently WIDER than reading. That is backwards, and widening
+SELECT to match UPDATE would make it worse. Both halves need to move:
+
+1. **SELECT** gains the applicants clause, keeping its role test.
+2. **UPDATE** gains the role test it never had.
+
+Policy changes on `clients` touch every screen that reads a client. **Rehearse
+on staging before live** — staging is already standing up for the Sydney move,
+which is exactly what it is for.
+
+### What it means for the deals Catherine closed
+
+Nothing to redo. The deals are lost, and the positions were almost certainly
+written. The portal just told her the opposite.
+
+### BUILT 26 Nov 2026 — the A&L question
+
+Fabio: *"If we're marking a deal as lost, we got to ask the question, do you
+want to update the current assets and liabilities? And the preference is
+normally we don't because we lost the deal, but just that needs to be a serious
+question... please create a habit that you show what the A&L is and say, are you
+confirming this is the current position?"*
+
+- A question with **No already chosen**, in place of a tick box that was ticked
+  for you.
+- Say yes and every property, liability and asset is read out **by name** before
+  anything is written. The button is dead until a line naming the clients is
+  ticked. A Fact Find holding nothing for anybody cannot be confirmed at all.
+- A credit card shows its **limit**, not its balance — that is what a lender
+  reads, and the balance flatters the one line that most often decides a deal.
+- A missing figure prints "not recorded". Never a zero.
+- **The client records are written BEFORE the deal closes.** That ordering is
+  the fix for what Catherine saw: a failure now stops before anything happens,
+  so a red box means nothing happened.
+
+`lib/what-goes-on-the-client-record.ts`, `lib/the-a-and-l-question.test.ts`.
+
+### THE CONSEQUENCE THAT IS STILL OPEN
+
+Because the records now go first, choosing **Yes** on a deal with a **second
+applicant** will stop the close instead of half-doing it — the write "fails" for
+exactly the reason above, even though it succeeded. Honest, and blocking.
+
+The default is No, so the common path never touches it. **But this is the clock
+on the policy fix.** Until the two `clients` rules agree, anybody answering Yes
+on a two-applicant deal gets stopped.
